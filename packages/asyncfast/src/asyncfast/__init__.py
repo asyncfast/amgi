@@ -4,16 +4,18 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Dict
+from typing import List
 
 from pydantic import BaseModel
 from types_acgi import ACGIReceiveCallable
 from types_acgi import ACGISendCallable
+from types_acgi import MessageScope
 from types_acgi import Scope
 
 
 class AsyncFast:
     def __init__(self) -> None:
-        self._channels = []
+        self._channels: List[Channel] = []
 
     def channel(self, name):
         return partial(self._add_channel, name)
@@ -54,7 +56,7 @@ class Channel:
         self._handler = handler
 
     async def __call__(
-        self, scope: Scope, receive: ACGIReceiveCallable, send: ACGISendCallable
+        self, scope: MessageScope, receive: ACGIReceiveCallable, send: ACGISendCallable
     ) -> None:
         handler_argspec = getfullargspec(self._handler)
 
@@ -62,7 +64,7 @@ class Channel:
             **dict(self._generate_arguments(scope, handler_argspec.annotations))
         )
 
-    def _generate_arguments(self, scope: Scope, annotations: Dict[str, Any]):
+    def _generate_arguments(self, scope: MessageScope, annotations: Dict[str, Any]):
         for name, annotation in annotations.items():
             if issubclass(annotation, BaseModel):
                 yield name, annotation.model_validate_json(scope["payload"])
