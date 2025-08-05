@@ -1,9 +1,15 @@
 from functools import partial
-from typing import Callable, Awaitable, Dict, Any
-
-from types_acgi import Scope, ACGIReceiveCallable, ACGISendCallable, Message
-from pydantic import BaseModel
 from inspect import getfullargspec
+from typing import Any
+from typing import Awaitable
+from typing import Callable
+from typing import Dict
+
+from pydantic import BaseModel
+from types_acgi import ACGIReceiveCallable
+from types_acgi import ACGISendCallable
+from types_acgi import Message
+from types_acgi import Scope
 
 
 class AsyncFast:
@@ -34,13 +40,12 @@ class AsyncFast:
                 elif message["type"] == "lifespan.shutdown":
                     await send({"type": "lifespan.shutdown.complete"})
                     return
-        elif scope["type"] == 'messages':
+        elif scope["type"] == "messages":
             address = scope["address"]
             for channel in self._channels:
                 if channel.name == address:
-                    await channel(scope,receive,send)
+                    await channel(scope, receive, send)
                     break
-
 
 
 class Channel:
@@ -54,12 +59,12 @@ class Channel:
     ) -> None:
         handler_argspec = getfullargspec(self._handler)
 
-
-
         for message in scope["messages"]:
-            await self._handler(**dict(self._generate_arguments(message,handler_argspec.annotations)))
+            await self._handler(
+                **dict(self._generate_arguments(message, handler_argspec.annotations))
+            )
 
-    def _generate_arguments(self, message:Message, annotations:Dict[str,Any]):
+    def _generate_arguments(self, message: Message, annotations: Dict[str, Any]):
         for name, annotation in annotations.items():
             if issubclass(annotation, BaseModel):
-                yield name, annotation.model_validate_json(message['payload'])
+                yield name, annotation.model_validate_json(message["payload"])

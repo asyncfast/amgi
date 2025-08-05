@@ -32,6 +32,7 @@ class MessagesScope(TypedDict):
     address: str
     messages: Iterable[Message]
 
+
 class LifespanScope(TypedDict):
     type: Literal["lifespan"]
     acgi: ACGIVersions

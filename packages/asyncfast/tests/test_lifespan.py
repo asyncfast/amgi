@@ -1,7 +1,8 @@
-from unittest.mock import Mock, AsyncMock, call
+from unittest.mock import AsyncMock
+from unittest.mock import call
+from unittest.mock import Mock
 
 import pytest
-
 from asyncfast import AsyncFast
 
 

@@ -1,9 +1,10 @@
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock
+from unittest.mock import Mock
 
 import pytest
+from asyncfast import AsyncFast
 from pydantic import BaseModel
 
-from asyncfast import AsyncFast
 
 @pytest.mark.asyncio
 async def test_messages():
