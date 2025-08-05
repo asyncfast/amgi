@@ -8,7 +8,6 @@ from typing import Dict
 from pydantic import BaseModel
 from types_acgi import ACGIReceiveCallable
 from types_acgi import ACGISendCallable
-from types_acgi import Message
 from types_acgi import Scope
 
 
@@ -40,7 +39,7 @@ class AsyncFast:
                 elif message["type"] == "lifespan.shutdown":
                     await send({"type": "lifespan.shutdown.complete"})
                     return
-        elif scope["type"] == "messages":
+        elif scope["type"] == "message":
             address = scope["address"]
             for channel in self._channels:
                 if channel.name == address:
@@ -59,12 +58,11 @@ class Channel:
     ) -> None:
         handler_argspec = getfullargspec(self._handler)
 
-        for message in scope["messages"]:
-            await self._handler(
-                **dict(self._generate_arguments(message, handler_argspec.annotations))
-            )
+        await self._handler(
+            **dict(self._generate_arguments(scope, handler_argspec.annotations))
+        )
 
-    def _generate_arguments(self, message: Message, annotations: Dict[str, Any]):
+    def _generate_arguments(self, scope: Scope, annotations: Dict[str, Any]):
         for name, annotation in annotations.items():
             if issubclass(annotation, BaseModel):
-                yield name, annotation.model_validate_json(message["payload"])
+                yield name, annotation.model_validate_json(scope["payload"])

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 
 @pytest.mark.asyncio
-async def test_messages():
+async def test_message():
     app = AsyncFast()
 
     class Payload(BaseModel):
@@ -21,16 +21,11 @@ async def test_messages():
 
     await app(
         {
-            "type": "messages",
+            "type": "message",
             "acgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "test",
-            "messages": [
-                {
-                    "headers": [],
-                    "payload": b'{"id":1}',
-                    "identifier": 0,
-                }
-            ],
+            "headers": [],
+            "payload": b'{"id":1}',
         },
         AsyncMock(),
         AsyncMock(),

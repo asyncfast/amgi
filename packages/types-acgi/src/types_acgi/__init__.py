@@ -1,5 +1,4 @@
 import sys
-from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Iterable
@@ -20,17 +19,12 @@ class ACGIVersions(TypedDict):
     version: Union[Literal["1.0"]]
 
 
-class Message(TypedDict):
-    headers: Iterable[Tuple[bytes, bytes]]
-    payload: Optional[bytes]
-    identifier: Any
-
-
-class MessagesScope(TypedDict):
-    type: Literal["messages"]
+class MessageScope(TypedDict):
+    type: Literal["message"]
     acgi: ACGIVersions
     address: str
-    messages: Iterable[Message]
+    headers: Iterable[Tuple[bytes, bytes]]
+    payload: Optional[bytes]
 
 
 class LifespanScope(TypedDict):
@@ -72,10 +66,9 @@ class LifespanShutdownFailedEvent(TypedDict):
 
 class MessageAcknowledgeEvent(TypedDict):
     type: Literal["message.acknowledge"]
-    identifier: Any
 
 
-Scope = Union[MessagesScope, LifespanScope]
+Scope = Union[MessageScope, LifespanScope]
 
 ACGIReceiveEvent = Union[LifespanStartupEvent, LifespanShutdownEvent]
 ACGISendEvent = Union[
