@@ -7,6 +7,7 @@ from typing import Dict
 from typing import Generator
 from typing import List
 from typing import Tuple
+from typing import TypeVar
 
 from pydantic import BaseModel
 from types_acgi import ACGIReceiveCallable
@@ -14,16 +15,19 @@ from types_acgi import ACGISendCallable
 from types_acgi import MessageScope
 from types_acgi import Scope
 
+DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
+
 
 class AsyncFast:
     def __init__(self) -> None:
         self._channels: List[Channel] = []
 
-    def channel(self, name: str) -> Callable[[Callable[..., Awaitable[None]]], None]:
+    def channel(self, name: str) -> Callable[[DecoratedCallable], DecoratedCallable]:
         return partial(self._add_channel, name)
 
-    def _add_channel(self, name: str, function: Callable[..., Awaitable[None]]) -> None:
+    def _add_channel(self, name: str, function: DecoratedCallable) -> DecoratedCallable:
         self._channels.append(Channel(name, function))
+        return function
 
     async def __call__(
         self, scope: Scope, receive: ACGIReceiveCallable, send: ACGISendCallable
