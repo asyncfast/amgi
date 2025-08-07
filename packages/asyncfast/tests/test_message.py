@@ -178,3 +178,44 @@ async def test_message_header_optional(
     )
 
     assert test_mock.mock_calls == [expected_call]
+
+
+@pytest.mark.parametrize(
+    ["headers", "expected_call"],
+    [
+        (
+            [(b"Id", b"1")],
+            call(1, "default"),
+        ),
+        (
+            [(b"Id", b"1"), (b"Example", b"value")],
+            call(1, "value"),
+        ),
+    ],
+)
+async def test_message_header_default(
+    headers: Iterable[Tuple[bytes, bytes]], expected_call: _Call
+) -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(
+        id: Annotated[int, Header()], example: Annotated[str, Header()] = "default"
+    ) -> None:
+        test_mock(id, example)
+
+    await app(
+        {
+            "type": "message",
+            "acgi": {"version": "1.0", "spec_version": "1.0"},
+            "address": "topic",
+            "headers": headers,
+            "payload": None,
+        },
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    assert test_mock.mock_calls == [expected_call]
