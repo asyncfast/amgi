@@ -5,15 +5,22 @@ from typing import Awaitable
 from typing import Callable
 from typing import Dict
 from typing import Generator
+from typing import Iterable
+from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import Tuple
 from typing import TypeVar
 
 from pydantic import BaseModel
+from pydantic import TypeAdapter
 from types_acgi import ACGIReceiveCallable
 from types_acgi import ACGISendCallable
 from types_acgi import MessageScope
 from types_acgi import Scope
+from typing_extensions import Annotated
+from typing_extensions import get_args
+from typing_extensions import get_origin
 
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
 
@@ -67,12 +74,48 @@ class Channel:
         handler_argspec = getfullargspec(self._handler)
 
         await self._handler(
-            **dict(self._generate_arguments(scope, handler_argspec.annotations))
+            **dict(_generate_arguments(scope, handler_argspec.annotations))
         )
 
-    def _generate_arguments(
-        self, scope: MessageScope, annotations: Dict[str, Any]
-    ) -> Generator[Tuple[str, Any], None, None]:
-        for name, annotation in annotations.items():
-            if issubclass(annotation, BaseModel):
-                yield name, annotation.model_validate_json(scope["payload"])
+
+def _generate_arguments(
+    scope: MessageScope, annotations: Dict[str, Any]
+) -> Generator[Tuple[str, Any], None, None]:
+    headers = Headers(scope["headers"])
+    for name, annotation in annotations.items():
+        if issubclass(annotation, BaseModel):
+            yield name, annotation.model_validate_json(scope["payload"])
+        if get_origin(annotation) is Annotated:
+            annotated_args = get_args(annotation)
+            if isinstance(annotated_args[1], Header):
+                alias = name.replace("_", "-")
+                header = headers[alias]
+                value = TypeAdapter(annotated_args[0]).validate_python(
+                    header, from_attributes=True
+                )
+                yield name, value
+
+
+class Header:
+    pass
+
+
+class Headers(Mapping[str, str]):
+
+    def __init__(self, raw_list: Iterable[Tuple[bytes, bytes]]) -> None:
+        self.raw_list = list(raw_list)
+
+    def __getitem__(self, key: str, /) -> str:
+        for header_key, header_value in self.raw_list:
+            if header_key.decode().lower() == key.lower():
+                return header_value.decode()
+        raise KeyError(key)
+
+    def __len__(self) -> int:
+        return len(self.raw_list)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.keys())
+
+    def keys(self) -> list[str]:  # type: ignore[override]
+        return [key.decode() for key, _ in self.raw_list]
