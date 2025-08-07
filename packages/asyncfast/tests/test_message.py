@@ -1,8 +1,13 @@
 from typing import Annotated
+from typing import Iterable
+from typing import Tuple
+from unittest.mock import _Call
 from unittest.mock import AsyncMock
+from unittest.mock import call
 from unittest.mock import Mock
 from uuid import UUID
 
+import pytest
 from asyncfast import AsyncFast
 from asyncfast import Header
 from pydantic import BaseModel
@@ -41,7 +46,7 @@ async def test_message_header_string() -> None:
     test_mock = Mock()
 
     @app.channel("topic")
-    async def topic_handler(etag: Annotated[str | None, Header()] = None) -> None:
+    async def topic_handler(etag: Annotated[str, Header()]) -> None:
         test_mock(etag)
 
     await app(
@@ -65,7 +70,7 @@ async def test_message_header_integer() -> None:
     test_mock = Mock()
 
     @app.channel("topic")
-    async def topic_handler(id: Annotated[int | None, Header()] = None) -> None:
+    async def topic_handler(id: Annotated[int, Header()]) -> None:
         test_mock(id)
 
     await app(
@@ -90,7 +95,7 @@ async def test_message_header_underscore_to_hyphen() -> None:
 
     @app.channel("topic")
     async def topic_handler(
-        idempotency_key: Annotated[UUID | None, Header()] = None,
+        idempotency_key: Annotated[UUID, Header()],
     ) -> None:
         test_mock(idempotency_key)
 
@@ -116,8 +121,8 @@ async def test_message_headers_multiple() -> None:
 
     @app.channel("topic")
     async def topic_handler(
-        id: Annotated[int | None, Header()] = None,
-        etag: Annotated[str | None, Header()] = None,
+        id: Annotated[int, Header()],
+        etag: Annotated[str, Header()],
     ) -> None:
         test_mock(id, etag)
 
@@ -137,3 +142,39 @@ async def test_message_headers_multiple() -> None:
     )
 
     test_mock.assert_called_once_with(10, "33a64df551425fcc55e4d42a148795d9f25f89d4")
+
+
+@pytest.mark.parametrize(
+    ["headers", "expected_call"],
+    [
+        (
+            [(b"Id", b"33a64df551425fcc55e4d42a148795d9f25f89d4")],
+            call("33a64df551425fcc55e4d42a148795d9f25f89d4"),
+        ),
+        ([], call(None)),
+    ],
+)
+async def test_message_header_optional(
+    headers: Iterable[Tuple[bytes, bytes]], expected_call: _Call
+) -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(id: Annotated[str | None, Header()] = None) -> None:
+        test_mock(id)
+
+    await app(
+        {
+            "type": "message",
+            "acgi": {"version": "1.0", "spec_version": "1.0"},
+            "address": "topic",
+            "headers": headers,
+            "payload": None,
+        },
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    assert test_mock.mock_calls == [expected_call]

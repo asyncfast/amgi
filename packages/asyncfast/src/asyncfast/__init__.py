@@ -1,5 +1,6 @@
 from functools import partial
 from inspect import getfullargspec
+from types import UnionType
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -10,7 +11,9 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Tuple
+from typing import Type
 from typing import TypeVar
+from typing import Union
 
 from pydantic import BaseModel
 from pydantic import TypeAdapter
@@ -78,6 +81,11 @@ class Channel:
         )
 
 
+def _is_optional(field: Type[Any]) -> bool:
+    origin = get_origin(field)
+    return (origin is Union or origin is UnionType) and type(None) in get_args(field)
+
+
 def _generate_arguments(
     scope: MessageScope, annotations: Dict[str, Any]
 ) -> Generator[Tuple[str, Any], None, None]:
@@ -89,11 +97,14 @@ def _generate_arguments(
             annotated_args = get_args(annotation)
             if isinstance(annotated_args[1], Header):
                 alias = name.replace("_", "-")
-                header = headers[alias]
-                value = TypeAdapter(annotated_args[0]).validate_python(
-                    header, from_attributes=True
-                )
-                yield name, value
+                header = headers.get(alias)
+                if header is None and _is_optional(annotated_args[0]):
+                    yield name, None
+                else:
+                    value = TypeAdapter(annotated_args[0]).validate_python(
+                        header, from_attributes=True
+                    )
+                    yield name, value
 
 
 class Header:
