@@ -22,3 +22,9 @@ repos:
     rev: v0.17.2
     hooks:
       - id: yamlfmt
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.8.3
+    hooks:
+      - id: commitizen
+      - id: commitizen-branch
+        stages: [pre-push]
