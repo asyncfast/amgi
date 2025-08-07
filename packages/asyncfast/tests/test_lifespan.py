@@ -2,12 +2,10 @@ from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import Mock
 
-import pytest
 from asyncfast import AsyncFast
 
 
-@pytest.mark.asyncio
-async def test_lifespan():
+async def test_lifespan() -> None:
     app = AsyncFast()
 
     app.channel("test")(Mock())

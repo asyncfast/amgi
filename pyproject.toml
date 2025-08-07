@@ -18,3 +18,7 @@ version_scheme = "semver2"
 version_provider = "uv"
 update_changelog_on_bump = true
 major_version_zero = true
+
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

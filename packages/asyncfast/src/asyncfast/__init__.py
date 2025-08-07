@@ -4,7 +4,9 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Dict
+from typing import Generator
 from typing import List
+from typing import Tuple
 
 from pydantic import BaseModel
 from types_acgi import ACGIReceiveCallable
@@ -17,10 +19,10 @@ class AsyncFast:
     def __init__(self) -> None:
         self._channels: List[Channel] = []
 
-    def channel(self, name):
+    def channel(self, name: str) -> Callable[[Callable[..., Awaitable[None]]], None]:
         return partial(self._add_channel, name)
 
-    def _add_channel(self, name, function: Callable[..., Awaitable[None]]) -> None:
+    def _add_channel(self, name: str, function: Callable[..., Awaitable[None]]) -> None:
         self._channels.append(Channel(name, function))
 
     async def __call__(
@@ -64,7 +66,9 @@ class Channel:
             **dict(self._generate_arguments(scope, handler_argspec.annotations))
         )
 
-    def _generate_arguments(self, scope: MessageScope, annotations: Dict[str, Any]):
+    def _generate_arguments(
+        self, scope: MessageScope, annotations: Dict[str, Any]
+    ) -> Generator[Tuple[str, Any], None, None]:
         for name, annotation in annotations.items():
             if issubclass(annotation, BaseModel):
                 yield name, annotation.model_validate_json(scope["payload"])
