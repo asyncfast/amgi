@@ -1,3 +1,14 @@
+## 0.4.0 (2025-08-07)
+
+### Feat
+
+- initial work for sending to other channels
+
+### Fix
+
+- support all types of default arguments not just optional
+- fix optional beader support
+
 ## 0.3.0 (2025-08-07)
 
 ### Feat
