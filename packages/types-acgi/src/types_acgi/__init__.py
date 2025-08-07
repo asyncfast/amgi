@@ -68,6 +68,13 @@ class MessageAcknowledgeEvent(TypedDict):
     type: Literal["message.acknowledge"]
 
 
+class MessageSendEvent(TypedDict):
+    type: Literal["message.send"]
+    address: str
+    headers: Iterable[Tuple[bytes, bytes]]
+    payload: Optional[bytes]
+
+
 Scope = Union[MessageScope, LifespanScope]
 
 ACGIReceiveEvent = Union[LifespanStartupEvent, LifespanShutdownEvent]
@@ -77,6 +84,7 @@ ACGISendEvent = Union[
     LifespanShutdownCompleteEvent,
     LifespanShutdownFailedEvent,
     MessageAcknowledgeEvent,
+    MessageSendEvent,
 ]
 
 ACGIReceiveCallable = Callable[[], Awaitable[ACGIReceiveEvent]]

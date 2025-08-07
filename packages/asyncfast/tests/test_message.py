@@ -1,4 +1,6 @@
 from typing import Annotated
+from typing import Any
+from typing import AsyncGenerator
 from typing import Iterable
 from typing import Tuple
 from unittest.mock import _Call
@@ -219,3 +221,39 @@ async def test_message_header_default(
     )
 
     assert test_mock.mock_calls == [expected_call]
+
+
+async def test_message_sending() -> None:
+    app = AsyncFast()
+
+    message_mock = Mock(
+        address="send_topic",
+        payload=b"{}",
+        headers=[(b"Id", b"10")],
+    )
+    send_mock = AsyncMock()
+
+    @app.channel("topic")
+    async def topic_handler() -> AsyncGenerator[Any, None]:
+        yield message_mock
+
+    await app(
+        {
+            "type": "message",
+            "acgi": {"version": "1.0", "spec_version": "1.0"},
+            "address": "topic",
+            "headers": [],
+            "payload": b'{"id":10}',
+        },
+        AsyncMock(),
+        send_mock,
+    )
+
+    send_mock.assert_called_with(
+        {
+            "type": "message.send",
+            "address": "send_topic",
+            "headers": [(b"Id", b"10")],
+            "payload": b"{}",
+        }
+    )

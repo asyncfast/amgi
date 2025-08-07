@@ -72,8 +72,19 @@ class Channel:
         self, scope: MessageScope, receive: ACGIReceiveCallable, send: ACGISendCallable
     ) -> None:
         signature = inspect.signature(self._handler)
-
-        await self._handler(**dict(_generate_arguments(scope, signature)))
+        arguments = dict(_generate_arguments(scope, signature))
+        if inspect.isasyncgenfunction(self._handler):
+            async for message in self._handler(**arguments):
+                await send(
+                    {
+                        "type": "message.send",
+                        "address": message.address,
+                        "headers": message.headers,
+                        "payload": message.payload,
+                    }
+                )
+        else:
+            await self._handler(**arguments)
 
 
 def _generate_arguments(
