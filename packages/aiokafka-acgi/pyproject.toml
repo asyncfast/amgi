@@ -11,7 +11,10 @@ dependencies = [
     "aiokafka>=0.12.0",
     "types-acgi==0.6.0",
 ]
-
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Framework :: AsyncIO"
+]
 
 [build-system]
 requires = ["uv_build>=0.8.4,<0.9.0"]
