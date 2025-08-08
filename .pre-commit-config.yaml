@@ -28,3 +28,10 @@ repos:
       - id: commitizen
       - id: commitizen-branch
         stages: [pre-push]
+  - repo: https://github.com/hukkin/mdformat
+    rev: 0.7.22 # Use the ref you want to point at
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-black
