@@ -32,3 +32,6 @@ version_files = [
   "packages/*/pyproject.toml:version|types-acgi",
   "packages/*/README.md:pip install",
 ]
+pre_bump_hooks = [
+  "uv sync --all-packages",
+]
