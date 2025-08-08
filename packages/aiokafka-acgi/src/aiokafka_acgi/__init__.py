@@ -1,0 +1,164 @@
+import asyncio
+import logging
+from asyncio import Event
+from asyncio import Lock
+from asyncio import Queue
+from types import TracebackType
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
+
+from aiokafka import AIOKafkaConsumer
+from aiokafka import AIOKafkaProducer
+from aiokafka import ConsumerRecord
+from types_acgi import ACGIApplication
+from types_acgi import ACGIReceiveEvent
+from types_acgi import ACGISendEvent
+from types_acgi import LifespanScope
+from types_acgi import LifespanShutdownEvent
+from types_acgi import LifespanStartupEvent
+from types_acgi import MessageScope
+
+
+logger = logging.getLogger("aiokafka-acgi.error")
+
+
+def run(
+    app: ACGIApplication,
+    *topics: Iterable[str],
+    bootstrap_servers: str | List[str] = "localhost",
+    group_id: Optional[str] = None,
+) -> None:
+    server = Server(
+        app, *topics, bootstrap_servers=bootstrap_servers, group_id=group_id
+    )
+    asyncio.run(server.serve())
+
+
+class Server:
+    _consumer: AIOKafkaConsumer
+
+    def __init__(
+        self,
+        app: ACGIApplication,
+        *topics: Iterable[str],
+        bootstrap_servers: str | List[str],
+        group_id: Optional[str],
+    ) -> None:
+        self._app = app
+        self._topic = topics
+        self._bootstrap_servers = bootstrap_servers
+        self._group_id = group_id
+        self._producer: Optional[AIOKafkaProducer] = None
+        self._producer_lock = Lock()
+
+    async def serve(self) -> None:
+        self._consumer = AIOKafkaConsumer(
+            *self._topic,
+            bootstrap_servers=self._bootstrap_servers,
+            group_id=self._group_id,
+        )
+        await self._consumer.start()
+        async with Lifespan(self._app):
+            await self.main_loop()
+
+        if self._producer is not None:
+            await self._producer.stop()
+
+    async def main_loop(self) -> None:
+        message: ConsumerRecord[bytes, bytes]
+        async for message in self._consumer:
+            encoded_headers = [(key.encode(), value) for key, value in message.headers]
+            scope: MessageScope = {
+                "type": "message",
+                "acgi": {"version": "1.0", "spec_version": "1.0"},
+                "address": message.topic,
+                "headers": encoded_headers,
+                "payload": message.value,
+            }
+            await self._app(scope, self.receive, self.send)
+
+    async def receive(self) -> ACGIReceiveEvent:
+        raise NotImplementedError()
+
+    async def _get_producer(self) -> AIOKafkaProducer:
+        if self._producer is None:
+            async with self._producer_lock:
+                producer = AIOKafkaProducer(bootstrap_servers=self._bootstrap_servers)
+                await producer.start()
+                self._producer = producer
+        return self._producer
+
+    async def _send_message(
+        self,
+        topic: str,
+        headers: Iterable[Tuple[bytes, bytes]],
+        payload: Optional[bytes],
+    ) -> None:
+        producer = await self._get_producer()
+        encoded_headers = [(key.decode(), value) for key, value in headers]
+        await producer.send(topic, headers=encoded_headers, value=payload)
+
+    async def send(self, event: ACGISendEvent) -> None:
+
+        if event["type"] == "message.send":
+            await self._send_message(
+                event["address"], event["headers"], event.get("payload")
+            )
+
+
+class Lifespan:
+    def __init__(self, app: ACGIApplication) -> None:
+        self._app = app
+        self._receive_queue = Queue[
+            Union[LifespanStartupEvent, LifespanShutdownEvent]
+        ]()
+
+        self._startup_event = Event()
+        self._shutdown_event = Event()
+
+    async def __aenter__(self) -> None:
+        loop = asyncio.get_running_loop()
+        self.main_task = loop.create_task(self._main())
+
+        startup_event: LifespanStartupEvent = {
+            "type": "lifespan.startup",
+        }
+        await self._receive_queue.put(startup_event)
+        await self._startup_event.wait()
+
+    async def _main(self) -> None:
+        scope: LifespanScope = {
+            "type": "lifespan",
+            "acgi": {"version": "1.0", "spec_version": "1.0"},
+        }
+        await self._app(
+            scope,
+            self.receive,
+            self.send,
+        )
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        shutdown_event: LifespanShutdownEvent = {
+            "type": "lifespan.shutdown",
+        }
+        await self._receive_queue.put(shutdown_event)
+        await self._shutdown_event.wait()
+
+    async def receive(self) -> ACGIReceiveEvent:
+        return await self._receive_queue.get()
+
+    async def send(self, event: ACGISendEvent) -> None:
+        event_type = event["type"]
+
+        if event_type in {"lifespan.startup.complete", "lifespan.startup.failed"}:
+            self._startup_event.set()
+        elif event_type in {"lifespan.shutdown.complete", "lifespan.shutdown.failed"}:
+            self._shutdown_event.set()

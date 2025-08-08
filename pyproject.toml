@@ -9,6 +9,7 @@ dependencies = []
 [tool.uv.workspace]
 members = [
     "packages/*",
+    "examples/*"
 ]
 
 [tool.commitizen]

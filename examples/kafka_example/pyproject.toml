@@ -1,0 +1,14 @@
+[project]
+name = "kafka-example"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiokafka-acgi",
+    "asyncfast",
+]
+
+[tool.uv.sources]
+aiokafka-acgi = { workspace = true }
+asyncfast = { workspace = true }
