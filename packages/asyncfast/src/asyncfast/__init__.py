@@ -9,6 +9,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import Optional
 from typing import Tuple
 from typing import TypeVar
 
@@ -91,7 +92,8 @@ def _generate_arguments(
         if get_origin(annotation) is Annotated:
             annotated_args = get_args(annotation)
             if isinstance(annotated_args[1], Header):
-                alias = name.replace("_", "-")
+                header_alias = annotated_args[1].alias
+                alias = header_alias if header_alias else name.replace("_", "-")
                 header = headers.get(alias, parameter.default)
                 value = TypeAdapter(annotated_args[0]).validate_python(
                     header, from_attributes=True
@@ -100,7 +102,8 @@ def _generate_arguments(
 
 
 class Header:
-    pass
+    def __init__(self, alias: Optional[str] = None) -> None:
+        self.alias = alias
 
 
 class Headers(Mapping[str, str]):

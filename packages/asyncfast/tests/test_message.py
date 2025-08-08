@@ -13,6 +13,7 @@ import pytest
 from asyncfast import AsyncFast
 from asyncfast import Header
 from pydantic import BaseModel
+from types_acgi import MessageScope
 
 
 async def test_message_payload() -> None:
@@ -251,3 +252,29 @@ async def test_message_sending() -> None:
             "payload": b'{"key": "KEY-001"}',
         }
     )
+
+
+async def test_message_header_alias() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(
+        request_id: Annotated[UUID, Header(alias="X-Request-Id")],
+    ) -> None:
+        test_mock(request_id)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [(b"X-Request-Id", b"75dc9e58-9d5c-4eea-bcc5-19d2102196b8")],
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(UUID("75dc9e58-9d5c-4eea-bcc5-19d2102196b8"))
