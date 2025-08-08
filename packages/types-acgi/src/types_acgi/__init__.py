@@ -24,7 +24,7 @@ class MessageScope(TypedDict):
     acgi: ACGIVersions
     address: str
     headers: Iterable[Tuple[bytes, bytes]]
-    payload: Optional[bytes]
+    payload: NotRequired[Optional[bytes]]
 
 
 class LifespanScope(TypedDict):
@@ -40,14 +40,8 @@ class LifespanShutdownEvent(TypedDict):
     type: Literal["lifespan.shutdown"]
 
 
-class Subscription(TypedDict):
-    address: str
-    auto_acknowledge: NotRequired[bool]
-
-
 class LifespanStartupCompleteEvent(TypedDict):
     type: Literal["lifespan.startup.complete"]
-    subscriptions: Iterable[Subscription]
 
 
 class LifespanStartupFailedEvent(TypedDict):
@@ -72,7 +66,7 @@ class MessageSendEvent(TypedDict):
     type: Literal["message.send"]
     address: str
     headers: Iterable[Tuple[bytes, bytes]]
-    payload: Optional[bytes]
+    payload: NotRequired[Optional[bytes]]
 
 
 Scope = Union[MessageScope, LifespanScope]

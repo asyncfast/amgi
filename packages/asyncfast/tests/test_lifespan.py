@@ -8,8 +8,6 @@ from asyncfast import AsyncFast
 async def test_lifespan() -> None:
     app = AsyncFast()
 
-    app.channel("test")(Mock())
-
     parent_mock = Mock()
     receive_mock = AsyncMock(
         side_effect=[{"type": "lifespan.startup"}, {"type": "lifespan.shutdown"}]
@@ -27,12 +25,7 @@ async def test_lifespan() -> None:
     parent_mock.assert_has_calls(
         [
             call.receive(),
-            call.send(
-                {
-                    "type": "lifespan.startup.complete",
-                    "subscriptions": [{"address": "test"}],
-                }
-            ),
+            call.send({"type": "lifespan.startup.complete"}),
             call.receive(),
             call.send({"type": "lifespan.shutdown.complete"}),
         ]
