@@ -7,7 +7,7 @@ ACGI will be here very soon
 ## Installation
 
 ```
-pip install asyncfast==0.5.0
+pip install asyncfast==0.6.0
 ```
 
 ## Contact

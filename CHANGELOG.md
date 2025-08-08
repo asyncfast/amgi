@@ -1,3 +1,9 @@
+## 0.6.0 (2025-08-08)
+
+### Fix
+
+- use fixed version for all references to types-acgi
+
 ## 0.5.0 (2025-08-08)
 
 ### Feat
