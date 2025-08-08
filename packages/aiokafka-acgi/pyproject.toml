@@ -23,7 +23,7 @@ classifiers = [
 
 dependencies = [
   "aiokafka>=0.12",
-  "types-acgi==0.6",
+  "types-acgi==0.6.0",
 ]
 
 [tool.uv.sources]

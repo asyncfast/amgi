@@ -39,3 +39,4 @@ repos:
     rev: v2.6.0
     hooks:
       - id: pyproject-fmt
+        args: [--keep-full-version]
