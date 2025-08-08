@@ -29,7 +29,7 @@ version_provider = "uv"
 update_changelog_on_bump = true
 major_version_zero = true
 version_files = [
-  "packages/*/pyproject.toml:version|types-acgi",
+  "packages/*/pyproject.toml:version|acgi",
   "packages/*/README.md:pip install",
 ]
 pre_bump_hooks = [

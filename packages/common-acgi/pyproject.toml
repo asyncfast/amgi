@@ -1,11 +1,10 @@
 [build-system]
 build-backend = "uv_build"
-
-requires = [ "uv-build>=0.8.4,<0.9" ]
+requires = [ "uv-build>=0.8.4,<0.9.0" ]
 
 [project]
-name = "aiokafka-acgi"
-version = "0.6.0"
+name = "common-acgi"
+version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -13,20 +12,9 @@ authors = [
 ]
 requires-python = ">=3.11"
 classifiers = [
-  "Development Status :: 1 - Planning",
-  "Framework :: AsyncIO",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
-
-dependencies = [
-  "aiokafka>=0.12",
-  "common-acgi==0.6.0",
-  "types-acgi==0.6.0",
-]
-
-[tool.uv.sources]
-types-acgi = { workspace = true }
-common-acgi = { workspace = true }
+dependencies = [  ]

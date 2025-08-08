@@ -1,24 +1,18 @@
 import asyncio
 import logging
-from asyncio import Event
 from asyncio import Lock
-from asyncio import Queue
-from types import TracebackType
 from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Tuple
-from typing import Union
 
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
 from aiokafka import ConsumerRecord
+from common_acgi import Lifespan
 from types_acgi import ACGIApplication
 from types_acgi import ACGIReceiveEvent
 from types_acgi import ACGISendEvent
-from types_acgi import LifespanScope
-from types_acgi import LifespanShutdownEvent
-from types_acgi import LifespanStartupEvent
 from types_acgi import MessageScope
 
 
@@ -107,58 +101,3 @@ class Server:
             await self._send_message(
                 event["address"], event["headers"], event.get("payload")
             )
-
-
-class Lifespan:
-    def __init__(self, app: ACGIApplication) -> None:
-        self._app = app
-        self._receive_queue = Queue[
-            Union[LifespanStartupEvent, LifespanShutdownEvent]
-        ]()
-
-        self._startup_event = Event()
-        self._shutdown_event = Event()
-
-    async def __aenter__(self) -> None:
-        loop = asyncio.get_running_loop()
-        self.main_task = loop.create_task(self._main())
-
-        startup_event: LifespanStartupEvent = {
-            "type": "lifespan.startup",
-        }
-        await self._receive_queue.put(startup_event)
-        await self._startup_event.wait()
-
-    async def _main(self) -> None:
-        scope: LifespanScope = {
-            "type": "lifespan",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-        }
-        await self._app(
-            scope,
-            self.receive,
-            self.send,
-        )
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        shutdown_event: LifespanShutdownEvent = {
-            "type": "lifespan.shutdown",
-        }
-        await self._receive_queue.put(shutdown_event)
-        await self._shutdown_event.wait()
-
-    async def receive(self) -> ACGIReceiveEvent:
-        return await self._receive_queue.get()
-
-    async def send(self, event: ACGISendEvent) -> None:
-        event_type = event["type"]
-
-        if event_type in {"lifespan.startup.complete", "lifespan.startup.failed"}:
-            self._startup_event.set()
-        elif event_type in {"lifespan.shutdown.complete", "lifespan.shutdown.failed"}:
-            self._shutdown_event.set()
