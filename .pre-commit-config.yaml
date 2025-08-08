@@ -35,3 +35,7 @@ repos:
         additional_dependencies:
           - mdformat-gfm
           - mdformat-black
+  - repo: https://github.com/tox-dev/pyproject-fmt
+    rev: v2.6.0
+    hooks:
+      - id: pyproject-fmt

@@ -1,30 +1,36 @@
+[build-system]
+build-backend = "uv_build"
+
+requires = [ "uv-build>=0.8.4,<0.9" ]
+
 [project]
 name = "asyncfast"
 version = "0.6.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
-    { name = "jack.burridge", email = "jack.burridge@mail.com" }
+  { name = "jack.burridge", email = "jack.burridge@mail.com" },
 ]
 requires-python = ">=3.11"
-dependencies = [
-    "pydantic>=2.11.7",
-    "types-acgi==0.6.0",
-]
 classifiers = [
-    "Development Status :: 1 - Planning",
-    "Framework :: AsyncIO"
+  "Development Status :: 1 - Planning",
+  "Framework :: AsyncIO",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 
-[build-system]
-requires = ["uv_build>=0.8.4,<0.9.0"]
-build-backend = "uv_build"
-
-[tool.uv.sources]
-types-acgi = { workspace = true }
+dependencies = [
+  "pydantic>=2.11.7",
+  "types-acgi==0.6",
+]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.4.1",
-    "pytest-asyncio>=1.1.0",
+  "pytest>=8.4.1",
+  "pytest-asyncio>=1.1",
 ]
+
+[tool.uv.sources]
+types-acgi = { workspace = true }
