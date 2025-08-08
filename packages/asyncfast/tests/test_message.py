@@ -222,7 +222,7 @@ async def test_message_sending() -> None:
 
     message_mock = Mock(
         address="send_topic",
-        payload=b"{}",
+        payload=b'{"key": "KEY-001"}',
         headers=[(b"Id", b"10")],
     )
     send_mock = AsyncMock()
@@ -243,11 +243,11 @@ async def test_message_sending() -> None:
         send_mock,
     )
 
-    send_mock.assert_called_with(
+    send_mock.assert_awaited_once_with(
         {
             "type": "message.send",
             "address": "send_topic",
             "headers": [(b"Id", b"10")],
-            "payload": b"{}",
+            "payload": b'{"key": "KEY-001"}',
         }
     )
