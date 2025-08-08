@@ -1,3 +1,13 @@
+## 0.5.0 (2025-08-08)
+
+### Feat
+
+- initial implementation of aiokafka-acgi
+
+### Refactor
+
+- make payload optional in the message scope, remove subscriptions from lifespan.startup.complete
+
 ## 0.4.0 (2025-08-07)
 
 ### Feat
