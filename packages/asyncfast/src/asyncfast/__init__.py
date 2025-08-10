@@ -1,4 +1,6 @@
+import dataclasses
 import inspect
+import json
 from functools import partial
 from inspect import Signature
 from typing import Any
@@ -173,7 +175,7 @@ def _get_payload(channel: Channel) -> Optional[Any]:
 
     for parameter in signature.parameters.values():
         annotation = parameter.annotation
-        if issubclass(annotation, BaseModel):
+        if issubclass(annotation, BaseModel) or dataclasses.is_dataclass(annotation):
             return annotation
     return None
 
@@ -229,8 +231,13 @@ def _generate_arguments(
     headers = Headers(scope["headers"])
     for name, parameter in signature.parameters.items():
         annotation = parameter.annotation
-        if issubclass(annotation, BaseModel):
-            yield name, annotation.model_validate_json(scope["payload"])
+        if issubclass(annotation, BaseModel) or dataclasses.is_dataclass(annotation):
+            payload = scope.get("payload")
+            payload_obj = None if payload is None else json.loads(payload)
+            value = TypeAdapter(annotation).validate_python(
+                payload_obj, from_attributes=True
+            )
+            yield name, value
         if get_origin(annotation) is Annotated:
             annotated_args = get_args(annotation)
             if isinstance(annotated_args[1], Header):

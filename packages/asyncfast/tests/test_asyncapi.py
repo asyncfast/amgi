@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Annotated
 
 from asyncfast import AsyncFast
@@ -52,6 +53,54 @@ def test_asyncapi_payload() -> None:
     app = AsyncFast()
 
     class Payload(BaseModel):
+        id: int
+        name: str
+
+    @app.channel("hello")
+    async def on_hello(payload: Payload) -> None:
+        pass
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "OnHello": {
+                "address": "hello",
+                "messages": {
+                    "OnHelloMessage": {"$ref": "#/components/messages/OnHelloMessage"}
+                },
+            }
+        },
+        "components": {
+            "messages": {
+                "OnHelloMessage": {"payload": {"$ref": "#/components/schemas/Payload"}}
+            },
+            "schemas": {
+                "Payload": {
+                    "properties": {
+                        "id": {"title": "Id", "type": "integer"},
+                        "name": {"title": "Name", "type": "string"},
+                    },
+                    "required": ["id", "name"],
+                    "title": "Payload",
+                    "type": "object",
+                }
+            },
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveOnHello": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/OnHello"},
+            }
+        },
+    }
+
+
+def test_asyncapi_payload_dataclass() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Payload:
         id: int
         name: str
 

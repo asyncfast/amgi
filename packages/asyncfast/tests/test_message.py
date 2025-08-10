@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Annotated
 from typing import Any
 from typing import AsyncGenerator
@@ -278,3 +279,32 @@ async def test_message_header_alias() -> None:
     )
 
     test_mock.assert_called_once_with(UUID("75dc9e58-9d5c-4eea-bcc5-19d2102196b8"))
+
+
+async def test_message_payload_dataclass() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Payload:
+        id: int
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(payload: Payload) -> None:
+        test_mock(payload)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [],
+        "payload": b'{"id":1}',
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(Payload(id=1))
