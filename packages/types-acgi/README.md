@@ -7,7 +7,7 @@ ACGI will be here very soon
 ## Installation
 
 ```
-pip install types-acgi==0.6.0
+pip install types-acgi==0.7.0
 ```
 
 ## Contact

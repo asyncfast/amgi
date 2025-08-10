@@ -14,7 +14,7 @@ members = [
 
 [[package]]
 name = "acgi"
-version = "0.6.0"
+version = "0.7.0"
 source = { virtual = "." }
 
 [[package]]
@@ -50,7 +50,7 @@ wheels = [
 
 [[package]]
 name = "aiokafka-acgi"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/aiokafka-acgi" }
 dependencies = [
     { name = "aiokafka" },
@@ -85,7 +85,7 @@ wheels = [
 
 [[package]]
 name = "asyncfast"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/asyncfast" }
 dependencies = [
     { name = "pydantic" },
@@ -357,7 +357,7 @@ wheels = [
 
 [[package]]
 name = "types-acgi"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "packages/types-acgi" }
 
 [[package]]

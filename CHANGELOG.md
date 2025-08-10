@@ -1,3 +1,18 @@
+## 0.7.0 (2025-08-10)
+
+### Feat
+
+- introduce cli, allowing for generation of AsyncAPI
+- add support for header alias
+
+### Fix
+
+- add full versions back so they can be detected by commitizen
+
+### Refactor
+
+- move lifespan to new project common-acgi
+
 ## 0.6.0 (2025-08-08)
 
 ### Fix

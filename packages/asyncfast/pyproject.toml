@@ -5,7 +5,7 @@ requires = [ "uv-build>=0.8.4,<0.9" ]
 
 [project]
 name = "asyncfast"
-version = "0.6.0"
+version = "0.7.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -24,7 +24,7 @@ classifiers = [
 dependencies = [
   "pydantic>=2.11.7",
   "typer>=0.16.0",
-  "types-acgi==0.6.0",
+  "types-acgi==0.7.0",
 ]
 
 scripts.asyncfast = "asyncfast.cli:main"
