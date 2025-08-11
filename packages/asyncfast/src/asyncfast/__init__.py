@@ -27,7 +27,10 @@ from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
 from types_acgi import ACGIReceiveCallable
 from types_acgi import ACGISendCallable
+from types_acgi import LifespanShutdownCompleteEvent
+from types_acgi import LifespanStartupCompleteEvent
 from types_acgi import MessageScope
+from types_acgi import MessageSendEvent
 from types_acgi import Scope
 from typing_extensions import Annotated
 from typing_extensions import get_args
@@ -87,9 +90,15 @@ class AsyncFast:
             while True:
                 message = await receive()
                 if message["type"] == "lifespan.startup":
-                    await send({"type": "lifespan.startup.complete"})
+                    lifespan_startup_complete_event: LifespanStartupCompleteEvent = {
+                        "type": "lifespan.startup.complete"
+                    }
+                    await send(lifespan_startup_complete_event)
                 elif message["type"] == "lifespan.shutdown":
-                    await send({"type": "lifespan.shutdown.complete"})
+                    lifespan_shutdown_complete_event: LifespanShutdownCompleteEvent = {
+                        "type": "lifespan.shutdown.complete"
+                    }
+                    await send(lifespan_shutdown_complete_event)
                     return
         elif scope["type"] == "message":
             address = scope["address"]
@@ -204,14 +213,13 @@ class Channel:
         arguments = dict(self._generate_arguments(scope))
         if inspect.isasyncgenfunction(self._handler):
             async for message in self._handler(**arguments):
-                await send(
-                    {
-                        "type": "message.send",
-                        "address": message.address,
-                        "headers": message.headers,
-                        "payload": message.payload,
-                    }
-                )
+                message_send_event: MessageSendEvent = {
+                    "type": "message.send",
+                    "address": message.address,
+                    "headers": message.headers,
+                    "payload": message.payload,
+                }
+                await send(message_send_event)
         else:
             await self._handler(**arguments)
 

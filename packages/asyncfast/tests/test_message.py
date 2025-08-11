@@ -30,14 +30,15 @@ async def test_message_payload() -> None:
     async def topic_handler(payload: MessagePayload) -> None:
         test_mock(payload)
 
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [],
+        "payload": b'{"id":1}',
+    }
     await app(
-        {
-            "type": "message",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": "topic",
-            "headers": [],
-            "payload": b'{"id":1}',
-        },
+        message_scope,
         AsyncMock(),
         AsyncMock(),
     )
@@ -54,13 +55,14 @@ async def test_message_header_string() -> None:
     async def topic_handler(etag: Annotated[str, Header()]) -> None:
         test_mock(etag)
 
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [(b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4")],
+    }
     await app(
-        {
-            "type": "message",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": "topic",
-            "headers": [(b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4")],
-        },
+        message_scope,
         AsyncMock(),
         AsyncMock(),
     )
@@ -77,13 +79,14 @@ async def test_message_header_integer() -> None:
     async def topic_handler(id: Annotated[int, Header()]) -> None:
         test_mock(id)
 
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [(b"Id", b"10")],
+    }
     await app(
-        {
-            "type": "message",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": "topic",
-            "headers": [(b"Id", b"10")],
-        },
+        message_scope,
         AsyncMock(),
         AsyncMock(),
     )
@@ -102,13 +105,14 @@ async def test_message_header_underscore_to_hyphen() -> None:
     ) -> None:
         test_mock(idempotency_key)
 
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [(b"Idempotency-Key", b"8e03978e-40d5-43e8-bc93-6894a57f9324")],
+    }
     await app(
-        {
-            "type": "message",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": "topic",
-            "headers": [(b"Idempotency-Key", b"8e03978e-40d5-43e8-bc93-6894a57f9324")],
-        },
+        message_scope,
         AsyncMock(),
         AsyncMock(),
     )
@@ -128,16 +132,17 @@ async def test_message_headers_multiple() -> None:
     ) -> None:
         test_mock(id, etag)
 
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [
+            (b"Id", b"10"),
+            (b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4"),
+        ],
+    }
     await app(
-        {
-            "type": "message",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": "topic",
-            "headers": [
-                (b"Id", b"10"),
-                (b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4"),
-            ],
-        },
+        message_scope,
         AsyncMock(),
         AsyncMock(),
     )
@@ -166,13 +171,14 @@ async def test_message_header_optional(
     async def topic_handler(id: Annotated[str | None, Header()] = None) -> None:
         test_mock(id)
 
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": headers,
+    }
     await app(
-        {
-            "type": "message",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": "topic",
-            "headers": headers,
-        },
+        message_scope,
         AsyncMock(),
         AsyncMock(),
     )
@@ -206,13 +212,14 @@ async def test_message_header_default(
     ) -> None:
         test_mock(id, example)
 
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": headers,
+    }
     await app(
-        {
-            "type": "message",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": "topic",
-            "headers": headers,
-        },
+        message_scope,
         AsyncMock(),
         AsyncMock(),
     )
@@ -234,14 +241,15 @@ async def test_message_sending() -> None:
     async def topic_handler() -> AsyncGenerator[Any, None]:
         yield message_mock
 
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [],
+        "payload": b'{"id":10}',
+    }
     await app(
-        {
-            "type": "message",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": "topic",
-            "headers": [],
-            "payload": b'{"id":10}',
-        },
+        message_scope,
         AsyncMock(),
         send_mock,
     )

@@ -3,6 +3,7 @@ from unittest.mock import call
 from unittest.mock import Mock
 
 from asyncfast import AsyncFast
+from types_acgi import LifespanScope
 
 
 async def test_lifespan() -> None:
@@ -16,8 +17,12 @@ async def test_lifespan() -> None:
     parent_mock.attach_mock(receive_mock, "receive")
     parent_mock.attach_mock(send_mock, "send")
 
+    lifespan_scope: LifespanScope = {
+        "type": "lifespan",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+    }
     await app(
-        {"type": "lifespan", "acgi": {"version": "1.0", "spec_version": "1.0"}},
+        lifespan_scope,
         receive_mock,
         send_mock,
     )
