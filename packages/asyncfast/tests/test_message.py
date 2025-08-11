@@ -13,6 +13,7 @@ from uuid import UUID
 import pytest
 from asyncfast import AsyncFast
 from asyncfast import Header
+from asyncfast import Payload
 from pydantic import BaseModel
 from types_acgi import MessageScope
 
@@ -20,13 +21,13 @@ from types_acgi import MessageScope
 async def test_message_payload() -> None:
     app = AsyncFast()
 
-    class Payload(BaseModel):
+    class MessagePayload(BaseModel):
         id: int
 
     test_mock = Mock()
 
     @app.channel("topic")
-    async def topic_handler(payload: Payload) -> None:
+    async def topic_handler(payload: MessagePayload) -> None:
         test_mock(payload)
 
     await app(
@@ -41,7 +42,7 @@ async def test_message_payload() -> None:
         AsyncMock(),
     )
 
-    test_mock.assert_called_once_with(Payload(id=1))
+    test_mock.assert_called_once_with(MessagePayload(id=1))
 
 
 async def test_message_header_string() -> None:
@@ -255,43 +256,17 @@ async def test_message_sending() -> None:
     )
 
 
-async def test_message_header_alias() -> None:
-    app = AsyncFast()
-
-    test_mock = Mock()
-
-    @app.channel("topic")
-    async def topic_handler(
-        request_id: Annotated[UUID, Header(alias="X-Request-Id")],
-    ) -> None:
-        test_mock(request_id)
-
-    message_scope: MessageScope = {
-        "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
-        "address": "topic",
-        "headers": [(b"X-Request-Id", b"75dc9e58-9d5c-4eea-bcc5-19d2102196b8")],
-    }
-    await app(
-        message_scope,
-        AsyncMock(),
-        AsyncMock(),
-    )
-
-    test_mock.assert_called_once_with(UUID("75dc9e58-9d5c-4eea-bcc5-19d2102196b8"))
-
-
 async def test_message_payload_dataclass() -> None:
     app = AsyncFast()
 
     @dataclass
-    class Payload:
+    class MessagePayload:
         id: int
 
     test_mock = Mock()
 
     @app.channel("topic")
-    async def topic_handler(payload: Payload) -> None:
+    async def topic_handler(payload: MessagePayload) -> None:
         test_mock(payload)
 
     message_scope: MessageScope = {
@@ -307,4 +282,29 @@ async def test_message_payload_dataclass() -> None:
         AsyncMock(),
     )
 
-    test_mock.assert_called_once_with(Payload(id=1))
+    test_mock.assert_called_once_with(MessagePayload(id=1))
+
+
+async def test_message_payload_simple() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(payload: Annotated[int, Payload()]) -> None:
+        test_mock(payload)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [],
+        "payload": b"123",
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(123)

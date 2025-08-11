@@ -1,8 +1,8 @@
 import dataclasses
 import inspect
 import json
+from functools import cached_property
 from functools import partial
-from inspect import Signature
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -14,12 +14,17 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Tuple
+from typing import Type
 from typing import TypeVar
 
 from pydantic import BaseModel
 from pydantic import create_model
 from pydantic import TypeAdapter
 from pydantic.fields import FieldInfo
+from pydantic.json_schema import GenerateJsonSchema
+from pydantic.json_schema import JsonSchemaMode
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 from types_acgi import ACGIReceiveCallable
 from types_acgi import ACGISendCallable
 from types_acgi import MessageScope
@@ -53,7 +58,26 @@ class AsyncFast:
     def _add_channel(
         self, address: str, function: DecoratedCallable
     ) -> DecoratedCallable:
-        self._channels.append(Channel(address, function))
+        annotations = list(_generate_annotations(function))
+        headers = {
+            name: TypeAdapter(annotated)
+            for name, annotated in annotations
+            if isinstance(get_args(annotated)[1], Header)
+        }
+
+        payloads = [
+            (name, TypeAdapter(annotated))
+            for name, annotated in annotations
+            if isinstance(get_args(annotated)[1], Payload)
+        ]
+
+        assert len(payloads) <= 1, "Channel must have no more than 1 payload"
+
+        payload = payloads[0] if len(payloads) == 1 else None
+
+        channel = Channel(address, function, headers, payload)
+
+        self._channels.append(channel)
         return function
 
     async def __call__(
@@ -75,6 +99,13 @@ class AsyncFast:
                     break
 
     def asyncapi(self) -> Dict[str, Any]:
+        schema_generator = GenerateJsonSchema(
+            ref_template="#/components/schemas/{model}"
+        )
+
+        field_mapping, definitions = schema_generator.generate_definitions(
+            inputs=list(self._generate_inputs())
+        )
         return {
             "asyncapi": "3.0.0",
             "info": {
@@ -84,17 +115,57 @@ class AsyncFast:
             "channels": dict(_generate_channels(self._channels)),
             "operations": dict(_generate_operations(self._channels)),
             "components": {
-                "messages": dict(_generate_messages(self._channels)),
-                "schemas": dict(_generate_schemas(self._channels)),
+                "messages": dict(_generate_messages(self._channels, field_mapping)),
+                "schemas": definitions,
             },
         }
+
+    def _generate_inputs(
+        self,
+    ) -> Generator[Tuple[int, JsonSchemaMode, CoreSchema], None, None]:
+        for channel in self._channels:
+            headers_model = channel.headers_model
+            if headers_model:
+                yield hash(headers_model), "serialization", TypeAdapter(
+                    headers_model
+                ).core_schema
+            payload = channel.payload
+            if payload:
+                _, type_adapter = payload
+                yield hash(
+                    type_adapter._type
+                ), "serialization", type_adapter.core_schema
+
+
+def _generate_annotations(
+    function: Callable[..., Any],
+) -> Generator[Tuple[str, Type[Annotated[Any, Any]]], None, None]:
+    signature = inspect.signature(function)
+
+    for name, parameter in signature.parameters.items():
+        annotation = parameter.annotation
+        if get_origin(annotation) is Annotated:
+            if parameter.default != parameter.empty:
+                args = get_args(annotation)
+                args[1].default = parameter.default
+            yield name, annotation
+        elif issubclass(annotation, BaseModel) or dataclasses.is_dataclass(annotation):
+            yield name, Annotated[annotation, Payload()]  # type: ignore[misc]
 
 
 class Channel:
 
-    def __init__(self, address: str, handler: Callable[..., Awaitable[None]]) -> None:
+    def __init__(
+        self,
+        address: str,
+        handler: Callable[..., Awaitable[None]],
+        headers: Mapping[str, TypeAdapter[Any]],
+        payload: Optional[Tuple[str, TypeAdapter[Any]]],
+    ) -> None:
         self._address = address
         self._handler = handler
+        self._headers = headers
+        self._payload = payload
 
     @property
     def address(self) -> str:
@@ -104,11 +175,33 @@ class Channel:
     def name(self) -> str:
         return self._handler.__name__
 
+    @property
+    def headers(self) -> Mapping[str, TypeAdapter[Any]]:
+        return self._headers
+
+    @cached_property
+    def headers_model(self) -> Optional[Type[BaseModel]]:
+        if self._headers:
+            headers_name = f"{_pascal_case(self.name)}Headers"
+            headers_model = create_model(
+                headers_name,
+                **{
+                    name.replace("_", "-"): value._type
+                    for name, value in self._headers.items()
+                },
+                __base__=BaseModel,
+            )
+            return headers_model
+        return None
+
+    @property
+    def payload(self) -> Optional[Tuple[str, TypeAdapter[Any]]]:
+        return self._payload
+
     async def __call__(
         self, scope: MessageScope, receive: ACGIReceiveCallable, send: ACGISendCallable
     ) -> None:
-        signature = inspect.signature(self._handler)
-        arguments = dict(_generate_arguments(scope, signature))
+        arguments = dict(self._generate_arguments(scope))
         if inspect.isasyncgenfunction(self._handler):
             async for message in self._handler(**arguments):
                 await send(
@@ -122,80 +215,72 @@ class Channel:
         else:
             await self._handler(**arguments)
 
+    def _generate_arguments(
+        self, scope: MessageScope
+    ) -> Generator[Tuple[str, Any], None, None]:
 
-def _has_headers(channel: Channel) -> bool:
-    signature = inspect.signature(channel._handler)
+        if self.headers:
+            headers = Headers(scope["headers"])
+            for name, type_adapter in self.headers.items():
+                annotated_args = get_args(type_adapter._type)
+                header_alias = annotated_args[1].alias
+                alias = header_alias if header_alias else name.replace("_", "-")
+                header = headers.get(
+                    alias, annotated_args[1].get_default(call_default_factory=True)
+                )
+                value = TypeAdapter(annotated_args[0]).validate_python(
+                    header, from_attributes=True
+                )
+                yield name, value
 
-    for parameter in signature.parameters.values():
-        annotation = parameter.annotation
-        if get_origin(annotation) is Annotated:
-            annotated_args = get_args(annotation)
-            if isinstance(annotated_args[1], Header):
-                return True
-    return False
+        if self.payload:
+            name, type_adapter = self.payload
+            payload = scope.get("payload")
+            payload_obj = None if payload is None else json.loads(payload)
+            value = type_adapter.validate_python(payload_obj, from_attributes=True)
+            yield name, value
 
 
 def _generate_schemas(
     channels: Iterable[Channel],
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
     for channel in channels:
-        has_headers = _has_headers(channel)
-        if has_headers:
+        headers_model = channel.headers_model
+        if headers_model:
             headers_name = f"{_pascal_case(channel.name)}Headers"
-            header_fields = dict(_generate_header_fields(channel))
-            header_model = create_model(headers_name, **header_fields)
-            yield headers_name, TypeAdapter(header_model).json_schema()
+            yield headers_name, TypeAdapter(headers_model).json_schema()
 
-        payload = _get_payload(channel)
+        payload = channel.payload
         if payload:
-            yield payload.__name__, TypeAdapter(payload).json_schema()
+            _, type_adapter = payload
+            yield type_adapter._type.__name__, type_adapter.json_schema()
 
 
 def _pascal_case(name: str) -> str:
     return "".join(part.title() for part in name.split("_"))
 
 
-def _generate_header_fields(channel: Channel) -> Generator[Any, None, None]:
-    signature = inspect.signature(channel._handler)
-
-    for name, parameter in signature.parameters.items():
-        annotation = parameter.annotation
-        if get_origin(annotation) is Annotated:
-            annotated_args = get_args(annotation)
-            if isinstance(annotated_args[1], Header):
-                header_alias = annotated_args[1].alias
-                alias = header_alias if header_alias else name.replace("_", "-")
-                if parameter.default:
-                    yield alias, (annotation, parameter.default)
-                else:
-                    yield alias, annotation
-
-
-def _get_payload(channel: Channel) -> Optional[Any]:
-    signature = inspect.signature(channel._handler)
-
-    for parameter in signature.parameters.values():
-        annotation = parameter.annotation
-        if issubclass(annotation, BaseModel) or dataclasses.is_dataclass(annotation):
-            return annotation
-    return None
-
-
 def _generate_messages(
     channels: Iterable[Channel],
+    field_mapping: dict[tuple[int, JsonSchemaMode], JsonSchemaValue],
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
     for channel in channels:
         pascal_case = _pascal_case(channel.name)
         message_name = f"{pascal_case}Message"
         message = {}
 
-        has_headers = _has_headers(channel)
-        if has_headers:
-            message["headers"] = {"$ref": f"#/components/schemas/{pascal_case}Headers"}
+        headers_model = channel.headers_model
+        if headers_model:
+            message["headers"] = field_mapping[
+                hash(channel.headers_model), "serialization"
+            ]
 
-        payload = _get_payload(channel)
+        payload = channel.payload
         if payload:
-            message["payload"] = {"$ref": f"#/components/schemas/{payload.__name__}"}
+            _, type_adapter = payload
+            message["payload"] = field_mapping[
+                hash(type_adapter._type), "serialization"
+            ]
 
         yield message_name, message
 
@@ -226,32 +311,11 @@ def _generate_operations(
         }
 
 
-def _generate_arguments(
-    scope: MessageScope, signature: Signature
-) -> Generator[Tuple[str, Any], None, None]:
-    headers = Headers(scope["headers"])
-    for name, parameter in signature.parameters.items():
-        annotation = parameter.annotation
-        if issubclass(annotation, BaseModel) or dataclasses.is_dataclass(annotation):
-            payload = scope.get("payload")
-            payload_obj = None if payload is None else json.loads(payload)
-            value = TypeAdapter(annotation).validate_python(
-                payload_obj, from_attributes=True
-            )
-            yield name, value
-        if get_origin(annotation) is Annotated:
-            annotated_args = get_args(annotation)
-            if isinstance(annotated_args[1], Header):
-                header_alias = annotated_args[1].alias
-                alias = header_alias if header_alias else name.replace("_", "-")
-                header = headers.get(alias, parameter.default)
-                value = TypeAdapter(annotated_args[0]).validate_python(
-                    header, from_attributes=True
-                )
-                yield name, value
-
-
 class Header(FieldInfo):
+    pass
+
+
+class Payload(FieldInfo):
     pass
 
 

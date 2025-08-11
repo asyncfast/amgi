@@ -26,6 +26,7 @@ repos:
     rev: v4.8.3
     hooks:
       - id: commitizen
+        stages: [commit-msg]
       - id: commitizen-branch
         stages: [pre-push]
   - repo: https://github.com/hukkin/mdformat
