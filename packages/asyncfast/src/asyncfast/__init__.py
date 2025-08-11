@@ -184,6 +184,10 @@ class Channel:
     def name(self) -> str:
         return self._handler.__name__
 
+    @cached_property
+    def title(self) -> str:
+        return "".join(part.title() for part in self.name.split("_"))
+
     @property
     def headers(self) -> Mapping[str, TypeAdapter[Any]]:
         return self._headers
@@ -191,7 +195,7 @@ class Channel:
     @cached_property
     def headers_model(self) -> Optional[Type[BaseModel]]:
         if self._headers:
-            headers_name = f"{_pascal_case(self.name)}Headers"
+            headers_name = f"{self.title}Headers"
             headers_model = create_model(
                 headers_name,
                 **{
@@ -255,8 +259,7 @@ def _generate_schemas(
     for channel in channels:
         headers_model = channel.headers_model
         if headers_model:
-            headers_name = f"{_pascal_case(channel.name)}Headers"
-            yield headers_name, TypeAdapter(headers_model).json_schema()
+            yield f"{channel.title}Headers", TypeAdapter(headers_model).json_schema()
 
         payload = channel.payload
         if payload:
@@ -264,17 +267,11 @@ def _generate_schemas(
             yield type_adapter._type.__name__, type_adapter.json_schema()
 
 
-def _pascal_case(name: str) -> str:
-    return "".join(part.title() for part in name.split("_"))
-
-
 def _generate_messages(
     channels: Iterable[Channel],
     field_mapping: dict[tuple[int, JsonSchemaMode], JsonSchemaValue],
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
     for channel in channels:
-        pascal_case = _pascal_case(channel.name)
-        message_name = f"{pascal_case}Message"
         message = {}
 
         headers_model = channel.headers_model
@@ -290,15 +287,15 @@ def _generate_messages(
                 hash(type_adapter._type), "serialization"
             ]
 
-        yield message_name, message
+        yield f"{channel.title}Message", message
 
 
 def _generate_channels(
     channels: Iterable[Channel],
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
     for channel in channels:
-        message_name = f"{_pascal_case(channel.name)}Message"
-        yield _pascal_case(channel.name), {
+        message_name = f"{channel.title}Message"
+        yield channel.title, {
             "address": channel.address,
             "messages": {
                 message_name: {"$ref": f"#/components/messages/{message_name}"}
@@ -310,12 +307,9 @@ def _generate_operations(
     channels: Iterable[Channel],
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
     for channel in channels:
-        operation_name = (
-            f"receive{''.join(part.title() for part in channel.name.split('_'))}"
-        )
-        yield operation_name, {
+        yield f"receive{channel.title}", {
             "action": "receive",
-            "channel": {"$ref": f"#/channels/{_pascal_case(channel.name)}"},
+            "channel": {"$ref": f"#/channels/{channel.title}"},
         }
 
 
