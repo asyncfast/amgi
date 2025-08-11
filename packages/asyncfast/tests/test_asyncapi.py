@@ -49,6 +49,55 @@ def test_asyncapi_header() -> None:
     }
 
 
+def test_asyncapi_header_description() -> None:
+    app = AsyncFast()
+
+    @app.channel("hello")
+    async def on_hello(
+        request_id: Annotated[int, Header(description="Id to correlate the request")],
+    ) -> None:
+        pass
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "OnHello": {
+                "address": "hello",
+                "messages": {
+                    "OnHelloMessage": {"$ref": "#/components/messages/OnHelloMessage"}
+                },
+            }
+        },
+        "components": {
+            "messages": {
+                "OnHelloMessage": {
+                    "headers": {"$ref": "#/components/schemas/OnHelloHeaders"}
+                }
+            },
+            "schemas": {
+                "OnHelloHeaders": {
+                    "properties": {
+                        "request-id": {
+                            "description": "Id to correlate the request",
+                            "title": "Request-Id",
+                            "type": "integer",
+                        }
+                    },
+                    "title": "OnHelloHeaders",
+                    "type": "object",
+                }
+            },
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveOnHello": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/OnHello"},
+            }
+        },
+    }
+
+
 def test_asyncapi_payload() -> None:
     app = AsyncFast()
 

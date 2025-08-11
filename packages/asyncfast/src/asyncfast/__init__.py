@@ -19,6 +19,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 from pydantic import create_model
 from pydantic import TypeAdapter
+from pydantic.fields import FieldInfo
 from types_acgi import ACGIReceiveCallable
 from types_acgi import ACGISendCallable
 from types_acgi import MessageScope
@@ -165,9 +166,9 @@ def _generate_header_fields(channel: Channel) -> Generator[Any, None, None]:
                 header_alias = annotated_args[1].alias
                 alias = header_alias if header_alias else name.replace("_", "-")
                 if parameter.default:
-                    yield alias, (annotated_args[0], parameter.default)
+                    yield alias, (annotation, parameter.default)
                 else:
-                    yield alias, annotated_args[0]
+                    yield alias, annotation
 
 
 def _get_payload(channel: Channel) -> Optional[Any]:
@@ -250,9 +251,8 @@ def _generate_arguments(
                 yield name, value
 
 
-class Header:
-    def __init__(self, alias: Optional[str] = None) -> None:
-        self.alias = alias
+class Header(FieldInfo):
+    pass
 
 
 class Headers(Mapping[str, str]):
