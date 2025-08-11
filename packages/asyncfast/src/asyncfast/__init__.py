@@ -253,20 +253,6 @@ class Channel:
             yield name, value
 
 
-def _generate_schemas(
-    channels: Iterable[Channel],
-) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
-    for channel in channels:
-        headers_model = channel.headers_model
-        if headers_model:
-            yield f"{channel.title}Headers", TypeAdapter(headers_model).json_schema()
-
-        payload = channel.payload
-        if payload:
-            _, type_adapter = payload
-            yield type_adapter._type.__name__, type_adapter.json_schema()
-
-
 def _generate_messages(
     channels: Iterable[Channel],
     field_mapping: dict[tuple[int, JsonSchemaMode], JsonSchemaValue],
