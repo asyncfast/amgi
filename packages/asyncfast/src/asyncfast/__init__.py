@@ -1,11 +1,13 @@
-import dataclasses
 import inspect
 import json
+import re
 from functools import cached_property
 from functools import partial
+from re import Pattern
 from typing import Any
 from typing import Awaitable
 from typing import Callable
+from typing import Counter
 from typing import Dict
 from typing import Generator
 from typing import Iterable
@@ -13,6 +15,7 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -39,6 +42,10 @@ from typing_extensions import get_origin
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
 
 
+_FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_\-]+$")
+_PARAMETER_PATTERN = re.compile(r"{(.*)}")
+
+
 class AsyncFast:
     def __init__(
         self, title: Optional[str] = None, version: Optional[str] = None
@@ -61,11 +68,17 @@ class AsyncFast:
     def _add_channel(
         self, address: str, function: DecoratedCallable
     ) -> DecoratedCallable:
-        annotations = list(_generate_annotations(function))
+        annotations = list(_generate_annotations(address, function))
         headers = {
             name: TypeAdapter(annotated)
             for name, annotated in annotations
             if isinstance(get_args(annotated)[1], Header)
+        }
+
+        parameters = {
+            name: TypeAdapter(annotated)
+            for name, annotated in annotations
+            if isinstance(get_args(annotated)[1], Parameter)
         }
 
         payloads = [
@@ -78,7 +91,11 @@ class AsyncFast:
 
         payload = payloads[0] if len(payloads) == 1 else None
 
-        channel = Channel(address, function, headers, payload)
+        address_pattern = _address_pattern(address)
+
+        channel = Channel(
+            address, address_pattern, function, headers, parameters, payload
+        )
 
         self._channels.append(channel)
         return function
@@ -103,8 +120,9 @@ class AsyncFast:
         elif scope["type"] == "message":
             address = scope["address"]
             for channel in self._channels:
-                if channel.address == address:
-                    await channel(scope, receive, send)
+                parameters = channel.match(address)
+                if parameters is not None:
+                    await channel(scope, receive, send, parameters)
                     break
 
     def asyncapi(self) -> Dict[str, Any]:
@@ -147,8 +165,11 @@ class AsyncFast:
 
 
 def _generate_annotations(
+    address: str,
     function: Callable[..., Any],
 ) -> Generator[Tuple[str, Type[Annotated[Any, Any]]], None, None]:
+
+    address_parameters = _get_address_parameters(address)
     signature = inspect.signature(function)
 
     for name, parameter in signature.parameters.items():
@@ -158,7 +179,9 @@ def _generate_annotations(
                 args = get_args(annotation)
                 args[1].default = parameter.default
             yield name, annotation
-        elif issubclass(annotation, BaseModel) or dataclasses.is_dataclass(annotation):
+        elif name in address_parameters:
+            yield name, Annotated[annotation, Parameter()]  # type: ignore[misc]
+        else:
             yield name, Annotated[annotation, Payload()]  # type: ignore[misc]
 
 
@@ -167,13 +190,17 @@ class Channel:
     def __init__(
         self,
         address: str,
+        address_pattern: Pattern[str],
         handler: Callable[..., Awaitable[None]],
         headers: Mapping[str, TypeAdapter[Any]],
+        parameters: Mapping[str, TypeAdapter[Any]],
         payload: Optional[Tuple[str, TypeAdapter[Any]]],
     ) -> None:
         self._address = address
+        self._address_pattern = address_pattern
         self._handler = handler
         self._headers = headers
+        self._parameters = parameters
         self._payload = payload
 
     @property
@@ -211,10 +238,24 @@ class Channel:
     def payload(self) -> Optional[Tuple[str, TypeAdapter[Any]]]:
         return self._payload
 
+    @property
+    def parameters(self) -> Mapping[str, TypeAdapter[Any]]:
+        return self._parameters
+
+    def match(self, address: str) -> Optional[Dict[str, str]]:
+        match = self._address_pattern.match(address)
+        if match:
+            return match.groupdict()
+        return None
+
     async def __call__(
-        self, scope: MessageScope, receive: ACGIReceiveCallable, send: ACGISendCallable
+        self,
+        scope: MessageScope,
+        receive: ACGIReceiveCallable,
+        send: ACGISendCallable,
+        parameters: Dict[str, str],
     ) -> None:
-        arguments = dict(self._generate_arguments(scope))
+        arguments = dict(self._generate_arguments(scope, parameters))
         if inspect.isasyncgenfunction(self._handler):
             async for message in self._handler(**arguments):
                 message_send_event: MessageSendEvent = {
@@ -228,7 +269,7 @@ class Channel:
             await self._handler(**arguments)
 
     def _generate_arguments(
-        self, scope: MessageScope
+        self, scope: MessageScope, parameters: Dict[str, str]
     ) -> Generator[Tuple[str, Any], None, None]:
 
         if self.headers:
@@ -251,6 +292,10 @@ class Channel:
             payload_obj = None if payload is None else json.loads(payload)
             value = type_adapter.validate_python(payload_obj, from_attributes=True)
             yield name, value
+
+        if self._parameters:
+            for name, type_adapter in self._parameters.items():
+                yield name, type_adapter.validate_python(parameters[name])
 
 
 def _generate_messages(
@@ -281,12 +326,17 @@ def _generate_channels(
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
     for channel in channels:
         message_name = f"{channel.title}Message"
-        yield channel.title, {
+        channel_definition = {
             "address": channel.address,
             "messages": {
                 message_name: {"$ref": f"#/components/messages/{message_name}"}
             },
         }
+
+        if channel.parameters:
+            channel_definition["parameters"] = {name: {} for name in channel.parameters}
+
+        yield channel.title, channel_definition
 
 
 def _generate_operations(
@@ -305,6 +355,20 @@ class Header(FieldInfo):
 
 class Payload(FieldInfo):
     pass
+
+
+class Parameter(FieldInfo):
+    pass
+
+
+def _get_address_parameters(address: str) -> Set[str]:
+    parameters = _PARAMETER_PATTERN.findall(address)
+    for parameter in parameters:
+        assert _FIELD_PATTERN.match(parameter), f"Parameter '{parameter}' is not valid"
+
+    duplicates = set(item for item, count in Counter(parameters).items() if count > 1)
+    assert len(duplicates) == 0, f"Address contains duplicate parameters: {duplicates}"
+    return set(parameters)
 
 
 class Headers(Mapping[str, str]):
@@ -326,3 +390,17 @@ class Headers(Mapping[str, str]):
 
     def keys(self) -> list[str]:  # type: ignore[override]
         return [key.decode() for key, _ in self.raw_list]
+
+
+def _address_pattern(address: str) -> Pattern[str]:
+    index = 0
+    address_regex = "^"
+    for match in _PARAMETER_PATTERN.finditer(address):
+        (name,) = match.groups()
+        address_regex += re.escape(address[index : match.start()])
+        address_regex += f"(?P<{name}>.*)"
+
+        index = match.end()
+
+    address_regex += re.escape(address[index:]) + "$"
+    return re.compile(address_regex)

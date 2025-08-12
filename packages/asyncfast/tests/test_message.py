@@ -316,3 +316,27 @@ async def test_message_payload_simple() -> None:
     )
 
     test_mock.assert_called_once_with(123)
+
+
+async def test_message_payload_address_parameter() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("order.{user_id}")
+    async def order_handler(user_id: str) -> None:
+        test_mock(user_id)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "order.1234",
+        "headers": [],
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with("1234")
