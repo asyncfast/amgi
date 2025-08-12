@@ -5,7 +5,7 @@ requires = [ "uv-build>=0.8.4,<0.9" ]
 
 [project]
 name = "aiokafka-acgi"
-version = "0.7.0"
+version = "0.8.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -23,8 +23,8 @@ classifiers = [
 
 dependencies = [
   "aiokafka>=0.12",
-  "common-acgi==0.7.0",
-  "types-acgi==0.7.0",
+  "common-acgi==0.8.0",
+  "types-acgi==0.8.0",
 ]
 
 urls.Changelog = "https://github.com/asyncfast/acgi/blob/main/CHANGELOG.md"

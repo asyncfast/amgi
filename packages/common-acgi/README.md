@@ -7,7 +7,7 @@ ACGI will be here very soon
 ## Installation
 
 ```
-pip install common-acgi==0.7.0
+pip install common-acgi==0.8.0
 ```
 
 ## Contact

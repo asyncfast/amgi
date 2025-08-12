@@ -1,3 +1,22 @@
+## 0.8.0 (2025-08-12)
+
+### Feat
+
+- add initial support for address parameters
+- add support for simple and nested payloads
+- use FieldInfo for Header so attributes such as description can be used in the schema generation
+- add support for dataclasses
+
+### Fix
+
+- fix common-acgi version
+
+### Refactor
+
+- remove \_generate_schemas as it is no longer used
+- remove \_pascal_case and add title property to Channel
+- use acgi TypedDicts to reduce IDE warnings
+
 ## 0.7.0 (2025-08-10)
 
 ### Feat
