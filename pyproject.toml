@@ -34,4 +34,5 @@ version_files = [
 ]
 pre_bump_hooks = [
   "uv sync --all-packages",
+  "uv run mdformat CHANGELOG.md",
 ]
