@@ -3,6 +3,7 @@ from typing import Annotated
 from typing import Any
 from typing import AsyncGenerator
 from typing import Iterable
+from typing import Optional
 from typing import Tuple
 from unittest.mock import _Call
 from unittest.mock import AsyncMock
@@ -168,7 +169,7 @@ async def test_message_header_optional(
     test_mock = Mock()
 
     @app.channel("topic")
-    async def topic_handler(id: Annotated[str | None, Header()] = None) -> None:
+    async def topic_handler(id: Annotated[Optional[str], Header()] = None) -> None:
         test_mock(id)
 
     message_scope: MessageScope = {

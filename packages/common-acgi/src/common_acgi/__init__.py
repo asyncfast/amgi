@@ -2,6 +2,7 @@ import asyncio
 from asyncio import Event
 from asyncio import Queue
 from types import TracebackType
+from typing import Optional
 from typing import Union
 
 from types_acgi import ACGIApplication
@@ -45,9 +46,9 @@ class Lifespan:
 
     async def __aexit__(
         self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
     ) -> None:
         shutdown_event: LifespanShutdownEvent = {
             "type": "lifespan.shutdown",

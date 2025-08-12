@@ -366,7 +366,7 @@ def _get_address_parameters(address: str) -> Set[str]:
     for parameter in parameters:
         assert _FIELD_PATTERN.match(parameter), f"Parameter '{parameter}' is not valid"
 
-    duplicates = set(item for item, count in Counter(parameters).items() if count > 1)
+    duplicates = {item for item, count in Counter(parameters).items() if count > 1}
     assert len(duplicates) == 0, f"Address contains duplicate parameters: {duplicates}"
     return set(parameters)
 
