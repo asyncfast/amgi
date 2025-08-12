@@ -32,6 +32,10 @@ dependencies = [
   "types-acgi==0.7.0",
 ]
 
+urls.Changelog = "https://github.com/asyncfast/acgi/blob/main/CHANGELOG.md"
+urls.Homepage = "https://github.com/asyncfast/acgi/tree/main/packages/asyncfast"
+urls.Issues = "https://github.com/asyncfast/acgi/issues"
+urls.Repository = "https://github.com/asyncfast/acgi/tree"
 scripts.asyncfast = "asyncfast.cli:main"
 
 [dependency-groups]

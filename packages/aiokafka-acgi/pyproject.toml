@@ -27,6 +27,11 @@ dependencies = [
   "types-acgi==0.7.0",
 ]
 
+urls.Changelog = "https://github.com/asyncfast/acgi/blob/main/CHANGELOG.md"
+urls.Homepage = "https://github.com/asyncfast/acgi/tree/main/packages/aiokafka-acgi"
+urls.Issues = "https://github.com/asyncfast/acgi/issues"
+urls.Repository = "https://github.com/asyncfast/acgi/tree"
+
 [tool.uv.sources]
 types-acgi = { workspace = true }
 common-acgi = { workspace = true }
