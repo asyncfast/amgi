@@ -295,3 +295,34 @@ def test_asyncapi_payload_nested() -> None:
             }
         },
     }
+
+
+async def test_asyncapi_address_parameter() -> None:
+    app = AsyncFast()
+
+    @app.channel("order.{user_id}")
+    async def order_handler(user_id: str) -> None:
+        pass
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "OrderHandler": {
+                "address": "order.{user_id}",
+                "messages": {
+                    "OrderHandlerMessage": {
+                        "$ref": "#/components/messages/OrderHandlerMessage"
+                    }
+                },
+                "parameters": {"user_id": {}},
+            }
+        },
+        "components": {"messages": {"OrderHandlerMessage": {}}, "schemas": {}},
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveOrderHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/OrderHandler"},
+            }
+        },
+    }
