@@ -21,3 +21,8 @@ classifiers = [
 ]
 
 dependencies = [  ]
+
+urls.Changelog = "https://github.com/asyncfast/acgi/blob/main/CHANGELOG.md"
+urls.Homepage = "https://github.com/asyncfast/acgi/tree/main/packages/types-acgi"
+urls.Issues = "https://github.com/asyncfast/acgi/issues"
+urls.Repository = "https://github.com/asyncfast/acgi/tree"
