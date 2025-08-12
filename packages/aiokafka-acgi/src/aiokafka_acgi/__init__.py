@@ -5,6 +5,7 @@ from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
@@ -22,7 +23,7 @@ logger = logging.getLogger("aiokafka-acgi.error")
 def run(
     app: ACGIApplication,
     *topics: Iterable[str],
-    bootstrap_servers: str | List[str] = "localhost",
+    bootstrap_servers: Union[str, List[str]] = "localhost",
     group_id: Optional[str] = None,
 ) -> None:
     server = Server(
@@ -38,7 +39,7 @@ class Server:
         self,
         app: ACGIApplication,
         *topics: Iterable[str],
-        bootstrap_servers: str | List[str],
+        bootstrap_servers: Union[str, List[str]],
         group_id: Optional[str],
     ) -> None:
         self._app = app
