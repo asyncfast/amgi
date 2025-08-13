@@ -13,10 +13,10 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "aiokafka-acgi",
+  "amgi-aiokafka",
   "asyncfast",
 ]
 
 [tool.uv.sources]
-aiokafka-acgi = { workspace = true }
+amgi-aiokafka = { workspace = true }
 asyncfast = { workspace = true }

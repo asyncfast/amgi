@@ -12,11 +12,11 @@ from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
+from amgi_types import MessageScope
 from asyncfast import AsyncFast
 from asyncfast import Header
 from asyncfast import Payload
 from pydantic import BaseModel
-from types_acgi import MessageScope
 
 
 async def test_message_payload() -> None:
@@ -33,7 +33,7 @@ async def test_message_payload() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [],
         "payload": b'{"id":1}',
@@ -58,7 +58,7 @@ async def test_message_header_string() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [(b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4")],
     }
@@ -82,7 +82,7 @@ async def test_message_header_integer() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [(b"Id", b"10")],
     }
@@ -108,7 +108,7 @@ async def test_message_header_underscore_to_hyphen() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [(b"Idempotency-Key", b"8e03978e-40d5-43e8-bc93-6894a57f9324")],
     }
@@ -135,7 +135,7 @@ async def test_message_headers_multiple() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [
             (b"Id", b"10"),
@@ -174,7 +174,7 @@ async def test_message_header_optional(
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": headers,
     }
@@ -215,7 +215,7 @@ async def test_message_header_default(
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": headers,
     }
@@ -244,7 +244,7 @@ async def test_message_sending() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [],
         "payload": b'{"id":10}',
@@ -280,7 +280,7 @@ async def test_message_payload_dataclass() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [],
         "payload": b'{"id":1}',
@@ -305,7 +305,7 @@ async def test_message_payload_simple() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [],
         "payload": b"123",
@@ -330,7 +330,7 @@ async def test_message_payload_address_parameter() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "order.1234",
         "headers": [],
     }

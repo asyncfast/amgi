@@ -1,10 +1,9 @@
 [build-system]
 build-backend = "uv_build"
-
-requires = [ "uv-build>=0.8.4,<0.9" ]
+requires = [ "uv-build>=0.8.4,<0.9.0" ]
 
 [project]
-name = "aiokafka-acgi"
+name = "amgi-common"
 version = "0.8.0"
 description = "Add your description here"
 readme = "README.md"
@@ -14,7 +13,6 @@ authors = [
 requires-python = ">=3.9"
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
-  "Framework :: AsyncIO",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -22,18 +20,9 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
+dependencies = [  ]
 
-dependencies = [
-  "aiokafka>=0.12",
-  "common-acgi==0.8.0",
-  "types-acgi==0.8.0",
-]
-
-urls.Changelog = "https://github.com/asyncfast/acgi/blob/main/CHANGELOG.md"
-urls.Homepage = "https://github.com/asyncfast/acgi/tree/main/packages/aiokafka-acgi"
-urls.Issues = "https://github.com/asyncfast/acgi/issues"
-urls.Repository = "https://github.com/asyncfast/acgi/tree"
-
-[tool.uv.sources]
-types-acgi = { workspace = true }
-common-acgi = { workspace = true }
+urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
+urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-common"
+urls.Issues = "https://github.com/asyncfast/amgi/issues/"
+urls.Repository = "https://github.com/asyncfast/amgi/"

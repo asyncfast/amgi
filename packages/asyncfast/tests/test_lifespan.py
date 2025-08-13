@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import Mock
 
+from amgi_types import LifespanScope
 from asyncfast import AsyncFast
-from types_acgi import LifespanScope
 
 
 async def test_lifespan() -> None:
@@ -19,7 +19,7 @@ async def test_lifespan() -> None:
 
     lifespan_scope: LifespanScope = {
         "type": "lifespan",
-        "acgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
     }
     await app(
         lifespan_scope,

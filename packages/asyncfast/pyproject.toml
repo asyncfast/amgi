@@ -29,15 +29,15 @@ classifiers = [
 ]
 
 dependencies = [
+  "amgi-types==0.8.0",
   "pydantic>=2.11.7",
   "typer>=0.16.0",
-  "types-acgi==0.8.0",
 ]
 
-urls.Changelog = "https://github.com/asyncfast/acgi/blob/main/CHANGELOG.md"
-urls.Homepage = "https://github.com/asyncfast/acgi/tree/main/packages/asyncfast"
-urls.Issues = "https://github.com/asyncfast/acgi/issues"
-urls.Repository = "https://github.com/asyncfast/acgi/tree"
+urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
+urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/asyncfast"
+urls.Issues = "https://github.com/asyncfast/amgi/issues/"
+urls.Repository = "https://github.com/asyncfast/amgi/"
 scripts.asyncfast = "asyncfast.cli:main"
 
 [dependency-groups]
@@ -47,4 +47,4 @@ dev = [
 ]
 
 [tool.uv.sources]
-types-acgi = { workspace = true }
+amgi-types = { workspace = true }

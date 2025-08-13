@@ -1,13 +1,13 @@
-# aiokafka-acgi
+# amgi-aiokafka
 
 :construction: This package is currently under development :construction:
 
-ACGI will be here very soon
+AMGI will be here very soon
 
 ## Installation
 
 ```
-pip install aiokafka-acgi==0.8.0
+pip install amgi-aiokafka==0.8.0
 ```
 
 ## Contact
@@ -16,4 +16,4 @@ For questions or suggestions, please contact [jack.burridge@mail.com](mailto:jac
 
 ## License
 
-Copyright 2025 ACGI
+Copyright 2025 AMGI

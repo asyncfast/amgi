@@ -3,7 +3,7 @@ build-backend = "uv_build"
 requires = [ "uv-build>=0.8.4,<0.9" ]
 
 [project]
-name = "types-acgi"
+name = "amgi-types"
 version = "0.8.0"
 description = "Add your description here"
 readme = "README.md"
@@ -24,7 +24,7 @@ classifiers = [
 
 dependencies = [  ]
 
-urls.Changelog = "https://github.com/asyncfast/acgi/blob/main/CHANGELOG.md"
-urls.Homepage = "https://github.com/asyncfast/acgi/tree/main/packages/types-acgi"
-urls.Issues = "https://github.com/asyncfast/acgi/issues"
-urls.Repository = "https://github.com/asyncfast/acgi/tree"
+urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
+urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-types"
+urls.Issues = "https://github.com/asyncfast/amgi/issues/"
+urls.Repository = "https://github.com/asyncfast/amgi/"

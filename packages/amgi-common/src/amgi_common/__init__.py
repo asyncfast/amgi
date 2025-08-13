@@ -5,16 +5,16 @@ from types import TracebackType
 from typing import Optional
 from typing import Union
 
-from types_acgi import ACGIApplication
-from types_acgi import ACGIReceiveEvent
-from types_acgi import ACGISendEvent
-from types_acgi import LifespanScope
-from types_acgi import LifespanShutdownEvent
-from types_acgi import LifespanStartupEvent
+from amgi_types import AMGIApplication
+from amgi_types import AMGIReceiveEvent
+from amgi_types import AMGISendEvent
+from amgi_types import LifespanScope
+from amgi_types import LifespanShutdownEvent
+from amgi_types import LifespanStartupEvent
 
 
 class Lifespan:
-    def __init__(self, app: ACGIApplication) -> None:
+    def __init__(self, app: AMGIApplication) -> None:
         self._app = app
         self._receive_queue = Queue[
             Union[LifespanStartupEvent, LifespanShutdownEvent]
@@ -36,7 +36,7 @@ class Lifespan:
     async def _main(self) -> None:
         scope: LifespanScope = {
             "type": "lifespan",
-            "acgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "1.0", "spec_version": "1.0"},
         }
         await self._app(
             scope,
@@ -56,10 +56,10 @@ class Lifespan:
         await self._receive_queue.put(shutdown_event)
         await self._shutdown_event.wait()
 
-    async def receive(self) -> ACGIReceiveEvent:
+    async def receive(self) -> AMGIReceiveEvent:
         return await self._receive_queue.get()
 
-    async def send(self, event: ACGISendEvent) -> None:
+    async def send(self, event: AMGISendEvent) -> None:
         event_type = event["type"]
 
         if event_type in {"lifespan.startup.complete", "lifespan.startup.failed"}:

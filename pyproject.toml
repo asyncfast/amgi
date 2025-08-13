@@ -1,5 +1,5 @@
 [project]
-name = "acgi"
+name = "amgi"
 version = "0.8.0"
 description = "Add your description here"
 readme = "README.md"
@@ -39,7 +39,7 @@ version_provider = "uv"
 update_changelog_on_bump = true
 major_version_zero = true
 version_files = [
-  "packages/*/pyproject.toml:version|acgi",
+  "packages/*/pyproject.toml:version|amgi",
   "packages/*/README.md:pip install",
 ]
 pre_bump_hooks = [

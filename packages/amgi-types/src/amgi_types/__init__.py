@@ -14,14 +14,14 @@ else:
     from typing_extensions import NotRequired
 
 
-class ACGIVersions(TypedDict):
+class AMGIVersions(TypedDict):
     spec_version: str
     version: Union[Literal["1.0"]]
 
 
 class MessageScope(TypedDict):
     type: Literal["message"]
-    acgi: ACGIVersions
+    amgi: AMGIVersions
     address: str
     headers: Iterable[Tuple[bytes, bytes]]
     payload: NotRequired[Optional[bytes]]
@@ -29,7 +29,7 @@ class MessageScope(TypedDict):
 
 class LifespanScope(TypedDict):
     type: Literal["lifespan"]
-    acgi: ACGIVersions
+    amgi: AMGIVersions
 
 
 class LifespanStartupEvent(TypedDict):
@@ -71,8 +71,8 @@ class MessageSendEvent(TypedDict):
 
 Scope = Union[MessageScope, LifespanScope]
 
-ACGIReceiveEvent = Union[LifespanStartupEvent, LifespanShutdownEvent]
-ACGISendEvent = Union[
+AMGIReceiveEvent = Union[LifespanStartupEvent, LifespanShutdownEvent]
+AMGISendEvent = Union[
     LifespanStartupCompleteEvent,
     LifespanStartupFailedEvent,
     LifespanShutdownCompleteEvent,
@@ -81,14 +81,14 @@ ACGISendEvent = Union[
     MessageSendEvent,
 ]
 
-ACGIReceiveCallable = Callable[[], Awaitable[ACGIReceiveEvent]]
-ACGISendCallable = Callable[[ACGISendEvent], Awaitable[None]]
+AMGIReceiveCallable = Callable[[], Awaitable[AMGIReceiveEvent]]
+AMGISendCallable = Callable[[AMGISendEvent], Awaitable[None]]
 
-ACGIApplication = Callable[
+AMGIApplication = Callable[
     [
         Scope,
-        ACGIReceiveCallable,
-        ACGISendCallable,
+        AMGIReceiveCallable,
+        AMGISendCallable,
     ],
     Awaitable[None],
 ]

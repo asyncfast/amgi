@@ -4,7 +4,7 @@ from typing import AsyncGenerator
 from typing import Iterable
 from typing import Tuple
 
-import aiokafka_acgi
+import amgi_aiokafka
 from asyncfast import AsyncFast
 from pydantic import BaseModel
 
@@ -35,4 +35,4 @@ async def input_topic_handler(payload: Payload) -> AsyncGenerator[Message, None]
 
 if __name__ == "__main__":
     bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-    aiokafka_acgi.run(app, "input_topic", bootstrap_servers=bootstrap_servers)
+    amgi_aiokafka.run(app, "input_topic", bootstrap_servers=bootstrap_servers)
