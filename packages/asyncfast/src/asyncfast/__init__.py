@@ -20,6 +20,13 @@ from typing import Tuple
 from typing import Type
 from typing import TypeVar
 
+from amgi_types import AMGIReceiveCallable
+from amgi_types import AMGISendCallable
+from amgi_types import LifespanShutdownCompleteEvent
+from amgi_types import LifespanStartupCompleteEvent
+from amgi_types import MessageScope
+from amgi_types import MessageSendEvent
+from amgi_types import Scope
 from pydantic import BaseModel
 from pydantic import create_model
 from pydantic import TypeAdapter
@@ -28,13 +35,6 @@ from pydantic.json_schema import GenerateJsonSchema
 from pydantic.json_schema import JsonSchemaMode
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
-from types_acgi import ACGIReceiveCallable
-from types_acgi import ACGISendCallable
-from types_acgi import LifespanShutdownCompleteEvent
-from types_acgi import LifespanStartupCompleteEvent
-from types_acgi import MessageScope
-from types_acgi import MessageSendEvent
-from types_acgi import Scope
 from typing_extensions import Annotated
 from typing_extensions import get_args
 from typing_extensions import get_origin
@@ -101,7 +101,7 @@ class AsyncFast:
         return function
 
     async def __call__(
-        self, scope: Scope, receive: ACGIReceiveCallable, send: ACGISendCallable
+        self, scope: Scope, receive: AMGIReceiveCallable, send: AMGISendCallable
     ) -> None:
         if scope["type"] == "lifespan":
             while True:
@@ -251,8 +251,8 @@ class Channel:
     async def __call__(
         self,
         scope: MessageScope,
-        receive: ACGIReceiveCallable,
-        send: ACGISendCallable,
+        receive: AMGIReceiveCallable,
+        send: AMGISendCallable,
         parameters: Dict[str, str],
     ) -> None:
         arguments = dict(self._generate_arguments(scope, parameters))

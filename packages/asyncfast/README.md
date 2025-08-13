@@ -95,4 +95,4 @@ For questions or suggestions, please contact [jack.burridge@mail.com](mailto:jac
 
 ## License
 
-Copyright 2025 ACGI
+Copyright 2025 AMGI

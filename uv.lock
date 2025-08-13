@@ -8,35 +8,12 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "acgi",
-    "aiokafka-acgi",
+    "amgi",
+    "amgi-aiokafka",
+    "amgi-common",
+    "amgi-types",
     "asyncfast",
-    "common-acgi",
     "kafka-example",
-    "types-acgi",
-]
-
-[[package]]
-name = "acgi"
-version = "0.8.0"
-source = { virtual = "." }
-
-[package.dev-dependencies]
-dev = [
-    { name = "exceptiongroup" },
-    { name = "pre-commit-uv" },
-    { name = "tox" },
-    { name = "tox-uv" },
-]
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "exceptiongroup", specifier = ">=1.3.0" },
-    { name = "pre-commit-uv", specifier = ">=4.1.4" },
-    { name = "tox", specifier = ">=4.28.4" },
-    { name = "tox-uv", specifier = ">=1.27.0" },
 ]
 
 [[package]]
@@ -83,21 +60,54 @@ wheels = [
 ]
 
 [[package]]
-name = "aiokafka-acgi"
+name = "amgi"
 version = "0.8.0"
-source = { editable = "packages/aiokafka-acgi" }
+source = { virtual = "." }
+
+[package.dev-dependencies]
+dev = [
+    { name = "exceptiongroup" },
+    { name = "pre-commit-uv" },
+    { name = "tox" },
+    { name = "tox-uv" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "exceptiongroup", specifier = ">=1.3.0" },
+    { name = "pre-commit-uv", specifier = ">=4.1.4" },
+    { name = "tox", specifier = ">=4.28.4" },
+    { name = "tox-uv", specifier = ">=1.27.0" },
+]
+
+[[package]]
+name = "amgi-aiokafka"
+version = "0.8.0"
+source = { editable = "packages/amgi-aiokafka" }
 dependencies = [
     { name = "aiokafka" },
-    { name = "common-acgi" },
-    { name = "types-acgi" },
+    { name = "amgi-common" },
+    { name = "amgi-types" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "aiokafka", specifier = ">=0.12" },
-    { name = "common-acgi", editable = "packages/common-acgi" },
-    { name = "types-acgi", editable = "packages/types-acgi" },
+    { name = "amgi-common", editable = "packages/amgi-common" },
+    { name = "amgi-types", editable = "packages/amgi-types" },
 ]
+
+[[package]]
+name = "amgi-common"
+version = "0.8.0"
+source = { editable = "packages/amgi-common" }
+
+[[package]]
+name = "amgi-types"
+version = "0.8.0"
+source = { editable = "packages/amgi-types" }
 
 [[package]]
 name = "annotated-types"
@@ -122,9 +132,9 @@ name = "asyncfast"
 version = "0.8.0"
 source = { editable = "packages/asyncfast" }
 dependencies = [
+    { name = "amgi-types" },
     { name = "pydantic" },
     { name = "typer" },
-    { name = "types-acgi" },
 ]
 
 [package.dev-dependencies]
@@ -135,9 +145,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "amgi-types", editable = "packages/amgi-types" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "typer", specifier = ">=0.16.0" },
-    { name = "types-acgi", editable = "packages/types-acgi" },
 ]
 
 [package.metadata.requires-dev]
@@ -222,11 +232,6 @@ wheels = [
 ]
 
 [[package]]
-name = "common-acgi"
-version = "0.8.0"
-source = { editable = "packages/common-acgi" }
-
-[[package]]
 name = "distlib"
 version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -279,13 +284,13 @@ name = "kafka-example"
 version = "0.1.0"
 source = { virtual = "examples/kafka_example" }
 dependencies = [
-    { name = "aiokafka-acgi" },
+    { name = "amgi-aiokafka" },
     { name = "asyncfast" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "aiokafka-acgi", editable = "packages/aiokafka-acgi" },
+    { name = "amgi-aiokafka", editable = "packages/amgi-aiokafka" },
     { name = "asyncfast", editable = "packages/asyncfast" },
 ]
 
@@ -719,11 +724,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/c5/8c/7d682431efca5fd29
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/42/3efaf858001d2c2913de7f354563e3a3a2f0decae3efe98427125a8f441e/typer-0.16.0-py3-none-any.whl", hash = "sha256:1f79bed11d4d02d4310e3c1b7ba594183bcedb0ac73b27a9e5f28f6fb5b98855", size = 46317, upload-time = "2025-05-26T14:30:30.523Z" },
 ]
-
-[[package]]
-name = "types-acgi"
-version = "0.8.0"
-source = { editable = "packages/types-acgi" }
 
 [[package]]
 name = "typing-extensions"

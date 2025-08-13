@@ -10,18 +10,18 @@ from typing import Union
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
 from aiokafka import ConsumerRecord
-from common_acgi import Lifespan
-from types_acgi import ACGIApplication
-from types_acgi import ACGIReceiveEvent
-from types_acgi import ACGISendEvent
-from types_acgi import MessageScope
+from amgi_common import Lifespan
+from amgi_types import AMGIApplication
+from amgi_types import AMGIReceiveEvent
+from amgi_types import AMGISendEvent
+from amgi_types import MessageScope
 
 
-logger = logging.getLogger("aiokafka-acgi.error")
+logger = logging.getLogger("amgi-aiokafka.error")
 
 
 def run(
-    app: ACGIApplication,
+    app: AMGIApplication,
     *topics: Iterable[str],
     bootstrap_servers: Union[str, List[str]] = "localhost",
     group_id: Optional[str] = None,
@@ -37,7 +37,7 @@ class Server:
 
     def __init__(
         self,
-        app: ACGIApplication,
+        app: AMGIApplication,
         *topics: Iterable[str],
         bootstrap_servers: Union[str, List[str]],
         group_id: Optional[str],
@@ -68,14 +68,14 @@ class Server:
             encoded_headers = [(key.encode(), value) for key, value in message.headers]
             scope: MessageScope = {
                 "type": "message",
-                "acgi": {"version": "1.0", "spec_version": "1.0"},
+                "amgi": {"version": "1.0", "spec_version": "1.0"},
                 "address": message.topic,
                 "headers": encoded_headers,
                 "payload": message.value,
             }
             await self._app(scope, self.receive, self.send)
 
-    async def receive(self) -> ACGIReceiveEvent:
+    async def receive(self) -> AMGIReceiveEvent:
         raise NotImplementedError()
 
     async def _get_producer(self) -> AIOKafkaProducer:
@@ -96,7 +96,7 @@ class Server:
         encoded_headers = [(key.decode(), value) for key, value in headers]
         await producer.send(topic, headers=encoded_headers, value=payload)
 
-    async def send(self, event: ACGISendEvent) -> None:
+    async def send(self, event: AMGISendEvent) -> None:
 
         if event["type"] == "message.send":
             await self._send_message(
