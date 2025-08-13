@@ -1,3 +1,9 @@
+## 0.9.0 (2025-08-13)
+
+### Feat
+
+- rename project to AMGI to better reflect how it can be used
+
 ## 0.8.0 (2025-08-12)
 
 ### Feat
