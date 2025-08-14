@@ -12,3 +12,6 @@ wheels/
 # IDEs
 
 .idea
+
+# Sphinx
+_build
