@@ -29,5 +29,5 @@ jobs:
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
           uv run cz bump
           git remote remove origin
-          git remote add origin https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com:asyncfast/amgi.git
+          git remote add origin https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/asyncfast/amgi.git
           git push --set-upstream origin main
