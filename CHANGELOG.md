@@ -1,3 +1,9 @@
+## 0.9.1 (2025-08-16)
+
+### Fix
+
+- remove schema from components if there are no definitions
+
 ## 0.9.0 (2025-08-13)
 
 ### Feat
