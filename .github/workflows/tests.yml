@@ -11,5 +11,10 @@ jobs:
         uses: astral-sh/setup-uv@v6
       - name: Install the project
         run: uv sync --locked --all-extras --dev
+      - name: Cache pre-commit
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit|${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Run tests
         run: uv run tox
