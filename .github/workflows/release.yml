@@ -1,4 +1,4 @@
-name: release
+name: Release
 on:
   pull_request:
     branches:
@@ -12,16 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - name: Install the project
         run: uv sync --locked --all-extras --dev
       - name: Check version
         run: |
-          echo "=== pwd ==="
-          pwd
-          echo "=== git tag ==="
-          git tag
           version=$(uv run cz -nr 21 bump --get-next)
           echo "version=${version}" >> $GITHUB_ENV
       - name: Bump version
