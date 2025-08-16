@@ -18,10 +18,14 @@ jobs:
         run: uv sync --locked --all-extras --dev
       - name: Check version
         run: |
+          echo "=== pwd ==="
+          pwd
+          echo "=== git tag ==="
+          git tag
           version=$(uv run cz -nr 21 bump --get-next)
           echo "version=${version}" >> $GITHUB_ENV
       - name: Bump version
         if: env.version != ''
-        run: |-
+        run: |
           uv run cz bump
           git push
