@@ -32,6 +32,20 @@ def run(
     asyncio.run(server.serve())
 
 
+def _run_cli(
+    app: AMGIApplication,
+    topics: list[str],
+    bootstrap_servers: Optional[list[str]] = None,
+    group_id: Optional[str] = None,
+) -> None:
+    run(
+        app,
+        *topics,
+        bootstrap_servers=bootstrap_servers or ["localhost"],
+        group_id=group_id,
+    )
+
+
 class Server:
     _consumer: AIOKafkaConsumer
 

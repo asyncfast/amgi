@@ -34,6 +34,8 @@ urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-aioka
 urls.Issues = "https://github.com/asyncfast/amgi/issues/"
 urls.Repository = "https://github.com/asyncfast/amgi/"
 
+entry-points.amgi_server.amgi-aiokafka = "amgi_aiokafka:_run_cli"
+
 [tool.uv.sources]
 amgi-types = { workspace = true }
 amgi-common = { workspace = true }

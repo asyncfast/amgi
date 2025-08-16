@@ -2,10 +2,14 @@ import importlib
 import json
 import os
 import sys
+from importlib.metadata import entry_points
+from typing import Annotated
 from typing import Any
 
 import typer
+from amgi_types import AMGIApplication
 from asyncfast import AsyncFast
+from typer.main import get_command
 
 
 def import_from_string(import_str: Any) -> Any:
@@ -43,8 +47,6 @@ app = typer.Typer()
 
 @app.command()
 def asyncapi(app: str) -> None:
-    sys.path.insert(0, os.getcwd())
-
     loaded_app = import_from_string(app)
     assert isinstance(loaded_app, AsyncFast)
     print(json.dumps(loaded_app.asyncapi(), indent=2))
@@ -56,4 +58,24 @@ def callback() -> None:
 
 
 def main() -> None:
+    sys.path.insert(0, os.getcwd())
+
+    run_app = typer.Typer()
+    app.add_typer(run_app, name="run")
+
+    for entry_point in entry_points().get("amgi_server", ()):
+        try:
+            test_app = typer.Typer()
+            function = entry_point.load()
+
+            for name, annotation in function.__annotations__.items():
+                if annotation is AMGIApplication:
+                    function.__annotations__[name] = Annotated[
+                        AMGIApplication, typer.Argument(parser=import_from_string)
+                    ]
+            test_app.command(entry_point.name)(function)
+            get_command(test_app)
+            run_app.command(entry_point.name)(function)
+        except RuntimeError:
+            pass
     app()
