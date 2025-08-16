@@ -10,5 +10,5 @@ class Payload(BaseModel):
 
 
 @app.channel("channel")
-async def on_channel(payload: Payload) -> None:
+async def handle_channel(payload: Payload) -> None:
     print(payload)
