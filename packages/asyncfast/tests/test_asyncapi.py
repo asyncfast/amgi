@@ -219,7 +219,6 @@ def test_asyncapi_payload_simple() -> None:
         },
         "components": {
             "messages": {"OnHelloMessage": {"payload": {"type": "string"}}},
-            "schemas": {},
         },
         "info": {"title": "AsyncFast", "version": "0.1.0"},
         "operations": {
@@ -317,7 +316,9 @@ async def test_asyncapi_address_parameter() -> None:
                 "parameters": {"user_id": {}},
             }
         },
-        "components": {"messages": {"OrderHandlerMessage": {}}, "schemas": {}},
+        "components": {
+            "messages": {"OrderHandlerMessage": {}},
+        },
         "info": {"title": "AsyncFast", "version": "0.1.0"},
         "operations": {
             "receiveOrderHandler": {
