@@ -30,4 +30,4 @@ jobs:
           uv run cz bump
           git remote remove origin
           git remote add origin https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com:asyncfast/amgi.git
-          git push
+          git push --set-upstream origin main
