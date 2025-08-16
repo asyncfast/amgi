@@ -35,6 +35,20 @@ The simplest AsyncFast could be:
 .. async-fast-example:: examples/payload_basemodel.py
 ```
 
+### Running
+
+To run the app install an AMGI server (at the moment there is only `amgi-aiokafka`) then run:
+
+```
+$ asyncfast run amgi-aiokafka main:app channel
+```
+
+### AsyncAPI Generation
+
+```
+$ asyncfast asyncapi main:app
+```
+
 ## Requirements
 
 This project stands on the shoulders of giants:

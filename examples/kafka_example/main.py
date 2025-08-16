@@ -1,3 +1,4 @@
+import json
 import os
 from dataclasses import dataclass
 from typing import AsyncGenerator
@@ -29,7 +30,7 @@ async def input_topic_handler(payload: Payload) -> AsyncGenerator[Message, None]
     yield Message(
         address="output_topic",
         headers=[(b"id", str(payload.id).encode())],
-        payload=f'{{"state":"processed","id":{payload.id}}}'.encode(),
+        payload=json.dumps({"state": "processed", "id": payload.id}).encode(),
     )
 
 

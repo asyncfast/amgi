@@ -29,6 +29,14 @@ async def on_topic(payload: Payload) -> None:
     print(payload)
 ```
 
+### Running
+
+To run the app install an AMGI server (at the moment there is only `amgi-aiokafka`) then run:
+
+```
+$ asyncfast run amgi-aiokafka main:app topic
+```
+
 ### AsyncAPI Generation
 
 ```
