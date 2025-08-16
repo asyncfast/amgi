@@ -1,3 +1,9 @@
+## 0.10.0 (2025-08-16)
+
+### Feat
+
+- add run command to asyncfast cli
+
 ## 0.9.1 (2025-08-16)
 
 ### Fix
