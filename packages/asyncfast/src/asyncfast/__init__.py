@@ -143,7 +143,7 @@ class AsyncFast:
             "operations": dict(_generate_operations(self._channels)),
             "components": {
                 "messages": dict(_generate_messages(self._channels, field_mapping)),
-                "schemas": definitions,
+                **({"schemas": definitions} if definitions else {}),
             },
         }
 
