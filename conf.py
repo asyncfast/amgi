@@ -1,12 +1,17 @@
+import sys
+from pathlib import Path
+
+from multiproject.utils import get_project
+
 copyright = "2025, Jack Burridge"
 author = "Jack Burridge"
-release = "0.9.0"
+release = "0.9.1"
 
 
 exclude_patterns = ["_build", ".venv"]
 
 
-extensions = ["multiproject", "myst_parser"]
+extensions = ["multiproject", "myst_parser", "sphinx_inline_tabs", "sphinx_copybutton"]
 
 multiproject_projects = {
     "asyncfast": {
@@ -18,5 +23,15 @@ multiproject_projects = {
     },
 }
 
+current_project = get_project(multiproject_projects)
 
-html_theme = "sphinx_rtd_theme"
+
+if current_project == "asyncfast":
+    sys.path.append(
+        str((Path(".") / "packages" / "asyncfast" / "docs" / "_ext").resolve())
+    )
+    print(sys.path)
+
+    extensions += ["async_fast_example"]
+
+html_theme = "furo"

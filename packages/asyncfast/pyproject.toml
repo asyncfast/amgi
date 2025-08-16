@@ -35,6 +35,7 @@ dependencies = [
 ]
 
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
+urls.Documentation = "https://asyncfast.readthedocs.io/en/latest/"
 urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/asyncfast"
 urls.Issues = "https://github.com/asyncfast/amgi/issues/"
 urls.Repository = "https://github.com/asyncfast/amgi/"
