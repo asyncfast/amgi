@@ -62,9 +62,8 @@ Taking ideas from:
 
 ```{toctree}
 :hidden:
-message_payload
-message_headers
-channel_parameters
+receiving
+sending
 ```
 
 [asgi]: https://asgi.readthedocs.io/en/latest/

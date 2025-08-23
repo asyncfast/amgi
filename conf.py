@@ -13,6 +13,11 @@ exclude_patterns = ["_build", ".venv"]
 
 extensions = ["multiproject", "myst_parser", "sphinx_inline_tabs", "sphinx_copybutton"]
 
+myst_enable_extensions = [
+    "fieldlist",
+]
+
+
 multiproject_projects = {
     "asyncfast": {
         "path": "packages/asyncfast/docs/",
