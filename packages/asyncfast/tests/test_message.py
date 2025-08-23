@@ -15,6 +15,7 @@ import pytest
 from amgi_types import MessageScope
 from asyncfast import AsyncFast
 from asyncfast import Header
+from asyncfast import Message
 from asyncfast import Payload
 from pydantic import BaseModel
 
@@ -228,26 +229,24 @@ async def test_message_header_default(
     assert test_mock.mock_calls == [expected_call]
 
 
-async def test_message_sending() -> None:
+async def test_message_sending_dict() -> None:
     app = AsyncFast()
 
-    message_mock = Mock(
-        address="send_topic",
-        payload=b'{"key": "KEY-001"}',
-        headers=[(b"Id", b"10")],
-    )
     send_mock = AsyncMock()
 
     @app.channel("topic")
     async def topic_handler() -> AsyncGenerator[Any, None]:
-        yield message_mock
+        yield {
+            "address": "send_topic",
+            "payload": b'{"key": "KEY-001"}',
+            "headers": [(b"Id", b"10")],
+        }
 
     message_scope: MessageScope = {
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
         "headers": [],
-        "payload": b'{"id":10}',
     }
     await app(
         message_scope,
@@ -341,3 +340,78 @@ async def test_message_payload_address_parameter() -> None:
     )
 
     test_mock.assert_called_once_with("1234")
+
+
+async def test_message_sending_message() -> None:
+    app = AsyncFast()
+
+    send_mock = AsyncMock()
+
+    @dataclass
+    class SendMessage(Message, address="send_topic"):
+        payload: int
+        id: Annotated[int, Header()]
+
+    @app.channel("topic")
+    async def topic_handler() -> AsyncGenerator[Any, None]:
+        yield SendMessage(payload=10, id=10)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [],
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        send_mock,
+    )
+
+    send_mock.assert_awaited_once_with(
+        {
+            "type": "message.send",
+            "address": "send_topic",
+            "headers": [(b"id", b"10")],
+            "payload": b"10",
+        }
+    )
+
+
+async def test_message_address_parameter() -> None:
+    app = AsyncFast()
+
+    send_mock = AsyncMock()
+
+    @dataclass
+    class SendMessage(Message, address="send.{name}"):
+        name: str
+        payload: int
+
+    @app.channel("topic")
+    async def topic_handler() -> AsyncGenerator[Any, None]:
+        yield SendMessage(
+            name="test",
+            payload=10,
+        )
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "headers": [],
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        send_mock,
+    )
+
+    send_mock.assert_awaited_once_with(
+        {
+            "type": "message.send",
+            "address": "send.test",
+            "headers": [],
+            "payload": b"10",
+        }
+    )
