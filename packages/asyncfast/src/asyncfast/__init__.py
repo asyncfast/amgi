@@ -1,12 +1,15 @@
 import inspect
 import json
 import re
+from collections.abc import AsyncGenerator
 from functools import cached_property
 from functools import partial
+from inspect import Signature
 from re import Pattern
 from typing import Any
 from typing import Awaitable
 from typing import Callable
+from typing import ClassVar
 from typing import Counter
 from typing import Dict
 from typing import Generator
@@ -15,10 +18,12 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
+from typing import Union
 
 from amgi_types import AMGIReceiveCallable
 from amgi_types import AMGISendCallable
@@ -39,11 +44,109 @@ from typing_extensions import Annotated
 from typing_extensions import get_args
 from typing_extensions import get_origin
 
+
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
 
 
 _FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_\-]+$")
 _PARAMETER_PATTERN = re.compile(r"{(.*)}")
+
+
+class Message(Mapping[str, Any]):
+
+    __address__: ClassVar[Optional[str]] = None
+    __headers__: ClassVar[Dict[str, TypeAdapter[Any]]]
+    __parameters__: ClassVar[Dict[str, TypeAdapter[Any]]]
+    __payload__: ClassVar[Optional[Tuple[str, TypeAdapter[Any]]]]
+
+    def __init_subclass__(cls, address: Optional[str] = None, **kwargs: Any) -> None:
+        cls.__address__ = address
+        annotations = list(_generate_message_annotations(address, cls.__annotations__))
+
+        headers = {
+            name: TypeAdapter(annotated)
+            for name, annotated in annotations
+            if isinstance(get_args(annotated)[1], Header)
+        }
+
+        parameters = {
+            name: TypeAdapter(annotated)
+            for name, annotated in annotations
+            if isinstance(get_args(annotated)[1], Parameter)
+        }
+
+        payloads = [
+            (name, TypeAdapter(annotated))
+            for name, annotated in annotations
+            if isinstance(get_args(annotated)[1], Payload)
+        ]
+
+        assert len(payloads) <= 1, "Channel must have no more than 1 payload"
+
+        payload = payloads[0] if len(payloads) == 1 else None
+
+        cls.__headers__ = headers
+        cls.__parameters__ = parameters
+        cls.__payload__ = payload
+
+    def __getitem__(self, key: str, /) -> Any:
+        if key == "address":
+            return self._get_address()
+        elif key == "headers":
+            return self._get_headers()
+        elif key == "payload":
+            return self._get_payload()
+        raise KeyError(key)
+
+    def __len__(self) -> int:
+        return 3
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(("address", "headers", "payload"))
+
+    def _get_address(self) -> Optional[str]:
+        if self.__address__ is None:
+            return None
+        parameters = {
+            name: type_adapter.dump_python(getattr(self, name))
+            for name, type_adapter in self.__parameters__.items()
+        }
+
+        return self.__address__.format(**parameters)
+
+    def _get_headers(self) -> Iterable[Tuple[bytes, bytes]]:
+        return [
+            (name.encode(), self._get_value(name, type_adapter))
+            for name, type_adapter in self.__headers__.items()
+        ]
+
+    def _get_value(self, name: str, type_adapter: TypeAdapter[Any]) -> bytes:
+        json_value = type_adapter.dump_json(getattr(self, name))
+        value = json.loads(json_value)
+        if isinstance(value, str):
+            return value.encode()
+        return json_value
+
+    def _get_payload(self) -> Optional[bytes]:
+        if self.__payload__ is None:
+            return None
+        name, type_adapter = self.__payload__
+        return type_adapter.dump_json(getattr(self, name))
+
+
+def _generate_message_annotations(
+    address: Optional[str],
+    fields: dict[str, Any],
+) -> Generator[Tuple[str, Type[Annotated[Any, Any]]], None, None]:
+    address_parameters = _get_address_parameters(address)
+
+    for name, field in fields.items():
+        if get_origin(field) is Annotated:
+            yield name, field
+        elif name in address_parameters:
+            yield name, Annotated[field, Parameter()]  # type: ignore[misc]
+        else:
+            yield name, Annotated[field, Payload()]  # type: ignore[misc]
 
 
 class AsyncFast:
@@ -68,7 +171,28 @@ class AsyncFast:
     def _add_channel(
         self, address: str, function: DecoratedCallable
     ) -> DecoratedCallable:
-        annotations = list(_generate_annotations(address, function))
+        signature = inspect.signature(function)
+
+        messages = []
+        return_annotation = signature.return_annotation
+        if (
+            return_annotation is not Signature.empty
+            and get_origin(return_annotation) is AsyncGenerator
+        ):
+            async_generator_type = get_args(return_annotation)[0]
+            if get_origin(async_generator_type) is Union:  # type: ignore[comparison-overlap]
+                messages = [
+                    type
+                    for type in get_args(async_generator_type)
+                    if inspect.isclass(type) and issubclass(type, Message)
+                ]
+            elif inspect.isclass(async_generator_type) and issubclass(
+                async_generator_type, Message
+            ):
+                messages = [get_args(return_annotation)[0]]
+
+        annotations = list(_generate_annotations(address, signature))
+
         headers = {
             name: TypeAdapter(annotated)
             for name, annotated in annotations
@@ -94,7 +218,7 @@ class AsyncFast:
         address_pattern = _address_pattern(address)
 
         channel = Channel(
-            address, address_pattern, function, headers, parameters, payload
+            address, address_pattern, function, headers, parameters, payload, messages
         )
 
         self._channels.append(channel)
@@ -163,14 +287,21 @@ class AsyncFast:
                     type_adapter._type
                 ), "serialization", type_adapter.core_schema
 
+            for message in channel.messages:
+                if message.__payload__:
+                    _, type_adapter = message.__payload__
+
+                    yield hash(
+                        type_adapter._type
+                    ), "serialization", type_adapter.core_schema
+
 
 def _generate_annotations(
     address: str,
-    function: Callable[..., Any],
+    signature: Signature,
 ) -> Generator[Tuple[str, Type[Annotated[Any, Any]]], None, None]:
 
     address_parameters = _get_address_parameters(address)
-    signature = inspect.signature(function)
 
     for name, parameter in signature.parameters.items():
         annotation = parameter.annotation
@@ -195,6 +326,7 @@ class Channel:
         headers: Mapping[str, TypeAdapter[Any]],
         parameters: Mapping[str, TypeAdapter[Any]],
         payload: Optional[Tuple[str, TypeAdapter[Any]]],
+        messages: Sequence[Type[Message]],
     ) -> None:
         self._address = address
         self._address_pattern = address_pattern
@@ -202,6 +334,7 @@ class Channel:
         self._headers = headers
         self._parameters = parameters
         self._payload = payload
+        self._messages = messages
 
     @property
     def address(self) -> str:
@@ -242,6 +375,10 @@ class Channel:
     def parameters(self) -> Mapping[str, TypeAdapter[Any]]:
         return self._parameters
 
+    @property
+    def messages(self) -> Sequence[Type[Message]]:
+        return self._messages
+
     def match(self, address: str) -> Optional[Dict[str, str]]:
         match = self._address_pattern.match(address)
         if match:
@@ -260,9 +397,9 @@ class Channel:
             async for message in self._handler(**arguments):
                 message_send_event: MessageSendEvent = {
                     "type": "message.send",
-                    "address": message.address,
-                    "headers": message.headers,
-                    "payload": message.payload,
+                    "address": message["address"],
+                    "headers": message["headers"],
+                    "payload": message.get("payload"),
                 }
                 await send(message_send_event)
         else:
@@ -320,6 +457,17 @@ def _generate_messages(
 
         yield f"{channel.title}Message", message
 
+        for channel_message in channel.messages:
+            message_message = {}
+
+            if channel_message.__payload__:
+                _, type_adapter = channel_message.__payload__
+                message_message["payload"] = field_mapping[
+                    hash(type_adapter._type), "serialization"
+                ]
+
+            yield channel_message.__name__, message_message
+
 
 def _generate_channels(
     channels: Iterable[Channel],
@@ -338,6 +486,23 @@ def _generate_channels(
 
         yield channel.title, channel_definition
 
+        for message in channel.messages:
+            message_channel_definition = {
+                "address": message.__address__,
+                "messages": {
+                    message.__name__: {
+                        "$ref": f"#/components/messages/{message.__name__}"
+                    }
+                },
+            }
+
+            if message.__parameters__:
+                message_channel_definition["parameters"] = {
+                    name: {} for name in message.__parameters__
+                }
+
+            yield message.__name__, message_channel_definition
+
 
 def _generate_operations(
     channels: Iterable[Channel],
@@ -347,6 +512,12 @@ def _generate_operations(
             "action": "receive",
             "channel": {"$ref": f"#/channels/{channel.title}"},
         }
+
+        for message in channel.messages:
+            yield f"send{message.__name__}", {
+                "action": "send",
+                "channel": {"$ref": f"#/channels/{message.__name__}"},
+            }
 
 
 class Header(FieldInfo):
@@ -361,7 +532,9 @@ class Parameter(FieldInfo):
     pass
 
 
-def _get_address_parameters(address: str) -> Set[str]:
+def _get_address_parameters(address: Optional[str]) -> Set[str]:
+    if address is None:
+        return set()
     parameters = _PARAMETER_PATTERN.findall(address)
     for parameter in parameters:
         assert _FIELD_PATTERN.match(parameter), f"Parameter '{parameter}' is not valid"
