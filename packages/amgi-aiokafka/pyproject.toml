@@ -36,6 +36,11 @@ urls.Repository = "https://github.com/asyncfast/amgi/"
 
 entry-points.amgi_server.amgi-aiokafka = "amgi_aiokafka:_run_cli"
 
+[dependency-groups]
+dev = [
+  "testcontainers[kafka]>=4.12.0",
+]
+
 [tool.uv.sources]
 amgi-types = { workspace = true }
 amgi-common = { workspace = true }
