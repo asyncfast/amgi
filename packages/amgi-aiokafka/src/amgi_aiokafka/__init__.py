@@ -1,5 +1,8 @@
 import asyncio
 import logging
+import signal
+from asyncio import AbstractEventLoop
+from asyncio import Event
 from asyncio import Lock
 from typing import Iterable
 from typing import List
@@ -29,7 +32,8 @@ def run(
     server = Server(
         app, *topics, bootstrap_servers=bootstrap_servers, group_id=group_id
     )
-    asyncio.run(server.serve())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(_serve(server, loop))
 
 
 def _run_cli(
@@ -57,28 +61,44 @@ class Server:
         group_id: Optional[str],
     ) -> None:
         self._app = app
-        self._topic = topics
+        self._topics = topics
         self._bootstrap_servers = bootstrap_servers
         self._group_id = group_id
         self._producer: Optional[AIOKafkaProducer] = None
         self._producer_lock = Lock()
+        self._stop_event = Event()
 
     async def serve(self) -> None:
         self._consumer = AIOKafkaConsumer(
-            *self._topic,
+            *self._topics,
             bootstrap_servers=self._bootstrap_servers,
             group_id=self._group_id,
         )
-        await self._consumer.start()
-        async with Lifespan(self._app):
-            await self.main_loop()
+        async with self._consumer:
+            async with Lifespan(self._app):
+                await self.main_loop()
 
         if self._producer is not None:
             await self._producer.stop()
 
     async def main_loop(self) -> None:
         message: ConsumerRecord[bytes, bytes]
-        async for message in self._consumer:
+        loop = asyncio.get_running_loop()
+        stop_task = loop.create_task(self._stop_event.wait())
+        while True:
+            get_one_task = loop.create_task(self._consumer.getone())
+            await asyncio.wait(
+                (
+                    get_one_task,
+                    stop_task,
+                ),
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if self._stop_event.is_set():
+                get_one_task.cancel()
+                break
+            message = await get_one_task
+
             encoded_headers = [(key.encode(), value) for key, value in message.headers]
             scope: MessageScope = {
                 "type": "message",
@@ -111,8 +131,18 @@ class Server:
         await producer.send(topic, headers=encoded_headers, value=payload)
 
     async def send(self, event: AMGISendEvent) -> None:
-
         if event["type"] == "message.send":
             await self._send_message(
                 event["address"], event["headers"], event.get("payload")
             )
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+
+async def _serve(server: Server, loop: AbstractEventLoop) -> None:
+    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+    for s in signals:
+        loop.add_signal_handler(s, server.stop)
+
+    await server.serve()
