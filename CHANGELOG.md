@@ -1,3 +1,9 @@
+## 0.11.0 (2025-08-30)
+
+### Feat
+
+- add initial support for typed message sending
+
 ## 0.10.0 (2025-08-16)
 
 ### Feat

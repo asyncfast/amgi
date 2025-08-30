@@ -7,7 +7,7 @@ AMGI will be here very soon
 ## Installation
 
 ```
-pip install amgi-aiokafka==0.10.0
+pip install amgi-aiokafka==0.11.0
 ```
 
 ## Contact
