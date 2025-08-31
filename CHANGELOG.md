@@ -1,3 +1,10 @@
+## 0.12.0 (2025-08-31)
+
+### Feat
+
+- add support for ack and nack in the amgi spec
+- allow for graceful exit of amgi-aiokafka when exciting
+
 ## 0.11.0 (2025-08-30)
 
 ### Feat
