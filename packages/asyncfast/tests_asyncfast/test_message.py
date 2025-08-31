@@ -12,6 +12,7 @@ from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
+from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from asyncfast import AsyncFast
 from asyncfast import Header
@@ -36,12 +37,16 @@ async def test_message_payload() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [],
         "payload": b'{"id":1}',
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -61,11 +66,15 @@ async def test_message_header_string() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [(b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4")],
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -85,11 +94,15 @@ async def test_message_header_integer() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [(b"Id", b"10")],
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -111,11 +124,15 @@ async def test_message_header_underscore_to_hyphen() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [(b"Idempotency-Key", b"8e03978e-40d5-43e8-bc93-6894a57f9324")],
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -138,6 +155,10 @@ async def test_message_headers_multiple() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [
             (b"Id", b"10"),
             (b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4"),
@@ -145,7 +166,7 @@ async def test_message_headers_multiple() -> None:
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -177,11 +198,15 @@ async def test_message_header_optional(
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": headers,
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -218,11 +243,15 @@ async def test_message_header_default(
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": headers,
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -246,21 +275,29 @@ async def test_message_sending_dict() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         send_mock,
     )
 
-    send_mock.assert_awaited_once_with(
-        {
-            "type": "message.send",
-            "address": "send_topic",
-            "headers": [(b"Id", b"10")],
-            "payload": b'{"key": "KEY-001"}',
-        }
+    send_mock.assert_has_awaits(
+        [
+            call(
+                {
+                    "type": "message.send",
+                    "address": "send_topic",
+                    "headers": [(b"Id", b"10")],
+                    "payload": b'{"key": "KEY-001"}',
+                }
+            )
+        ]
     )
 
 
@@ -281,12 +318,16 @@ async def test_message_payload_dataclass() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [],
         "payload": b'{"id":1}',
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -306,12 +347,16 @@ async def test_message_payload_simple() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [],
         "payload": b"123",
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -331,11 +376,15 @@ async def test_message_payload_address_parameter() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "order.1234",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         AsyncMock(),
     )
 
@@ -360,21 +409,29 @@ async def test_message_sending_message() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
         send_mock,
     )
 
-    send_mock.assert_awaited_once_with(
-        {
-            "type": "message.send",
-            "address": "send_topic",
-            "headers": [(b"id", b"10")],
-            "payload": b"10",
-        }
+    send_mock.assert_has_awaits(
+        [
+            call(
+                {
+                    "type": "message.send",
+                    "address": "send_topic",
+                    "headers": [(b"id", b"10")],
+                    "payload": b"10",
+                }
+            )
+        ]
     )
 
 
@@ -399,19 +456,86 @@ async def test_message_address_parameter() -> None:
         "type": "message",
         "amgi": {"version": "1.0", "spec_version": "1.0"},
         "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(),
+        AsyncMock(side_effect=[message_receive_event]),
+        send_mock,
+    )
+
+    send_mock.assert_has_awaits(
+        [
+            call(
+                {
+                    "type": "message.send",
+                    "address": "send.test",
+                    "headers": [],
+                    "payload": b"10",
+                }
+            )
+        ]
+    )
+
+
+async def test_message_ack() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler() -> None:
+        test_mock()
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+    }
+    send_mock = AsyncMock()
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
+        send_mock,
+    )
+
+    test_mock.assert_called_once()
+    send_mock.assert_awaited_once_with({"type": "message.ack", "id": "id-1"})
+
+
+async def test_message_nack() -> None:
+    app = AsyncFast()
+
+    @app.channel("topic")
+    async def topic_handler() -> None:
+        raise Exception("test")
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+    }
+    send_mock = AsyncMock()
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
         send_mock,
     )
 
     send_mock.assert_awaited_once_with(
-        {
-            "type": "message.send",
-            "address": "send.test",
-            "headers": [],
-            "payload": b"10",
-        }
+        {"type": "message.nack", "id": "id-1", "message": "test"}
     )
