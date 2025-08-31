@@ -29,6 +29,9 @@ from amgi_types import AMGIReceiveCallable
 from amgi_types import AMGISendCallable
 from amgi_types import LifespanShutdownCompleteEvent
 from amgi_types import LifespanStartupCompleteEvent
+from amgi_types import MessageAckEvent
+from amgi_types import MessageNackEvent
+from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 from amgi_types import Scope
@@ -392,25 +395,46 @@ class Channel:
         send: AMGISendCallable,
         parameters: Dict[str, str],
     ) -> None:
-        arguments = dict(self._generate_arguments(scope, parameters))
-        if inspect.isasyncgenfunction(self._handler):
-            async for message in self._handler(**arguments):
-                message_send_event: MessageSendEvent = {
-                    "type": "message.send",
-                    "address": message["address"],
-                    "headers": message["headers"],
-                    "payload": message.get("payload"),
+        more_messages = True
+        while more_messages:
+            message = await receive()
+            if message["type"] != "message.receive":
+                continue
+            more_messages = message.get("more_messages", False)
+            try:
+                arguments = dict(self._generate_arguments(message, parameters))
+
+                if inspect.isasyncgenfunction(self._handler):
+                    async for send_message in self._handler(**arguments):
+                        message_send_event: MessageSendEvent = {
+                            "type": "message.send",
+                            "address": send_message["address"],
+                            "headers": send_message["headers"],
+                            "payload": send_message.get("payload"),
+                        }
+                        await send(message_send_event)
+                else:
+                    await self._handler(**arguments)
+
+                message_ack_event: MessageAckEvent = {
+                    "type": "message.ack",
+                    "id": message["id"],
                 }
-                await send(message_send_event)
-        else:
-            await self._handler(**arguments)
+                await send(message_ack_event)
+            except Exception as e:
+                message_nack_event: MessageNackEvent = {
+                    "type": "message.nack",
+                    "id": message["id"],
+                    "message": str(e),
+                }
+                await send(message_nack_event)
 
     def _generate_arguments(
-        self, scope: MessageScope, parameters: Dict[str, str]
+        self, message_receive_event: MessageReceiveEvent, parameters: Dict[str, str]
     ) -> Generator[Tuple[str, Any], None, None]:
 
         if self.headers:
-            headers = Headers(scope["headers"])
+            headers = Headers(message_receive_event["headers"])
             for name, type_adapter in self.headers.items():
                 annotated_args = get_args(type_adapter._type)
                 header_alias = annotated_args[1].alias
@@ -425,7 +449,7 @@ class Channel:
 
         if self.payload:
             name, type_adapter = self.payload
-            payload = scope.get("payload")
+            payload = message_receive_event.get("payload")
             payload_obj = None if payload is None else json.loads(payload)
             value = type_adapter.validate_python(payload_obj, from_attributes=True)
             yield name, value

@@ -23,8 +23,6 @@ class MessageScope(TypedDict):
     type: Literal["message"]
     amgi: AMGIVersions
     address: str
-    headers: Iterable[Tuple[bytes, bytes]]
-    payload: NotRequired[Optional[bytes]]
 
 
 class LifespanScope(TypedDict):
@@ -58,8 +56,23 @@ class LifespanShutdownFailedEvent(TypedDict):
     message: str
 
 
-class MessageAcknowledgeEvent(TypedDict):
-    type: Literal["message.acknowledge"]
+class MessageReceiveEvent(TypedDict):
+    type: Literal["message.receive"]
+    id: str
+    headers: Iterable[Tuple[bytes, bytes]]
+    payload: NotRequired[Optional[bytes]]
+    more_messages: NotRequired[bool]
+
+
+class MessageAckEvent(TypedDict):
+    type: Literal["message.ack"]
+    id: str
+
+
+class MessageNackEvent(TypedDict):
+    type: Literal["message.nack"]
+    id: str
+    message: str
 
 
 class MessageSendEvent(TypedDict):
@@ -71,13 +84,16 @@ class MessageSendEvent(TypedDict):
 
 Scope = Union[MessageScope, LifespanScope]
 
-AMGIReceiveEvent = Union[LifespanStartupEvent, LifespanShutdownEvent]
+AMGIReceiveEvent = Union[
+    LifespanStartupEvent, LifespanShutdownEvent, MessageReceiveEvent
+]
 AMGISendEvent = Union[
     LifespanStartupCompleteEvent,
     LifespanStartupFailedEvent,
     LifespanShutdownCompleteEvent,
     LifespanShutdownFailedEvent,
-    MessageAcknowledgeEvent,
+    MessageAckEvent,
+    MessageNackEvent,
     MessageSendEvent,
 ]
 

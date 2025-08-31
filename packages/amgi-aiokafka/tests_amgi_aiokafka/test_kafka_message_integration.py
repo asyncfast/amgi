@@ -102,9 +102,16 @@ async def test_message(
         assert scope == {
             "address": topic,
             "amgi": {"spec_version": "1.0", "version": "1.0"},
-            "headers": [(b"test", b"test")],
-            "payload": b"test",
             "type": "message",
+        }
+
+        message_receive = await receive()
+        assert message_receive == {
+            "headers": [(b"test", b"test")],
+            "id": f"{topic}:0:0",
+            "more_messages": False,
+            "payload": b"test",
+            "type": "message.receive",
         }
 
     await producer.stop()
