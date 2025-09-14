@@ -1,3 +1,9 @@
+## 0.12.2 (2025-09-14)
+
+### Fix
+
+- fix the message send annotation check for Message type
+
 ## 0.12.1 (2025-09-14)
 
 ### Fix
