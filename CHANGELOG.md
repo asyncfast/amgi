@@ -1,3 +1,13 @@
+## 0.12.1 (2025-09-14)
+
+### Fix
+
+- any errors raised during a send are thrown in the handler
+
+### Refactor
+
+- upgrade to python3.9 features with pyupgrade
+
 ## 0.12.0 (2025-08-31)
 
 ### Feat
