@@ -264,7 +264,7 @@ async def test_message_sending_dict() -> None:
     send_mock = AsyncMock()
 
     @app.channel("topic")
-    async def topic_handler() -> AsyncGenerator[Any, None]:
+    async def topic_handler() -> AsyncGenerator[dict[str, Any], None]:
         yield {
             "address": "send_topic",
             "payload": b'{"key": "KEY-001"}',
@@ -402,7 +402,7 @@ async def test_message_sending_message() -> None:
         id: Annotated[int, Header()]
 
     @app.channel("topic")
-    async def topic_handler() -> AsyncGenerator[Any, None]:
+    async def topic_handler() -> AsyncGenerator[SendMessage, None]:
         yield SendMessage(payload=10, id=10)
 
     message_scope: MessageScope = {
@@ -446,7 +446,7 @@ async def test_message_address_parameter() -> None:
         payload: int
 
     @app.channel("topic")
-    async def topic_handler() -> AsyncGenerator[Any, None]:
+    async def topic_handler() -> AsyncGenerator[SendMessage, None]:
         yield SendMessage(
             name="test",
             payload=10,
@@ -553,7 +553,7 @@ async def test_message_sending_dict_error() -> None:
             raise exception
 
     @app.channel("topic")
-    async def topic_handler() -> AsyncGenerator[Any, None]:
+    async def topic_handler() -> AsyncGenerator[dict[str, Any], None]:
         try:
             yield {
                 "address": "send_topic",

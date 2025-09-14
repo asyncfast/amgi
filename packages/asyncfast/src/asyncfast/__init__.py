@@ -147,6 +147,13 @@ def _generate_message_annotations(
             yield name, Annotated[field, Payload()]  # type: ignore[misc]
 
 
+def _is_message(cls: type[Any]) -> bool:
+    try:
+        return issubclass(cls, Message)
+    except TypeError:
+        return False
+
+
 class AsyncFast:
     def __init__(
         self, title: Optional[str] = None, version: Optional[str] = None
@@ -180,13 +187,9 @@ class AsyncFast:
             async_generator_type = get_args(return_annotation)[0]
             if get_origin(async_generator_type) is Union:  # type: ignore[comparison-overlap]
                 messages = [
-                    type
-                    for type in get_args(async_generator_type)
-                    if inspect.isclass(type) and issubclass(type, Message)
+                    type for type in get_args(async_generator_type) if _is_message(type)
                 ]
-            elif inspect.isclass(async_generator_type) and issubclass(
-                async_generator_type, Message
-            ):
+            elif _is_message(async_generator_type):
                 messages = [get_args(return_annotation)[0]]
 
         annotations = list(_generate_annotations(address, signature))
