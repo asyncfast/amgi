@@ -405,14 +405,22 @@ class Channel:
                 arguments = dict(self._generate_arguments(message, parameters))
 
                 if inspect.isasyncgenfunction(self._handler):
-                    async for send_message in self._handler(**arguments):
-                        message_send_event: MessageSendEvent = {
-                            "type": "message.send",
-                            "address": send_message["address"],
-                            "headers": send_message["headers"],
-                            "payload": send_message.get("payload"),
-                        }
-                        await send(message_send_event)
+                    agen = self._handler(**arguments)
+                    while True:
+                        try:
+                            send_message = await agen.__anext__()
+                            try:
+                                message_send_event: MessageSendEvent = {
+                                    "type": "message.send",
+                                    "address": send_message["address"],
+                                    "headers": send_message["headers"],
+                                    "payload": send_message.get("payload"),
+                                }
+                                await send(message_send_event)
+                            except Exception as e:
+                                await agen.athrow(e)
+                        except StopAsyncIteration:
+                            break
                 else:
                     await self._handler(**arguments)
 
