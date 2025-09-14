@@ -1,8 +1,7 @@
 import json
 import textwrap
+from collections.abc import Sequence
 from typing import Any
-from typing import Dict
-from typing import Sequence
 
 from asyncfast import AsyncFast
 from docutils.nodes import Node
@@ -27,7 +26,7 @@ class AsyncFastExample(Directive):
         try:
             with open(absolute_path) as file:
                 async_fast_example = file.read()
-                scope: Dict[str, Any] = {}
+                scope: dict[str, Any] = {}
                 try:
                     exec(async_fast_example, scope)
                 except Exception as exc:

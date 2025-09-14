@@ -1,10 +1,9 @@
 import sys
-from typing import Awaitable
+from collections.abc import Awaitable
+from collections.abc import Iterable
 from typing import Callable
-from typing import Iterable
 from typing import Literal
 from typing import Optional
-from typing import Tuple
 from typing import TypedDict
 from typing import Union
 
@@ -59,7 +58,7 @@ class LifespanShutdownFailedEvent(TypedDict):
 class MessageReceiveEvent(TypedDict):
     type: Literal["message.receive"]
     id: str
-    headers: Iterable[Tuple[bytes, bytes]]
+    headers: Iterable[tuple[bytes, bytes]]
     payload: NotRequired[Optional[bytes]]
     more_messages: NotRequired[bool]
 
@@ -78,7 +77,7 @@ class MessageNackEvent(TypedDict):
 class MessageSendEvent(TypedDict):
     type: Literal["message.send"]
     address: str
-    headers: Iterable[Tuple[bytes, bytes]]
+    headers: Iterable[tuple[bytes, bytes]]
     payload: NotRequired[Optional[bytes]]
 
 

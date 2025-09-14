@@ -1,9 +1,8 @@
 import asyncio
 from asyncio import Event
 from asyncio import Queue
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
-from typing import Tuple
 from uuid import uuid4
 
 import pytest
@@ -19,13 +18,13 @@ from testcontainers.kafka import KafkaContainer
 class MockApp:
     def __init__(self) -> None:
         self._call_queue = Queue[
-            Tuple[Scope, AMGIReceiveCallable, AMGISendCallable, Event]
+            tuple[Scope, AMGIReceiveCallable, AMGISendCallable, Event]
         ]()
 
     @asynccontextmanager
     async def call(
         self,
-    ) -> AsyncGenerator[Tuple[Scope, AMGIReceiveCallable, AMGISendCallable], None]:
+    ) -> AsyncGenerator[tuple[Scope, AMGIReceiveCallable, AMGISendCallable], None]:
         scope, receive, send, return_event = await self._call_queue.get()
         try:
             yield scope, receive, send

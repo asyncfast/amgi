@@ -1,11 +1,9 @@
+from collections.abc import AsyncGenerator
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Annotated
 from typing import Any
-from typing import AsyncGenerator
-from typing import Dict
-from typing import Iterable
 from typing import Optional
-from typing import Tuple
 from unittest.mock import _Call
 from unittest.mock import AsyncMock
 from unittest.mock import call
@@ -186,7 +184,7 @@ async def test_message_headers_multiple() -> None:
     ],
 )
 async def test_message_header_optional(
-    headers: Iterable[Tuple[bytes, bytes]], expected_call: _Call
+    headers: Iterable[tuple[bytes, bytes]], expected_call: _Call
 ) -> None:
     app = AsyncFast()
 
@@ -229,7 +227,7 @@ async def test_message_header_optional(
     ],
 )
 async def test_message_header_default(
-    headers: Iterable[Tuple[bytes, bytes]], expected_call: _Call
+    headers: Iterable[tuple[bytes, bytes]], expected_call: _Call
 ) -> None:
     app = AsyncFast()
 
@@ -555,7 +553,7 @@ async def test_message_sending_dict_error() -> None:
             raise exception
 
     @app.channel("topic")
-    async def topic_handler() -> AsyncGenerator[Dict[str, Any], None]:
+    async def topic_handler() -> AsyncGenerator[Any, None]:
         try:
             yield {
                 "address": "send_topic",

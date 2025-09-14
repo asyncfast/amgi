@@ -1,6 +1,6 @@
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Annotated
-from typing import AsyncGenerator
 from typing import Union
 
 from asyncfast import AsyncFast

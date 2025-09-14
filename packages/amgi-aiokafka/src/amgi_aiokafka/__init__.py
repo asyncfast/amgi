@@ -5,10 +5,9 @@ from asyncio import AbstractEventLoop
 from asyncio import Event
 from asyncio import Lock
 from collections import deque
-from typing import Awaitable
+from collections.abc import Awaitable
+from collections.abc import Iterable
 from typing import Callable
-from typing import Iterable
-from typing import List
 from typing import Optional
 from typing import Union
 
@@ -30,7 +29,7 @@ logger = logging.getLogger("amgi-aiokafka.error")
 def run(
     app: AMGIApplication,
     *topics: Iterable[str],
-    bootstrap_servers: Union[str, List[str]] = "localhost",
+    bootstrap_servers: Union[str, list[str]] = "localhost",
     group_id: Optional[str] = None,
 ) -> None:
     server = Server(
@@ -98,7 +97,7 @@ class Server:
         self,
         app: AMGIApplication,
         *topics: Iterable[str],
-        bootstrap_servers: Union[str, List[str]],
+        bootstrap_servers: Union[str, list[str]],
         group_id: Optional[str],
     ) -> None:
         self._app = app

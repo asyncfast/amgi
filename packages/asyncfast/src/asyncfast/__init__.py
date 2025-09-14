@@ -1,27 +1,23 @@
 import inspect
 import json
 import re
+from collections import Counter
 from collections.abc import AsyncGenerator
+from collections.abc import Awaitable
+from collections.abc import Generator
+from collections.abc import Iterable
+from collections.abc import Iterator
+from collections.abc import Mapping
+from collections.abc import Sequence
 from functools import cached_property
 from functools import partial
 from inspect import Signature
 from re import Pattern
+from typing import Annotated
 from typing import Any
-from typing import Awaitable
 from typing import Callable
 from typing import ClassVar
-from typing import Counter
-from typing import Dict
-from typing import Generator
-from typing import Iterable
-from typing import Iterator
-from typing import List
-from typing import Mapping
 from typing import Optional
-from typing import Sequence
-from typing import Set
-from typing import Tuple
-from typing import Type
 from typing import TypeVar
 from typing import Union
 
@@ -43,7 +39,6 @@ from pydantic.json_schema import GenerateJsonSchema
 from pydantic.json_schema import JsonSchemaMode
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
-from typing_extensions import Annotated
 from typing_extensions import get_args
 from typing_extensions import get_origin
 
@@ -58,9 +53,9 @@ _PARAMETER_PATTERN = re.compile(r"{(.*)}")
 class Message(Mapping[str, Any]):
 
     __address__: ClassVar[Optional[str]] = None
-    __headers__: ClassVar[Dict[str, TypeAdapter[Any]]]
-    __parameters__: ClassVar[Dict[str, TypeAdapter[Any]]]
-    __payload__: ClassVar[Optional[Tuple[str, TypeAdapter[Any]]]]
+    __headers__: ClassVar[dict[str, TypeAdapter[Any]]]
+    __parameters__: ClassVar[dict[str, TypeAdapter[Any]]]
+    __payload__: ClassVar[Optional[tuple[str, TypeAdapter[Any]]]]
 
     def __init_subclass__(cls, address: Optional[str] = None, **kwargs: Any) -> None:
         cls.__address__ = address
@@ -117,7 +112,7 @@ class Message(Mapping[str, Any]):
 
         return self.__address__.format(**parameters)
 
-    def _get_headers(self) -> Iterable[Tuple[bytes, bytes]]:
+    def _get_headers(self) -> Iterable[tuple[bytes, bytes]]:
         return [
             (name.encode(), self._get_value(name, type_adapter))
             for name, type_adapter in self.__headers__.items()
@@ -140,7 +135,7 @@ class Message(Mapping[str, Any]):
 def _generate_message_annotations(
     address: Optional[str],
     fields: dict[str, Any],
-) -> Generator[Tuple[str, Type[Annotated[Any, Any]]], None, None]:
+) -> Generator[tuple[str, type[Annotated[Any, Any]]], None, None]:
     address_parameters = _get_address_parameters(address)
 
     for name, field in fields.items():
@@ -156,7 +151,7 @@ class AsyncFast:
     def __init__(
         self, title: Optional[str] = None, version: Optional[str] = None
     ) -> None:
-        self._channels: List[Channel] = []
+        self._channels: list[Channel] = []
         self._title = title or "AsyncFast"
         self._version = version or "0.1.0"
 
@@ -252,7 +247,7 @@ class AsyncFast:
                     await channel(scope, receive, send, parameters)
                     break
 
-    def asyncapi(self) -> Dict[str, Any]:
+    def asyncapi(self) -> dict[str, Any]:
         schema_generator = GenerateJsonSchema(
             ref_template="#/components/schemas/{model}"
         )
@@ -276,7 +271,7 @@ class AsyncFast:
 
     def _generate_inputs(
         self,
-    ) -> Generator[Tuple[int, JsonSchemaMode, CoreSchema], None, None]:
+    ) -> Generator[tuple[int, JsonSchemaMode, CoreSchema], None, None]:
         for channel in self._channels:
             headers_model = channel.headers_model
             if headers_model:
@@ -302,7 +297,7 @@ class AsyncFast:
 def _generate_annotations(
     address: str,
     signature: Signature,
-) -> Generator[Tuple[str, Type[Annotated[Any, Any]]], None, None]:
+) -> Generator[tuple[str, type[Annotated[Any, Any]]], None, None]:
 
     address_parameters = _get_address_parameters(address)
 
@@ -328,8 +323,8 @@ class Channel:
         handler: Callable[..., Awaitable[None]],
         headers: Mapping[str, TypeAdapter[Any]],
         parameters: Mapping[str, TypeAdapter[Any]],
-        payload: Optional[Tuple[str, TypeAdapter[Any]]],
-        messages: Sequence[Type[Message]],
+        payload: Optional[tuple[str, TypeAdapter[Any]]],
+        messages: Sequence[type[Message]],
     ) -> None:
         self._address = address
         self._address_pattern = address_pattern
@@ -356,7 +351,7 @@ class Channel:
         return self._headers
 
     @cached_property
-    def headers_model(self) -> Optional[Type[BaseModel]]:
+    def headers_model(self) -> Optional[type[BaseModel]]:
         if self._headers:
             headers_name = f"{self.title}Headers"
             headers_model = create_model(
@@ -371,7 +366,7 @@ class Channel:
         return None
 
     @property
-    def payload(self) -> Optional[Tuple[str, TypeAdapter[Any]]]:
+    def payload(self) -> Optional[tuple[str, TypeAdapter[Any]]]:
         return self._payload
 
     @property
@@ -379,10 +374,10 @@ class Channel:
         return self._parameters
 
     @property
-    def messages(self) -> Sequence[Type[Message]]:
+    def messages(self) -> Sequence[type[Message]]:
         return self._messages
 
-    def match(self, address: str) -> Optional[Dict[str, str]]:
+    def match(self, address: str) -> Optional[dict[str, str]]:
         match = self._address_pattern.match(address)
         if match:
             return match.groupdict()
@@ -393,7 +388,7 @@ class Channel:
         scope: MessageScope,
         receive: AMGIReceiveCallable,
         send: AMGISendCallable,
-        parameters: Dict[str, str],
+        parameters: dict[str, str],
     ) -> None:
         more_messages = True
         while more_messages:
@@ -438,8 +433,8 @@ class Channel:
                 await send(message_nack_event)
 
     def _generate_arguments(
-        self, message_receive_event: MessageReceiveEvent, parameters: Dict[str, str]
-    ) -> Generator[Tuple[str, Any], None, None]:
+        self, message_receive_event: MessageReceiveEvent, parameters: dict[str, str]
+    ) -> Generator[tuple[str, Any], None, None]:
 
         if self.headers:
             headers = Headers(message_receive_event["headers"])
@@ -470,7 +465,7 @@ class Channel:
 def _generate_messages(
     channels: Iterable[Channel],
     field_mapping: dict[tuple[int, JsonSchemaMode], JsonSchemaValue],
-) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
+) -> Generator[tuple[str, dict[str, Any]], None, None]:
     for channel in channels:
         message = {}
 
@@ -503,7 +498,7 @@ def _generate_messages(
 
 def _generate_channels(
     channels: Iterable[Channel],
-) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
+) -> Generator[tuple[str, dict[str, Any]], None, None]:
     for channel in channels:
         message_name = f"{channel.title}Message"
         channel_definition = {
@@ -538,7 +533,7 @@ def _generate_channels(
 
 def _generate_operations(
     channels: Iterable[Channel],
-) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
+) -> Generator[tuple[str, dict[str, Any]], None, None]:
     for channel in channels:
         yield f"receive{channel.title}", {
             "action": "receive",
@@ -564,7 +559,7 @@ class Parameter(FieldInfo):
     pass
 
 
-def _get_address_parameters(address: Optional[str]) -> Set[str]:
+def _get_address_parameters(address: Optional[str]) -> set[str]:
     if address is None:
         return set()
     parameters = _PARAMETER_PATTERN.findall(address)
@@ -578,7 +573,7 @@ def _get_address_parameters(address: Optional[str]) -> Set[str]:
 
 class Headers(Mapping[str, str]):
 
-    def __init__(self, raw_list: Iterable[Tuple[bytes, bytes]]) -> None:
+    def __init__(self, raw_list: Iterable[tuple[bytes, bytes]]) -> None:
         self.raw_list = list(raw_list)
 
     def __getitem__(self, key: str, /) -> str:

@@ -1,7 +1,7 @@
 import os
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Annotated
-from typing import AsyncGenerator
 
 import amgi_aiokafka
 from asyncfast import AsyncFast
