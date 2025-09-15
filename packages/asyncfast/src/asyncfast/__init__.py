@@ -317,6 +317,35 @@ def _generate_annotations(
             yield name, Annotated[annotation, Payload()]  # type: ignore[misc]
 
 
+async def _handle_async_generator(
+    handler: Callable[..., AsyncGenerator[Any, None]],
+    arguments: dict[str, Any],
+    send: AMGISendCallable,
+) -> None:
+    agen = handler(**arguments)
+    exception: Optional[Exception] = None
+    while True:
+        try:
+            if exception is None:
+                send_message = await agen.__anext__()
+            else:
+                send_message = await agen.athrow(exception)
+            try:
+                message_send_event: MessageSendEvent = {
+                    "type": "message.send",
+                    "address": send_message["address"],
+                    "headers": send_message["headers"],
+                    "payload": send_message.get("payload"),
+                }
+                await send(message_send_event)
+            except Exception as e:
+                exception = e
+            else:
+                exception = None
+        except StopAsyncIteration:
+            break
+
+
 class Channel:
 
     def __init__(
@@ -403,22 +432,7 @@ class Channel:
                 arguments = dict(self._generate_arguments(message, parameters))
 
                 if inspect.isasyncgenfunction(self._handler):
-                    agen = self._handler(**arguments)
-                    while True:
-                        try:
-                            send_message = await agen.__anext__()
-                            try:
-                                message_send_event: MessageSendEvent = {
-                                    "type": "message.send",
-                                    "address": send_message["address"],
-                                    "headers": send_message["headers"],
-                                    "payload": send_message.get("payload"),
-                                }
-                                await send(message_send_event)
-                            except Exception as e:
-                                await agen.athrow(e)
-                        except StopAsyncIteration:
-                            break
+                    await _handle_async_generator(self._handler, arguments, send)
                 else:
                     await self._handler(**arguments)
 
