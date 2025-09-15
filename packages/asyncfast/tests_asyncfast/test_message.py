@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from collections.abc import Generator
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Annotated
@@ -31,6 +32,38 @@ async def test_message_payload() -> None:
 
     @app.channel("topic")
     async def topic_handler(payload: MessagePayload) -> None:
+        test_mock(payload)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+        "payload": b'{"id":1}',
+    }
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(MessagePayload(id=1))
+
+
+async def test_message_payload_sync() -> None:
+    app = AsyncFast()
+
+    class MessagePayload(BaseModel):
+        id: int
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    def topic_handler(payload: MessagePayload) -> None:
         test_mock(payload)
 
     message_scope: MessageScope = {
@@ -594,6 +627,68 @@ async def test_message_sending_dict_post_error() -> None:
 
     @app.channel("topic")
     async def topic_handler() -> AsyncGenerator[dict[str, Any], None]:
+        try:
+            yield {
+                "address": "error",
+                "payload": b"1",
+                "headers": [],
+            }
+        except Exception:
+            yield {
+                "address": "not_error",
+                "payload": b"1",
+                "headers": [],
+            }
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+    }
+    send_mock = AsyncMock(side_effect=send_mock)
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
+        send_mock,
+    )
+
+    send_mock.assert_has_awaits(
+        [
+            call(
+                {
+                    "type": "message.send",
+                    "address": "error",
+                    "headers": [],
+                    "payload": b"1",
+                }
+            ),
+            call(
+                {
+                    "type": "message.send",
+                    "address": "not_error",
+                    "headers": [],
+                    "payload": b"1",
+                }
+            ),
+            call({"type": "message.ack", "id": "id-1"}),
+        ]
+    )
+
+
+async def test_message_sending_dict_post_error_sync() -> None:
+    app = AsyncFast()
+
+    def send_mock(event: AMGISendEvent) -> None:
+        if event["type"] == "message.send" and event["address"] == "error":
+            raise Exception("test")
+
+    @app.channel("topic")
+    def topic_handler() -> Generator[dict[str, Any], None, None]:
         try:
             yield {
                 "address": "error",

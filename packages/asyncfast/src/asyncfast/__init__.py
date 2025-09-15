@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import json
 import re
@@ -180,9 +181,9 @@ class AsyncFast:
 
         messages = []
         return_annotation = signature.return_annotation
-        if (
-            return_annotation is not Signature.empty
-            and get_origin(return_annotation) is AsyncGenerator
+        if return_annotation is not Signature.empty and (
+            get_origin(return_annotation) is AsyncGenerator
+            or get_origin(return_annotation) is Generator
         ):
             async_generator_type = get_args(return_annotation)[0]
             if get_origin(async_generator_type) is Union:  # type: ignore[comparison-overlap]
@@ -346,6 +347,41 @@ async def _handle_async_generator(
             break
 
 
+def _throw_or_none(gen: Generator[Any, None, None], exception: Exception) -> Any:
+    try:
+        return gen.throw(exception)
+    except StopIteration:
+        return None
+
+
+async def _handle_generator(
+    handler: Callable[..., Generator[Any, None, None]],
+    arguments: dict[str, Any],
+    send: AMGISendCallable,
+) -> None:
+    gen = handler(**arguments)
+    exception: Optional[Exception] = None
+    while True:
+        if exception is None:
+            send_message = await asyncio.to_thread(next, gen, None)
+        else:
+            send_message = await asyncio.to_thread(_throw_or_none, gen, exception)
+        if send_message is None:
+            break
+        try:
+            message_send_event: MessageSendEvent = {
+                "type": "message.send",
+                "address": send_message["address"],
+                "headers": send_message["headers"],
+                "payload": send_message.get("payload"),
+            }
+            await send(message_send_event)
+        except Exception as e:
+            exception = e
+        else:
+            exception = None
+
+
 class Channel:
 
     def __init__(
@@ -433,8 +469,12 @@ class Channel:
 
                 if inspect.isasyncgenfunction(self._handler):
                     await _handle_async_generator(self._handler, arguments, send)
-                else:
+                elif inspect.isgeneratorfunction(self._handler):
+                    await _handle_generator(self._handler, arguments, send)
+                elif inspect.iscoroutinefunction(self._handler):
                     await self._handler(**arguments)
+                else:
+                    await asyncio.to_thread(self._handler, **arguments)
 
                 message_ack_event: MessageAckEvent = {
                     "type": "message.ack",
