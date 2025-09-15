@@ -22,6 +22,11 @@ from asyncfast import Payload
 from pydantic import BaseModel
 
 
+class IsStrMatcher:
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, str)
+
+
 async def test_message_payload() -> None:
     app = AsyncFast()
 
@@ -739,4 +744,34 @@ async def test_message_sending_dict_post_error_sync() -> None:
             ),
             call({"type": "message.ack", "id": "id-1"}),
         ]
+    )
+
+
+async def test_message_invalid_payload_nack() -> None:
+    app = AsyncFast()
+
+    @app.channel("topic")
+    async def topic_handler(id: int) -> None:
+        pass
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+        "payload": b"not_an_int",
+    }
+    send_mock = AsyncMock()
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
+        send_mock,
+    )
+
+    send_mock.assert_awaited_once_with(
+        {"type": "message.nack", "id": "id-1", "message": IsStrMatcher()}
     )
