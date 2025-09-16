@@ -1,3 +1,13 @@
+## 0.13.0 (2025-09-16)
+
+### Feat
+
+- add support for synchronous handlers
+
+### Fix
+
+- send messages yielded during an athrow while handling an asynchronous generator
+
 ## 0.12.2 (2025-09-14)
 
 ### Fix

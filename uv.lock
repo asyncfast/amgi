@@ -82,7 +82,7 @@ wheels = [
 
 [[package]]
 name = "amgi"
-version = "0.12.2"
+version = "0.13.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
@@ -125,7 +125,7 @@ dev = [
 
 [[package]]
 name = "amgi-aiokafka"
-version = "0.12.2"
+version = "0.13.0"
 source = { editable = "packages/amgi-aiokafka" }
 dependencies = [
     { name = "aiokafka" },
@@ -150,12 +150,12 @@ dev = [{ name = "testcontainers", extras = ["kafka"], specifier = ">=4.12.0" }]
 
 [[package]]
 name = "amgi-common"
-version = "0.12.2"
+version = "0.13.0"
 source = { editable = "packages/amgi-common" }
 
 [[package]]
 name = "amgi-types"
-version = "0.12.2"
+version = "0.13.0"
 source = { editable = "packages/amgi-types" }
 
 [[package]]
@@ -187,7 +187,7 @@ wheels = [
 
 [[package]]
 name = "asyncfast"
-version = "0.12.2"
+version = "0.13.0"
 source = { editable = "packages/asyncfast" }
 dependencies = [
     { name = "amgi-types" },

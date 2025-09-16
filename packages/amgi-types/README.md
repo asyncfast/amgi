@@ -7,7 +7,7 @@ AMGI will be here very soon
 ## Installation
 
 ```
-pip install amgi-types==0.12.2
+pip install amgi-types==0.13.0
 ```
 
 ## Contact
