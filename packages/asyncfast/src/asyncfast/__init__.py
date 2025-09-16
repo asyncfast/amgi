@@ -318,6 +318,18 @@ def _generate_annotations(
             yield name, Annotated[annotation, Payload()]  # type: ignore[misc]
 
 
+async def _send_message(
+    send_message: Mapping[str, Any], send: AMGISendCallable
+) -> None:
+    message_send_event: MessageSendEvent = {
+        "type": "message.send",
+        "address": send_message["address"],
+        "headers": send_message["headers"],
+        "payload": send_message.get("payload"),
+    }
+    await send(message_send_event)
+
+
 async def _handle_async_generator(
     handler: Callable[..., AsyncGenerator[Any, None]],
     arguments: dict[str, Any],
@@ -332,13 +344,7 @@ async def _handle_async_generator(
             else:
                 send_message = await agen.athrow(exception)
             try:
-                message_send_event: MessageSendEvent = {
-                    "type": "message.send",
-                    "address": send_message["address"],
-                    "headers": send_message["headers"],
-                    "payload": send_message.get("payload"),
-                }
-                await send(message_send_event)
+                await _send_message(send_message, send)
             except Exception as e:
                 exception = e
             else:
@@ -369,13 +375,7 @@ async def _handle_generator(
         if send_message is None:
             break
         try:
-            message_send_event: MessageSendEvent = {
-                "type": "message.send",
-                "address": send_message["address"],
-                "headers": send_message["headers"],
-                "payload": send_message.get("payload"),
-            }
-            await send(message_send_event)
+            await _send_message(send_message, send)
         except Exception as e:
             exception = e
         else:
