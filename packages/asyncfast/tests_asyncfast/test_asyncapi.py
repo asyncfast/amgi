@@ -3,11 +3,13 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Annotated
 from typing import Union
+from uuid import UUID
 
 from asyncfast import AsyncFast
 from asyncfast import Header
 from asyncfast import Message
 from asyncfast import Payload
+from asyncfast.bindings import KafkaKey
 from pydantic import BaseModel
 
 
@@ -570,5 +572,41 @@ def test_asyncapi_send_multiple() -> None:
             },
             "sendSendA": {"action": "send", "channel": {"$ref": "#/channels/SendA"}},
             "sendSendB": {"action": "send", "channel": {"$ref": "#/channels/SendB"}},
+        },
+    }
+
+
+async def test_asyncapi_binding_kafka_key() -> None:
+    app = AsyncFast()
+
+    @app.channel("topic")
+    async def topic_handler(key: Annotated[UUID, KafkaKey()]) -> None:
+        pass
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "TopicHandler": {
+                "address": "topic",
+                "messages": {
+                    "TopicHandlerMessage": {
+                        "$ref": "#/components/messages/TopicHandlerMessage"
+                    }
+                },
+            }
+        },
+        "components": {
+            "messages": {
+                "TopicHandlerMessage": {
+                    "bindings": {"kafka": {"key": {"format": "uuid", "type": "string"}}}
+                }
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveTopicHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/TopicHandler"},
+            }
         },
     }

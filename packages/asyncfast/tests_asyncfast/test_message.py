@@ -19,6 +19,7 @@ from asyncfast import AsyncFast
 from asyncfast import Header
 from asyncfast import Message
 from asyncfast import Payload
+from asyncfast.bindings import KafkaKey
 from pydantic import BaseModel
 
 
@@ -775,3 +776,32 @@ async def test_message_invalid_payload_nack() -> None:
     send_mock.assert_awaited_once_with(
         {"type": "message.nack", "id": "id-1", "message": IsStrMatcher()}
     )
+
+
+async def test_message_binding_kafka_key() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(key: Annotated[int, KafkaKey()]) -> None:
+        test_mock(key)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+        "bindings": {"kafka": {"key": b"1234"}},
+    }
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(1234)
