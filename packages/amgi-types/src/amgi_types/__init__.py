@@ -1,6 +1,7 @@
 import sys
 from collections.abc import Awaitable
 from collections.abc import Iterable
+from typing import Any
 from typing import Callable
 from typing import Literal
 from typing import Optional
@@ -60,6 +61,7 @@ class MessageReceiveEvent(TypedDict):
     id: str
     headers: Iterable[tuple[bytes, bytes]]
     payload: NotRequired[Optional[bytes]]
+    bindings: NotRequired[dict[str, dict[str, Any]]]
     more_messages: NotRequired[bool]
 
 
@@ -79,6 +81,7 @@ class MessageSendEvent(TypedDict):
     address: str
     headers: Iterable[tuple[bytes, bytes]]
     payload: NotRequired[Optional[bytes]]
+    bindings: NotRequired[dict[str, dict[str, Any]]]
 
 
 Scope = Union[MessageScope, LifespanScope]

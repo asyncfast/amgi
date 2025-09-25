@@ -96,7 +96,7 @@ async def test_message(
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
 
-    await producer.send_and_wait(topic, b"test", headers=[("test", b"test")])
+    await producer.send_and_wait(topic, b"value", b"key", headers=[("test", b"test")])
     async with app.call() as (scope, receive, send):
         assert scope == {
             "address": topic,
@@ -109,7 +109,8 @@ async def test_message(
             "headers": [(b"test", b"test")],
             "id": f"{topic}:0:0",
             "more_messages": False,
-            "payload": b"test",
+            "payload": b"value",
+            "bindings": {"kafka": {"key": b"key"}},
             "type": "message.receive",
         }
 
@@ -142,5 +143,34 @@ async def test_message_send(
         assert message.topic == send_topic
         assert message.value == b"test"
         assert message.headers == (("test", b"test"),)
+
+    await producer.stop()
+
+
+async def test_message_send_kafka_key(
+    bootstrap_server: str, server: Server, app: MockApp, topic: str
+) -> None:
+    producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
+    await producer.start()
+
+    await producer.send_and_wait(topic, b"")
+    send_topic = f"send-{uuid4()}"
+
+    async with AIOKafkaConsumer(
+        send_topic, bootstrap_servers=bootstrap_server
+    ) as consumer:
+        async with app.call() as (scope, receive, send):
+            await send(
+                {
+                    "type": "message.send",
+                    "address": send_topic,
+                    "headers": [],
+                    "bindings": {"kafka": {"key": b"test"}},
+                }
+            )
+
+        message = await consumer.getone()
+        assert message.topic == send_topic
+        assert message.key == b"test"
 
     await producer.stop()

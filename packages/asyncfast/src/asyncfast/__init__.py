@@ -32,6 +32,7 @@ from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 from amgi_types import Scope
+from asyncfast.bindings import Binding
 from pydantic import BaseModel
 from pydantic import create_model
 from pydantic import TypeAdapter
@@ -42,7 +43,6 @@ from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
 from typing_extensions import get_args
 from typing_extensions import get_origin
-
 
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
 
@@ -213,6 +213,12 @@ class AsyncFast:
             if isinstance(get_args(annotated)[1], Payload)
         ]
 
+        bindings = {
+            name: TypeAdapter(annotated)
+            for name, annotated in annotations
+            if isinstance(get_args(annotated)[1], Binding)
+        }
+
         assert len(payloads) <= 1, "Channel must have no more than 1 payload"
 
         payload = payloads[0] if len(payloads) == 1 else None
@@ -220,7 +226,14 @@ class AsyncFast:
         address_pattern = _address_pattern(address)
 
         channel = Channel(
-            address, address_pattern, function, headers, parameters, payload, messages
+            address,
+            address_pattern,
+            function,
+            headers,
+            parameters,
+            payload,
+            messages,
+            bindings,
         )
 
         self._channels.append(channel)
@@ -277,6 +290,11 @@ class AsyncFast:
         self,
     ) -> Generator[tuple[int, JsonSchemaMode, CoreSchema], None, None]:
         for channel in self._channels:
+            for type_adapter in channel._bindings.values():
+                yield hash(
+                    type_adapter._type
+                ), "serialization", type_adapter.core_schema
+
             headers_model = channel.headers_model
             if headers_model:
                 yield hash(headers_model), "serialization", TypeAdapter(
@@ -393,6 +411,7 @@ class Channel:
         parameters: Mapping[str, TypeAdapter[Any]],
         payload: Optional[tuple[str, TypeAdapter[Any]]],
         messages: Sequence[type[Message]],
+        bindings: Mapping[str, TypeAdapter[Any]],
     ) -> None:
         self._address = address
         self._address_pattern = address_pattern
@@ -401,6 +420,7 @@ class Channel:
         self._parameters = parameters
         self._payload = payload
         self._messages = messages
+        self._bindings = bindings
 
     @property
     def address(self) -> str:
@@ -518,6 +538,18 @@ class Channel:
             for name, type_adapter in self._parameters.items():
                 yield name, type_adapter.validate_python(parameters[name])
 
+        if self._bindings:
+            bindings = message_receive_event.get("bindings", {})
+            for name, type_adapter in self._bindings.items():
+                binding_type = get_args(type_adapter._type)[1]
+                assert isinstance(binding_type, Binding)
+
+                value = bindings
+                for section in binding_type.__path__:
+                    value = value.get(section, {})
+
+                yield name, type_adapter.validate_python(value)
+
 
 def _generate_messages(
     channels: Iterable[Channel],
@@ -538,6 +570,20 @@ def _generate_messages(
             message["payload"] = field_mapping[
                 hash(type_adapter._type), "serialization"
             ]
+
+        if channel._bindings:
+            bindings: dict[str, dict[str, Any]] = {}
+            for type_adapter in channel._bindings.values():
+                binding_type = get_args(type_adapter._type)[1]
+                assert isinstance(binding_type, Binding)
+
+                binding = bindings
+                *parent, name = binding_type.__path__
+                for section in parent:
+                    binding = binding.setdefault(section, {})
+
+                binding[name] = field_mapping[hash(type_adapter._type), "serialization"]
+            message["bindings"] = bindings
 
         yield f"{channel.title}Message", message
 

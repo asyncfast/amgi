@@ -78,6 +78,7 @@ class _RecordsEvents:
             "id": message_receive_id,
             "headers": encoded_headers,
             "payload": record.value,
+            "bindings": {"kafka": {"key": record.key}},
             "more_messages": len(self._deque) != 0,
         }
         return message_receive_event
@@ -168,8 +169,13 @@ class Server:
     async def _message_send(self, event: MessageSendEvent) -> None:
         producer = await self._get_producer()
         encoded_headers = [(key.decode(), value) for key, value in event["headers"]]
+
+        key = event.get("bindings", {}).get("kafka", {}).get("key")
         await producer.send(
-            event["address"], headers=encoded_headers, value=event.get("payload")
+            event["address"],
+            headers=encoded_headers,
+            value=event.get("payload"),
+            key=key,
         )
 
     def stop(self) -> None:
