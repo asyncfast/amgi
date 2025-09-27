@@ -610,3 +610,49 @@ async def test_asyncapi_binding_kafka_key() -> None:
             }
         },
     }
+
+
+def test_asyncapi_send_binding_kafka_key() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Send(Message, address="send"):
+        key: Annotated[UUID, KafkaKey()]
+
+    @app.channel("receive")
+    async def receive_handler() -> AsyncGenerator[Send, None]:
+        yield Send(key=UUID("8291bc91-b884-4a1d-a738-0833cde15b84"))
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "ReceiveHandler": {
+                "address": "receive",
+                "messages": {
+                    "ReceiveHandlerMessage": {
+                        "$ref": "#/components/messages/ReceiveHandlerMessage"
+                    }
+                },
+            },
+            "Send": {
+                "address": "send",
+                "messages": {"Send": {"$ref": "#/components/messages/Send"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "ReceiveHandlerMessage": {},
+                "Send": {
+                    "bindings": {"kafka": {"key": {"format": "uuid", "type": "string"}}}
+                },
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveReceiveHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/ReceiveHandler"},
+            },
+            "sendSend": {"action": "send", "channel": {"$ref": "#/channels/Send"}},
+        },
+    }

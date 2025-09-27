@@ -4,6 +4,7 @@ from uuid import UUID
 
 from asyncfast import Header
 from asyncfast import Message
+from asyncfast.bindings import KafkaKey
 from pydantic import BaseModel
 
 
@@ -34,7 +35,6 @@ def test_message_header() -> None:
     assert dict(response) == {
         "address": "response_channel",
         "headers": [(b"id", b"100")],
-        "payload": None,
     }
 
 
@@ -48,7 +48,6 @@ def test_message_parameter() -> None:
     assert dict(response) == {
         "address": "register.ec5e9f87-c896-4fb1-b028-8352ef654e05",
         "headers": [],
-        "payload": None,
     }
 
 
@@ -62,5 +61,18 @@ def test_message_header_string() -> None:
     assert dict(response) == {
         "address": "response_channel",
         "headers": [(b"id", b"ec5e9f87-c896-4fb1-b028-8352ef654e05")],
-        "payload": None,
+    }
+
+
+def test_message_binding_kafka_key() -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        key: Annotated[UUID, KafkaKey()]
+
+    response = Response(key=UUID("ec5e9f87-c896-4fb1-b028-8352ef654e05"))
+
+    assert dict(response) == {
+        "address": "response_channel",
+        "bindings": {"kafka": {"key": b"ec5e9f87-c896-4fb1-b028-8352ef654e05"}},
+        "headers": [],
     }
