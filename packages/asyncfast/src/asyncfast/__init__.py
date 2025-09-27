@@ -154,12 +154,9 @@ class Message(Mapping[str, Any]):
             binding_type = get_args(type_adapter._type)[1]
             assert isinstance(binding_type, Binding)
 
-            binding = bindings
-            *parent, binding_name = binding_type.__path__
-            for section in parent:
-                binding = binding.setdefault(section, {})
-
-            binding[binding_name] = self._get_value(name, type_adapter)  # type: ignore
+            bindings.setdefault(binding_type.__protocol__, {})[
+                binding_type.__field_name__
+            ] = self._get_value(name, type_adapter)
         return bindings
 
 
@@ -579,11 +576,11 @@ class Channel:
                 binding_type = get_args(type_adapter._type)[1]
                 assert isinstance(binding_type, Binding)
 
-                value = bindings
-                for section in binding_type.__path__:
-                    value = value.get(section, {})
-
-                yield name, type_adapter.validate_python(value)
+                yield name, type_adapter.validate_python(
+                    bindings.get(binding_type.__protocol__, {}).get(
+                        binding_type.__field_name__
+                    )
+                )
 
 
 def _generate_messages(
@@ -613,12 +610,9 @@ def _generate_messages(
                 binding_type = get_args(type_adapter._type)[1]
                 assert isinstance(binding_type, Binding)
 
-                binding = bindings
-                *parent, name = binding_type.__path__
-                for section in parent:
-                    binding = binding.setdefault(section, {})
-
-                binding[name] = field_mapping[hash(type_adapter._type), "serialization"]
+                bindings.setdefault(binding_type.__protocol__, {})[
+                    binding_type.__field_name__
+                ] = field_mapping[hash(type_adapter._type), "serialization"]
             message["bindings"] = bindings
 
         yield f"{channel.title}Message", message
@@ -638,14 +632,9 @@ def _generate_messages(
                     binding_type = get_args(type_adapter._type)[1]
                     assert isinstance(binding_type, Binding)
 
-                    binding = bindings
-                    *parent, name = binding_type.__path__
-                    for section in parent:
-                        binding = binding.setdefault(section, {})
-
-                    binding[name] = field_mapping[
-                        hash(type_adapter._type), "serialization"
-                    ]
+                    bindings.setdefault(binding_type.__protocol__, {})[
+                        binding_type.__field_name__
+                    ] = field_mapping[hash(type_adapter._type), "serialization"]
                 message_message["bindings"] = bindings
 
             yield channel_message.__name__, message_message
