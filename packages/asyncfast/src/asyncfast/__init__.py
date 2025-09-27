@@ -57,6 +57,7 @@ class Message(Mapping[str, Any]):
     __headers__: ClassVar[dict[str, TypeAdapter[Any]]]
     __parameters__: ClassVar[dict[str, TypeAdapter[Any]]]
     __payload__: ClassVar[Optional[tuple[str, TypeAdapter[Any]]]]
+    __bindings__: ClassVar[dict[str, TypeAdapter[Any]]]
 
     def __init_subclass__(cls, address: Optional[str] = None, **kwargs: Any) -> None:
         cls.__address__ = address
@@ -74,6 +75,12 @@ class Message(Mapping[str, Any]):
             if isinstance(get_args(annotated)[1], Parameter)
         }
 
+        bindings = {
+            name: TypeAdapter(annotated)
+            for name, annotated in annotations
+            if isinstance(get_args(annotated)[1], Binding)
+        }
+
         payloads = [
             (name, TypeAdapter(annotated))
             for name, annotated in annotations
@@ -87,21 +94,30 @@ class Message(Mapping[str, Any]):
         cls.__headers__ = headers
         cls.__parameters__ = parameters
         cls.__payload__ = payload
+        cls.__bindings__ = bindings
 
     def __getitem__(self, key: str, /) -> Any:
         if key == "address":
             return self._get_address()
         elif key == "headers":
             return self._get_headers()
-        elif key == "payload":
+        elif key == "payload" and self.__payload__:
             return self._get_payload()
+        elif key == "bindings" and self.__bindings__:
+            return self._get_bindings()
         raise KeyError(key)
 
     def __len__(self) -> int:
-        return 3
+        payload = 1 if self.__payload__ else 0
+        bindings = 1 if self.__bindings__ else 0
+        return 2 + payload + bindings
 
     def __iter__(self) -> Iterator[str]:
-        return iter(("address", "headers", "payload"))
+        yield from ("address", "headers")
+        if self.__payload__:
+            yield "payload"
+        if self.__bindings__:
+            yield "bindings"
 
     def _get_address(self) -> Optional[str]:
         if self.__address__ is None:
@@ -131,6 +147,20 @@ class Message(Mapping[str, Any]):
             return None
         name, type_adapter = self.__payload__
         return type_adapter.dump_json(getattr(self, name))
+
+    def _get_bindings(self) -> dict[str, dict[str, Any]]:
+        bindings: dict[str, dict[str, Any]] = {}
+        for name, type_adapter in self.__bindings__.items():
+            binding_type = get_args(type_adapter._type)[1]
+            assert isinstance(binding_type, Binding)
+
+            binding = bindings
+            *parent, binding_name = binding_type.__path__
+            for section in parent:
+                binding = binding.setdefault(section, {})
+
+            binding[binding_name] = self._get_value(name, type_adapter)  # type: ignore
+        return bindings
 
 
 def _generate_message_annotations(
@@ -311,6 +341,11 @@ class AsyncFast:
                 if message.__payload__:
                     _, type_adapter = message.__payload__
 
+                    yield hash(
+                        type_adapter._type
+                    ), "serialization", type_adapter.core_schema
+
+                for type_adapter in message.__bindings__.values():
                     yield hash(
                         type_adapter._type
                     ), "serialization", type_adapter.core_schema
@@ -571,8 +606,9 @@ def _generate_messages(
                 hash(type_adapter._type), "serialization"
             ]
 
+        bindings: dict[str, dict[str, Any]]
         if channel._bindings:
-            bindings: dict[str, dict[str, Any]] = {}
+            bindings = {}
             for type_adapter in channel._bindings.values():
                 binding_type = get_args(type_adapter._type)[1]
                 assert isinstance(binding_type, Binding)
@@ -595,6 +631,22 @@ def _generate_messages(
                 message_message["payload"] = field_mapping[
                     hash(type_adapter._type), "serialization"
                 ]
+
+            if channel_message.__bindings__:
+                bindings = {}
+                for type_adapter in channel_message.__bindings__.values():
+                    binding_type = get_args(type_adapter._type)[1]
+                    assert isinstance(binding_type, Binding)
+
+                    binding = bindings
+                    *parent, name = binding_type.__path__
+                    for section in parent:
+                        binding = binding.setdefault(section, {})
+
+                    binding[name] = field_mapping[
+                        hash(type_adapter._type), "serialization"
+                    ]
+                message_message["bindings"] = bindings
 
             yield channel_message.__name__, message_message
 
