@@ -1,3 +1,14 @@
+## 0.14.0 (2025-09-28)
+
+### Feat
+
+- add support for bindings to the message class
+- add initial support for bindings
+
+### Refactor
+
+- simplify binding by using protocol, and field name instead of path
+
 ## 0.13.1 (2025-09-16)
 
 ### Refactor
