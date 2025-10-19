@@ -11,6 +11,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [  ]
 
@@ -30,6 +31,12 @@ dev = [
   "sphinx-multiproject>=1.0.0",
   "tox>=4.28.4",
   "tox-uv>=1.27.0",
+]
+
+[tool.uv.workspace]
+members = [
+  "packages/*",
+  "examples/*",
 ]
 
 [tool.pytest.ini_options]
@@ -53,12 +60,6 @@ strict_equality = true
 strict_bytes = true
 extra_checks = true
 allow_untyped_decorators = true
-
-[tool.uv.workspace]
-members = [
-  "packages/*",
-  "examples/*",
-]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
