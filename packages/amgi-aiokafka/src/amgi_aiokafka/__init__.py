@@ -7,6 +7,7 @@ from asyncio import Lock
 from collections import deque
 from collections.abc import Awaitable
 from collections.abc import Iterable
+from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import Union
@@ -117,13 +118,13 @@ class Server:
             enable_auto_commit=False,
         )
         async with self._consumer:
-            async with Lifespan(self._app):
-                await self._main_loop()
+            async with Lifespan(self._app) as state:
+                await self._main_loop(state)
 
         if self._producer is not None:
             await self._producer.stop()
 
-    async def _main_loop(self) -> None:
+    async def _main_loop(self, state: dict[str, Any]) -> None:
         loop = asyncio.get_running_loop()
         stop_task = loop.create_task(self._stop_event.wait())
         while True:
@@ -146,6 +147,7 @@ class Server:
                         "type": "message",
                         "amgi": {"version": "1.0", "spec_version": "1.0"},
                         "address": topic_partition.topic,
+                        "state": state.copy(),
                     }
 
                     records_events = _RecordsEvents(

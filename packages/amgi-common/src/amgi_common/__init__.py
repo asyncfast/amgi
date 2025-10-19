@@ -2,6 +2,7 @@ import asyncio
 from asyncio import Event
 from asyncio import Queue
 from types import TracebackType
+from typing import Any
 from typing import Optional
 from typing import Union
 
@@ -22,8 +23,9 @@ class Lifespan:
 
         self._startup_event = Event()
         self._shutdown_event = Event()
+        self._state: dict[str, Any] = {}
 
-    async def __aenter__(self) -> None:
+    async def __aenter__(self) -> dict[str, Any]:
         loop = asyncio.get_running_loop()
         self.main_task = loop.create_task(self._main())
 
@@ -32,11 +34,13 @@ class Lifespan:
         }
         await self._receive_queue.put(startup_event)
         await self._startup_event.wait()
+        return self._state
 
     async def _main(self) -> None:
         scope: LifespanScope = {
             "type": "lifespan",
             "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "state": self._state,
         }
         await self._app(
             scope,
