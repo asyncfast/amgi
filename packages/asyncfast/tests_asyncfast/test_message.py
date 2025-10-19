@@ -805,3 +805,37 @@ async def test_message_binding_kafka_key() -> None:
     )
 
     test_mock.assert_called_once_with(1234)
+
+
+@pytest.mark.parametrize(
+    ["bindings", "expected_key"], (({}, None), ({"kafka": {"key": b"1234"}}, 1234))
+)
+async def test_message_binding_default_kafka_key(
+    bindings: dict[str, Any], expected_key: Optional[int]
+) -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(key: Annotated[Optional[int], KafkaKey()] = None) -> None:
+        test_mock(key)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+        "bindings": bindings,
+    }
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(expected_key)
