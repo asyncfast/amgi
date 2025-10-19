@@ -7,7 +7,7 @@ AMGI will be here very soon
 ## Installation
 
 ```
-pip install amgi-common==0.14.0
+pip install amgi-common==0.15.0
 ```
 
 ## Contact

@@ -5,7 +5,7 @@ requires = [ "uv-build>=0.8.4,<0.9" ]
 
 [project]
 name = "amgi-aiokafka"
-version = "0.14.0"
+version = "0.15.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -26,8 +26,8 @@ classifiers = [
 
 dependencies = [
   "aiokafka>=0.12",
-  "amgi-common==0.14.0",
-  "amgi-types==0.14.0",
+  "amgi-common==0.15.0",
+  "amgi-types==0.15.0",
 ]
 
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"

@@ -1,3 +1,13 @@
+## 0.15.0 (2025-10-19)
+
+### Feat
+
+- add state to scopes, allowing startup to store state
+
+### Fix
+
+- use fixed version of pydantic
+
 ## 0.14.0 (2025-09-28)
 
 ### Feat
