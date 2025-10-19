@@ -23,11 +23,13 @@ class MessageScope(TypedDict):
     type: Literal["message"]
     amgi: AMGIVersions
     address: str
+    state: NotRequired[dict[str, Any]]
 
 
 class LifespanScope(TypedDict):
     type: Literal["lifespan"]
     amgi: AMGIVersions
+    state: NotRequired[dict[str, Any]]
 
 
 class LifespanStartupEvent(TypedDict):

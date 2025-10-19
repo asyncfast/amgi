@@ -61,8 +61,13 @@ def topic() -> str:
 
 
 @pytest.fixture
+def state_item() -> str:
+    return f"state-{uuid4()}"
+
+
+@pytest.fixture
 async def server(
-    bootstrap_server: str, app: MockApp, topic: str
+    bootstrap_server: str, app: MockApp, topic: str, state_item: str
 ) -> AsyncGenerator[Server, None]:
     server = Server(
         app,
@@ -76,7 +81,9 @@ async def server(
         assert scope == {
             "amgi": {"spec_version": "1.0", "version": "1.0"},
             "type": "lifespan",
+            "state": {},
         }
+        scope["state"]["item"] = state_item
         lifespan_startup = await receive()
         assert lifespan_startup == {"type": "lifespan.startup"}
         await send({"type": "lifespan.startup.complete"})
@@ -90,7 +97,7 @@ async def server(
 
 
 async def test_message(
-    bootstrap_server: str, server: Server, app: MockApp, topic: str
+    bootstrap_server: str, server: Server, app: MockApp, topic: str, state_item: str
 ) -> None:
 
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
@@ -102,6 +109,7 @@ async def test_message(
             "address": topic,
             "amgi": {"spec_version": "1.0", "version": "1.0"},
             "type": "message",
+            "state": {"item": state_item},
         }
 
         message_receive = await receive()
