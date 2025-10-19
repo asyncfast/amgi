@@ -204,7 +204,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "amgi-types", editable = "packages/amgi-types" },
-    { name = "pydantic", specifier = ">=2.11.7" },
+    { name = "pydantic", specifier = "==2.11.7" },
     { name = "typer", specifier = ">=0.16.0" },
 ]
 
