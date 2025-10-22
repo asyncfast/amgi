@@ -87,7 +87,6 @@ class AsyncFastExample(Directive):
         ]
 
         self.state_machine.insert_input(lines, source=doc_source_name)
-
         return []
 
 
