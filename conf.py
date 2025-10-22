@@ -11,7 +11,14 @@ release = "0.15.2"
 exclude_patterns = ["_build", ".venv"]
 
 
-extensions = ["multiproject", "sphinx_inline_tabs", "sphinx_copybutton"]
+extensions = [
+    "multiproject",
+    "sphinx_inline_tabs",
+    "sphinx_copybutton",
+    "sphinx.ext.intersphinx",
+]
+
+intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
 
 multiproject_projects = {
@@ -19,6 +26,13 @@ multiproject_projects = {
         "path": "packages/asyncfast/docs/",
         "config": {
             "project": "AsyncFast",
+        },
+        "use_config_file": False,
+    },
+    "amgi": {
+        "path": "docs/",
+        "config": {
+            "project": "AMGI",
         },
         "use_config_file": False,
     },
