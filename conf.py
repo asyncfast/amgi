@@ -11,11 +11,7 @@ release = "0.15.2"
 exclude_patterns = ["_build", ".venv"]
 
 
-extensions = ["multiproject", "myst_parser", "sphinx_inline_tabs", "sphinx_copybutton"]
-
-myst_enable_extensions = [
-    "fieldlist",
-]
+extensions = ["multiproject", "sphinx_inline_tabs", "sphinx_copybutton"]
 
 
 multiproject_projects = {
@@ -35,7 +31,6 @@ if current_project == "asyncfast":
     sys.path.append(
         str((Path(".") / "packages" / "asyncfast" / "docs" / "_ext").resolve())
     )
-    print(sys.path)
 
     extensions += ["async_fast_example"]
 
