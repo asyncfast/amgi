@@ -4,10 +4,10 @@
 
 The project is structured as a monorepo, with all deployed packages within the `packages/` directory.
 
-uv is used as the package and project manager. Instructions for installation are available
+uv is used as the package, and project management tool. Instructions for installation are available
 [here][uv installation].
 
-When first installing the project run:
+When first installing the project, run:
 
 ```commandline
 uv sync --all-packages
@@ -20,14 +20,14 @@ This will install all packages, and development dependencies.
 The git branching model used is [Trunk-based development]. A linear code history must be preserved with all commits in
 the [Conventional Commits] style.
 
-[Commitizen] is included with the development dependencies, and can be run with writing Conventional Style commits with the `cz commit` command.
+[Commitizen] is included with the development dependencies, and can be used to help writing Conventional Style commits with the `cz commit` command.
 
 ### Tests
 
-Tests are runnable via [tox], this will run against multiple Python versions. This is also installed along with the
+Tests are runnable via [tox], which will run against multiple Python versions. This is also installed along with the
 development dependencies.
 
-[pre-commit] is also ran along with all the tests.
+[pre-commit] is also run along with all the tests.
 
 All tests should be written with [pytest], and any integration test should use [testcontainers-python].
 
