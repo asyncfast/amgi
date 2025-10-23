@@ -20,8 +20,8 @@ instead of ``topic`` etc.
  AMGI
 ******
 
-AMGI (Asynchronous Messaging Gateway Interface) is the spiritual sibling of ASGI_. While the focus of ASGI_ is HTTP, the
-focus here is event-based applications.
+AMGI_ (Asynchronous Messaging Gateway Interface) is the spiritual sibling of ASGI_. While the focus of ASGI_ is HTTP,
+the focus here is event-based applications.
 
 .. warning::
 
@@ -77,6 +77,8 @@ Taking ideas from:
 
    receiving
    sending
+
+.. _amgi: https://amgi.readthedocs.io/en/latest/
 
 .. _asgi: https://asgi.readthedocs.io/en/latest/
 
