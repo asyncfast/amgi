@@ -2,7 +2,8 @@ version = 1
 revision = 3
 requires-python = ">=3.9"
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "python_full_version >= '3.9.2' and python_full_version < '3.10'",
+    "python_full_version < '3.9.2'",
     "python_full_version >= '3.10'",
 ]
 
@@ -14,6 +15,7 @@ members = [
     "amgi-types",
     "asyncfast",
     "kafka-example",
+    "test-utils",
 ]
 
 [[package]]
@@ -131,6 +133,7 @@ dependencies = [
     { name = "aiokafka" },
     { name = "amgi-common" },
     { name = "amgi-types" },
+    { name = "test-utils" },
 ]
 
 [package.dev-dependencies]
@@ -144,6 +147,7 @@ requires-dist = [
     { name = "aiokafka", specifier = ">=0.12" },
     { name = "amgi-common", editable = "packages/amgi-common" },
     { name = "amgi-types", editable = "packages/amgi-types" },
+    { name = "test-utils", editable = "packages/test-utils" },
 ]
 
 [package.metadata.requires-dev]
@@ -1314,6 +1318,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/ca/6c/3d75c196ac07ac874
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4f/bd/de8d508070629b6d84a30d01d57e4a65c69aa7f5abe7560b8fad3b50ea59/termcolor-3.1.0-py3-none-any.whl", hash = "sha256:591dd26b5c2ce03b9e43f391264626557873ce1d379019786f99b0c2bee140aa", size = 7684, upload-time = "2025-04-30T11:37:52.382Z" },
 ]
+
+[[package]]
+name = "test-utils"
+version = "0.0.0"
+source = { editable = "packages/test-utils" }
 
 [[package]]
 name = "testcontainers"
