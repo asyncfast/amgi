@@ -28,6 +28,7 @@ dependencies = [
   "aiokafka>=0.12",
   "amgi-common==0.15.0",
   "amgi-types==0.15.0",
+  "test-utils",
 ]
 
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
@@ -45,3 +46,4 @@ dev = [
 [tool.uv.sources]
 amgi-types = { workspace = true }
 amgi-common = { workspace = true }
+test-utils = { workspace = true }
