@@ -39,7 +39,7 @@ entry-points.amgi_server.amgi-aiokafka = "amgi_aiokafka:_run_cli"
 
 [dependency-groups]
 dev = [
-  "testcontainers[kafka]>=4.12.0",
+  "testcontainers[kafka]>=4.13.0",
 ]
 
 [tool.uv.sources]
