@@ -1,42 +1,13 @@
 import asyncio
-from asyncio import Event
-from asyncio import Queue
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import pytest
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
 from amgi_aiokafka import Server
-from amgi_types import AMGIReceiveCallable
-from amgi_types import AMGISendCallable
-from amgi_types import Scope
+from test_utils import MockApp
 from testcontainers.kafka import KafkaContainer
-
-
-class MockApp:
-    def __init__(self) -> None:
-        self._call_queue = Queue[
-            tuple[Scope, AMGIReceiveCallable, AMGISendCallable, Event]
-        ]()
-
-    @asynccontextmanager
-    async def call(
-        self,
-    ) -> AsyncGenerator[tuple[Scope, AMGIReceiveCallable, AMGISendCallable], None]:
-        scope, receive, send, return_event = await self._call_queue.get()
-        try:
-            yield scope, receive, send
-        finally:
-            return_event.set()
-
-    async def __call__(
-        self, scope: Scope, receive: AMGIReceiveCallable, send: AMGISendCallable
-    ) -> None:
-        return_event = Event()
-        self._call_queue.put_nowait((scope, receive, send, return_event))
-        await return_event.wait()
 
 
 @pytest.fixture(scope="session")
@@ -51,11 +22,6 @@ def bootstrap_server(kafka_container: KafkaContainer) -> str:
 
 
 @pytest.fixture
-async def app() -> MockApp:
-    return MockApp()
-
-
-@pytest.fixture
 def topic() -> str:
     return f"receive-{uuid4()}"
 
@@ -66,9 +32,10 @@ def state_item() -> str:
 
 
 @pytest.fixture
-async def server(
-    bootstrap_server: str, app: MockApp, topic: str, state_item: str
-) -> AsyncGenerator[Server, None]:
+async def app(
+    bootstrap_server: str, topic: str, state_item: str
+) -> AsyncGenerator[MockApp, None]:
+    app = MockApp()
     server = Server(
         app,
         topic,
@@ -87,7 +54,7 @@ async def server(
         lifespan_startup = await receive()
         assert lifespan_startup == {"type": "lifespan.startup"}
         await send({"type": "lifespan.startup.complete"})
-        yield server
+        yield app
         server.stop()
         lifespan_shutdown = await receive()
         assert lifespan_shutdown == {"type": "lifespan.shutdown"}
@@ -97,7 +64,7 @@ async def server(
 
 
 async def test_message(
-    bootstrap_server: str, server: Server, app: MockApp, topic: str, state_item: str
+    bootstrap_server: str, app: MockApp, topic: str, state_item: str
 ) -> None:
 
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
@@ -125,9 +92,7 @@ async def test_message(
     await producer.stop()
 
 
-async def test_message_send(
-    bootstrap_server: str, server: Server, app: MockApp, topic: str
-) -> None:
+async def test_message_send(bootstrap_server: str, app: MockApp, topic: str) -> None:
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
 
@@ -156,7 +121,7 @@ async def test_message_send(
 
 
 async def test_message_send_kafka_key(
-    bootstrap_server: str, server: Server, app: MockApp, topic: str
+    bootstrap_server: str, app: MockApp, topic: str
 ) -> None:
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
