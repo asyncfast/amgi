@@ -38,8 +38,12 @@ class _MessageReceive:
 
 
 class _MessageSend:
+    def __init__(self, client: Client) -> None:
+        self._client = client
+
     async def __call__(self, message: AMGISendEvent) -> None:
-        print(message)
+        if message["type"] == "message.send":
+            self._client.publish(message["address"], message["payload"])
 
 
 class Server:
@@ -85,7 +89,7 @@ class Server:
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": message.topic,
         }
-        await self._app(scope, _MessageReceive(message), _MessageSend())
+        await self._app(scope, _MessageReceive(message), _MessageSend(self._client))
 
     def _on_disconnect(
         self,
