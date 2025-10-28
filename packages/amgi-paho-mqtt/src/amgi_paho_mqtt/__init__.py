@@ -24,6 +24,23 @@ if TYPE_CHECKING:
     from paho.mqtt.client import SocketLike
 
 
+def run(
+    app: AMGIApplication,
+    topic: str,
+    host: str = "localhost",
+    port: int = 1883,
+    client_id: Optional[str] = None,
+) -> None:
+    asyncio.run(_run(app, topic, host, port, client_id))
+
+
+async def _run(
+    app: AMGIApplication, topic: str, host: str, port: int, client_id: Optional[str]
+) -> None:
+    server = Server(app, topic, host, port, client_id)
+    await server.serve()
+
+
 class _MessageReceive:
     def __init__(self, message: MQTTMessage) -> None:
         self._message = message
@@ -48,7 +65,12 @@ class _MessageSend:
 
 class Server:
     def __init__(
-        self, app: AMGIApplication, topic: str, host: str, port: int, client_id: str
+        self,
+        app: AMGIApplication,
+        topic: str,
+        host: str,
+        port: int,
+        client_id: Optional[str],
     ) -> None:
         self._app = app
         self._topic = topic

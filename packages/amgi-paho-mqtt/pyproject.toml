@@ -25,6 +25,8 @@ dependencies = [
   "paho-mqtt>=2.1.0",
 ]
 
+entry-points.amgi_server.amgi-paho-mqtt = "amgi_paho_mqtt:run"
+
 [dependency-groups]
 dev = [
   "test-utils",
