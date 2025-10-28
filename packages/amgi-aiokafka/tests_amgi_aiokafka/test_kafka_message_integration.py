@@ -6,6 +6,7 @@ import pytest
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
 from amgi_aiokafka import Server
+from amgi_types import MessageAckEvent
 from test_utils import MockApp
 from testcontainers.kafka import KafkaContainer
 
@@ -80,6 +81,7 @@ async def test_message(
         }
 
         message_receive = await receive()
+        assert message_receive["type"] == "message.receive"
         assert message_receive == {
             "headers": [(b"test", b"test")],
             "id": f"{topic}:0:0",
@@ -88,6 +90,12 @@ async def test_message(
             "bindings": {"kafka": {"key": b"key"}},
             "type": "message.receive",
         }
+
+        message_ack_event: MessageAckEvent = {
+            "type": "message.ack",
+            "id": message_receive["id"],
+        }
+        await send(message_ack_event)
 
     await producer.stop()
 
