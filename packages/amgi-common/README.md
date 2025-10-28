@@ -1,13 +1,88 @@
-# common-amgi
+# amgi-common
 
-:construction: This package is currently under development :construction:
-
-AMGI will be here very soon
+This package includes some useful helpers for writing AMGI servers.
 
 ## Installation
 
 ```
 pip install amgi-common==0.15.0
+```
+
+## Constructs
+
+### Lifespan
+
+This class handles the AMGI lifespan protocol.
+
+```python
+from amgi_common import Lifespan
+
+
+async def main_loop(app, state):
+    """Handle event batches"""
+
+
+async def serve(app):
+    async with Lifespan(app) as state:
+        # handle app calls
+        await main_loop(app, state)
+```
+
+## Stoppable
+
+This class should help with graceful shutdowns. Whenever you have a call to something with a timeout, it cancels that task. .
+For example, if you have a client that has a method `fetch_messages`, which has a timeout you could loop like so:
+
+```python
+from amgi_common import Stoppable
+
+
+class Server:
+    def __init__(self, app):
+        self._app = app
+        self._stoppable = Stoppable()
+        self._client = Client()
+        self._running = True
+
+    async def main_loop(self, app, state):
+        while self._running:
+            messages = await self._client.fetch_messages(timeout=10_000)
+            # Handle messages
+
+    def stop(self):
+        self._running = False
+```
+
+There are several ways to deal with this:
+
+1. The above example, where on stop you will have to wait for the timeout plus the time to handle messages
+1. Run the main loop in a task, and cancel it on stop
+
+Both have their own problems. In the first case, you could be waiting a long time. In the second case, when you receive
+messages, you should probably process them before shutting down.
+
+The class `Stoppable` is there to help you. It will return the results of the callable iterably, but if the stoppable has
+been told to stop, it will cancel any tasks it has running in the background, and stop any current iterations.
+
+```python
+from amgi_common import Stoppable
+
+
+class Server:
+    def __init__(self, app):
+        self._app = app
+        self._stoppable = Stoppable()
+        self._client = Client()
+
+    async def main_loop(self, app, state):
+        async for messages in self._stoppable.call(
+            self._client.fetch_messages, timeout=10_000
+        ):
+            # Handle messages
+            pass
+
+    def stop(self):
+        self._stoppable.stop()
 ```
 
 ## Contact

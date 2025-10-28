@@ -2,7 +2,6 @@ import asyncio
 import logging
 import signal
 from asyncio import AbstractEventLoop
-from asyncio import Event
 from asyncio import Lock
 from collections import deque
 from collections.abc import Awaitable
@@ -17,6 +16,7 @@ from aiokafka import AIOKafkaProducer
 from aiokafka import ConsumerRecord
 from aiokafka import TopicPartition
 from amgi_common import Lifespan
+from amgi_common import Stoppable
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
 from amgi_types import MessageReceiveEvent
@@ -60,18 +60,21 @@ class _RecordsEvents:
         consumer: AIOKafkaConsumer,
         records: Iterable[ConsumerRecord],
         message_send: Callable[[MessageSendEvent], Awaitable[None]],
+        ackable_consumer: bool,
     ) -> None:
         self._deque = deque(records)
         self._consumer = consumer
         self._message_send = message_send
         self._message_receive_ids: dict[str, dict[TopicPartition, int]] = {}
+        self._ackable_consumer = ackable_consumer
 
     async def receive(self) -> MessageReceiveEvent:
         record = self._deque.popleft()
         message_receive_id = f"{record.topic}:{record.partition}:{record.offset}"
-        self._message_receive_ids[message_receive_id] = {
-            TopicPartition(record.topic, record.partition): record.offset + 1
-        }
+        if self._ackable_consumer:
+            self._message_receive_ids[message_receive_id] = {
+                TopicPartition(record.topic, record.partition): record.offset + 1
+            }
 
         encoded_headers = [(key.encode(), value) for key, value in record.headers]
         message_receive_event: MessageReceiveEvent = {
@@ -85,7 +88,7 @@ class _RecordsEvents:
         return message_receive_event
 
     async def send(self, event: AMGISendEvent) -> None:
-        if event["type"] == "message.ack":
+        if event["type"] == "message.ack" and self._ackable_consumer:
             offsets = self._message_receive_ids.pop(event["id"])
             await self._consumer.commit(offsets)
         if event["type"] == "message.send":
@@ -106,9 +109,10 @@ class Server:
         self._topics = topics
         self._bootstrap_servers = bootstrap_servers
         self._group_id = group_id
+        self._ackable_consumer = self._group_id is not None
         self._producer: Optional[AIOKafkaProducer] = None
         self._producer_lock = Lock()
-        self._stop_event = Event()
+        self._stoppable = Stoppable()
 
     async def serve(self) -> None:
         self._consumer = AIOKafkaConsumer(
@@ -125,22 +129,9 @@ class Server:
             await self._producer.stop()
 
     async def _main_loop(self, state: dict[str, Any]) -> None:
-        loop = asyncio.get_running_loop()
-        stop_task = loop.create_task(self._stop_event.wait())
-        while True:
-            getmany_task = loop.create_task(self._consumer.getmany(timeout_ms=1000))
-            await asyncio.wait(
-                (
-                    getmany_task,
-                    stop_task,
-                ),
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if self._stop_event.is_set():
-                getmany_task.cancel()
-                break
-            messages = await getmany_task
-
+        async for messages in self._stoppable.call(
+            self._consumer.getmany, timeout_ms=1000
+        ):
             for topic_partition, records in messages.items():
                 if records:
                     scope: MessageScope = {
@@ -151,7 +142,10 @@ class Server:
                     }
 
                     records_events = _RecordsEvents(
-                        self._consumer, records, self._message_send
+                        self._consumer,
+                        records,
+                        self._message_send,
+                        self._ackable_consumer,
                     )
 
                     await self._app(
@@ -181,7 +175,7 @@ class Server:
         )
 
     def stop(self) -> None:
-        self._stop_event.set()
+        self._stoppable.stop()
 
 
 async def _serve(server: Server, loop: AbstractEventLoop) -> None:
