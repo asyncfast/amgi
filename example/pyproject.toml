@@ -1,7 +1,7 @@
 [project]
-name = "kafka-example"
-version = "0.1.0"
-description = "Add your description here"
+name = "example"
+version = "0.0.0"
+description = "This example is meant to demonstrate basic functionality"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
@@ -14,9 +14,11 @@ classifiers = [
 ]
 dependencies = [
   "amgi-aiokafka",
+  "amgi-paho-mqtt",
   "asyncfast",
 ]
 
 [tool.uv.sources]
 amgi-aiokafka = { workspace = true }
 asyncfast = { workspace = true }
+amgi-paho-mqtt = { workspace = true }
