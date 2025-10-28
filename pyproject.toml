@@ -34,7 +34,7 @@ dev = [
 [tool.uv.workspace]
 members = [
   "packages/*",
-  "examples/*",
+  "example",
 ]
 
 [tool.pytest.ini_options]
