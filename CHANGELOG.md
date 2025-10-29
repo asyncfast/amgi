@@ -1,3 +1,9 @@
+## 0.15.1 (2025-10-29)
+
+### Refactor
+
+- add new Stoppable class to amgi-common, this should allow for simple code to stop receive loops
+
 ## 0.15.0 (2025-10-19)
 
 ### Feat
