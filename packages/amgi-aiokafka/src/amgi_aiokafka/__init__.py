@@ -2,7 +2,6 @@ import asyncio
 import logging
 import signal
 from asyncio import AbstractEventLoop
-from asyncio import Event
 from asyncio import Lock
 from collections import deque
 from collections.abc import Awaitable
@@ -17,6 +16,7 @@ from aiokafka import AIOKafkaProducer
 from aiokafka import ConsumerRecord
 from aiokafka import TopicPartition
 from amgi_common import Lifespan
+from amgi_common import Stoppable
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
 from amgi_types import MessageReceiveEvent
@@ -108,7 +108,7 @@ class Server:
         self._group_id = group_id
         self._producer: Optional[AIOKafkaProducer] = None
         self._producer_lock = Lock()
-        self._stop_event = Event()
+        self._stoppable = Stoppable()
 
     async def serve(self) -> None:
         self._consumer = AIOKafkaConsumer(
@@ -125,22 +125,9 @@ class Server:
             await self._producer.stop()
 
     async def _main_loop(self, state: dict[str, Any]) -> None:
-        loop = asyncio.get_running_loop()
-        stop_task = loop.create_task(self._stop_event.wait())
-        while True:
-            getmany_task = loop.create_task(self._consumer.getmany(timeout_ms=1000))
-            await asyncio.wait(
-                (
-                    getmany_task,
-                    stop_task,
-                ),
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if self._stop_event.is_set():
-                getmany_task.cancel()
-                break
-            messages = await getmany_task
-
+        async for messages in self._stoppable.call(
+            self._consumer.getmany, timeout_ms=1000
+        ):
             for topic_partition, records in messages.items():
                 if records:
                     scope: MessageScope = {
@@ -181,7 +168,7 @@ class Server:
         )
 
     def stop(self) -> None:
-        self._stop_event.set()
+        self._stoppable.stop()
 
 
 async def _serve(server: Server, loop: AbstractEventLoop) -> None:
