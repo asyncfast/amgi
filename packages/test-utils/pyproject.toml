@@ -1,7 +1,3 @@
-[build-system]
-build-backend = "uv_build"
-requires = [ "uv-build>=0.8.14,<0.9.0" ]
-
 [project]
 name = "test-utils"
 version = "0.0.0"
