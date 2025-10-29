@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import asyncio
 from asyncio import Event
 from asyncio import Queue
+from collections.abc import Coroutine
 from types import TracebackType
 from typing import Any
-from typing import Optional
+from typing import Callable
+from typing import Generic
+from typing import TypeVar
 from typing import Union
 
 from amgi_types import AMGIApplication
@@ -12,6 +17,10 @@ from amgi_types import AMGISendEvent
 from amgi_types import LifespanScope
 from amgi_types import LifespanShutdownEvent
 from amgi_types import LifespanStartupEvent
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 
 class Lifespan:
@@ -50,9 +59,9 @@ class Lifespan:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         shutdown_event: LifespanShutdownEvent = {
             "type": "lifespan.shutdown",
@@ -70,3 +79,54 @@ class Lifespan:
             self._startup_event.set()
         elif event_type in {"lifespan.shutdown.complete", "lifespan.shutdown.failed"}:
             self._shutdown_event.set()
+
+
+class Stoppable:
+    def __init__(self, stop_event: Event | None = None) -> None:
+        self._stop_event = Event() if stop_event is None else stop_event
+
+    def call(
+        self,
+        function: Callable[P, Coroutine[Any, Any, T]],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> _StoppableAsyncIterator[T]:
+        return _StoppableAsyncIterator(function, args, kwargs, self._stop_event)
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+
+class _StoppableAsyncIterator(Generic[T]):
+    def __init__(
+        self,
+        function: Callable[..., Coroutine[Any, Any, T]],
+        args: Any,
+        kwargs: dict[str, Any],
+        stop_event: Event,
+    ) -> None:
+        self._function = function
+        self._args = args
+        self._kwargs = kwargs
+        self._stop_event = stop_event
+
+    def __aiter__(self) -> _StoppableAsyncIterator[T]:
+        self._loop = asyncio.get_running_loop()
+        self._stop_event_task = self._loop.create_task(self._stop_event.wait())
+        return self
+
+    async def __anext__(self) -> T:
+        callable_task = self._loop.create_task(
+            self._function(*self._args, **self._kwargs)
+        )
+        await asyncio.wait(
+            (
+                callable_task,
+                self._stop_event_task,
+            ),
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if self._stop_event.is_set():
+            callable_task.cancel()
+            raise StopAsyncIteration
+        return await callable_task
