@@ -133,11 +133,11 @@ dependencies = [
     { name = "aiokafka" },
     { name = "amgi-common" },
     { name = "amgi-types" },
-    { name = "test-utils" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "test-utils" },
     { name = "testcontainers", version = "4.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9.2'" },
     { name = "testcontainers", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9.2'" },
 ]
@@ -147,11 +147,13 @@ requires-dist = [
     { name = "aiokafka", specifier = ">=0.12" },
     { name = "amgi-common", editable = "packages/amgi-common" },
     { name = "amgi-types", editable = "packages/amgi-types" },
-    { name = "test-utils", editable = "packages/test-utils" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "testcontainers", extras = ["kafka"], specifier = ">=4.13.0" }]
+dev = [
+    { name = "test-utils", editable = "packages/test-utils" },
+    { name = "testcontainers", extras = ["kafka"], specifier = ">=4.13.0" },
+]
 
 [[package]]
 name = "amgi-common"
