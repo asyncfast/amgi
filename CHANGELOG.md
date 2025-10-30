@@ -1,3 +1,9 @@
+## 0.15.2 (2025-10-30)
+
+### Fix
+
+- **amgi-aiokafka**: make test-utils a development dependency
+
 ## 0.15.1 (2025-10-29)
 
 ### Refactor
