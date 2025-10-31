@@ -18,6 +18,7 @@ from amgi_types import MessageScope
 from asyncfast import AsyncFast
 from asyncfast import Header
 from asyncfast import Message
+from asyncfast import MessageSender
 from asyncfast import Payload
 from asyncfast.bindings import KafkaKey
 from pydantic import BaseModel
@@ -839,3 +840,47 @@ async def test_message_binding_default_kafka_key(
     )
 
     test_mock.assert_called_once_with(expected_key)
+
+
+async def test_message_sender() -> None:
+    app = AsyncFast()
+
+    send_mock = AsyncMock()
+
+    @dataclass
+    class SendMessage(Message, address="send_topic"):
+        payload: int
+        id: Annotated[int, Header()]
+
+    @app.channel("topic")
+    async def topic_handler(message_sender: MessageSender[SendMessage]) -> None:
+        await message_sender.send(SendMessage(payload=10, id=10))
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+    }
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
+        send_mock,
+    )
+
+    send_mock.assert_has_awaits(
+        [
+            call(
+                {
+                    "type": "message.send",
+                    "address": "send_topic",
+                    "headers": [(b"id", b"10")],
+                    "payload": b"10",
+                }
+            )
+        ]
+    )
