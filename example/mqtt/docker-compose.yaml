@@ -1,0 +1,16 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.22
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+  mqtt-web-ui:
+    image: emqx/mqttx-web:v1.12.1
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    ports:
+      - "8081:80"

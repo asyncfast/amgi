@@ -12,9 +12,10 @@ members = [
     "amgi",
     "amgi-aiokafka",
     "amgi-common",
+    "amgi-paho-mqtt",
     "amgi-types",
     "asyncfast",
-    "kafka-example",
+    "example",
     "test-utils",
 ]
 
@@ -159,6 +160,34 @@ dev = [
 name = "amgi-common"
 version = "0.15.2"
 source = { editable = "packages/amgi-common" }
+
+[[package]]
+name = "amgi-paho-mqtt"
+version = "0.15.1"
+source = { editable = "packages/amgi-paho-mqtt" }
+dependencies = [
+    { name = "amgi-types" },
+    { name = "paho-mqtt" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "test-utils" },
+    { name = "testcontainers", version = "4.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9.2'" },
+    { name = "testcontainers", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9.2'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amgi-types", editable = "packages/amgi-types" },
+    { name = "paho-mqtt", specifier = ">=2.1.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "test-utils", editable = "packages/test-utils" },
+    { name = "testcontainers", extras = ["mqtt"], specifier = ">=4.13.0" },
+]
 
 [[package]]
 name = "amgi-types"
@@ -450,6 +479,23 @@ wheels = [
 ]
 
 [[package]]
+name = "example"
+version = "0.0.0"
+source = { virtual = "example" }
+dependencies = [
+    { name = "amgi-aiokafka" },
+    { name = "amgi-paho-mqtt" },
+    { name = "asyncfast" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amgi-aiokafka", editable = "packages/amgi-aiokafka" },
+    { name = "amgi-paho-mqtt", editable = "packages/amgi-paho-mqtt" },
+    { name = "asyncfast", editable = "packages/asyncfast" },
+]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -544,21 +590,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
-]
-
-[[package]]
-name = "kafka-example"
-version = "0.1.0"
-source = { virtual = "examples/kafka_example" }
-dependencies = [
-    { name = "amgi-aiokafka" },
-    { name = "asyncfast" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "amgi-aiokafka", editable = "packages/amgi-aiokafka" },
-    { name = "asyncfast", editable = "packages/asyncfast" },
 ]
 
 [[package]]
@@ -769,6 +800,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a1/d4/1fc4078c65507b51b96ca8f8c3ba19e6a61c8253c72794544580a7b6c24d/packaging-25.0.tar.gz", hash = "sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f", size = 165727, upload-time = "2025-04-19T11:48:59.673Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl", hash = "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484", size = 66469, upload-time = "2025-04-19T11:48:57.875Z" },
+]
+
+[[package]]
+name = "paho-mqtt"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/39/15/0a6214e76d4d32e7f663b109cf71fb22561c2be0f701d67f93950cd40542/paho_mqtt-2.1.0.tar.gz", hash = "sha256:12d6e7511d4137555a3f6ea167ae846af2c7357b10bc6fa4f7c3968fc1723834", size = 148848, upload-time = "2024-04-29T19:52:55.591Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c4/cb/00451c3cf31790287768bb12c6bec834f5d292eaf3022afc88e14b8afc94/paho_mqtt-2.1.0-py3-none-any.whl", hash = "sha256:6db9ba9b34ed5bc6b6e3812718c7e06e2fd7444540df2455d2c51bd58808feee", size = 67219, upload-time = "2024-04-29T19:52:48.345Z" },
 ]
 
 [[package]]
