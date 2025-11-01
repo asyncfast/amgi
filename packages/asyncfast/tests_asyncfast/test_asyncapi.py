@@ -8,6 +8,7 @@ from uuid import UUID
 from asyncfast import AsyncFast
 from asyncfast import Header
 from asyncfast import Message
+from asyncfast import MessageSender
 from asyncfast import Payload
 from asyncfast.bindings import KafkaKey
 from pydantic import BaseModel
@@ -654,5 +655,105 @@ def test_asyncapi_send_binding_kafka_key() -> None:
                 "channel": {"$ref": "#/channels/ReceiveHandler"},
             },
             "sendSend": {"action": "send", "channel": {"$ref": "#/channels/Send"}},
+        },
+    }
+
+
+def test_asyncapi_message_sender() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Send(Message, address="send"):
+        id: int
+
+    @app.channel("receive")
+    async def receive_handler(id: int, message_sender: MessageSender[Send]) -> None:
+        pass
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "ReceiveHandler": {
+                "address": "receive",
+                "messages": {
+                    "ReceiveHandlerMessage": {
+                        "$ref": "#/components/messages/ReceiveHandlerMessage"
+                    }
+                },
+            },
+            "Send": {
+                "address": "send",
+                "messages": {"Send": {"$ref": "#/components/messages/Send"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "ReceiveHandlerMessage": {"payload": {"type": "integer"}},
+                "Send": {"payload": {"type": "integer"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveReceiveHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/ReceiveHandler"},
+            },
+            "sendSend": {"action": "send", "channel": {"$ref": "#/channels/Send"}},
+        },
+    }
+
+
+def test_asyncapi_message_sender_multiple() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class SendA(Message, address="send_a"):
+        id: int
+
+    @dataclass
+    class SendB(Message, address="send_b"):
+        id: int
+
+    @app.channel("receive")
+    async def receive_handler(
+        id: int, message_sender: MessageSender[Union[SendA, SendB]]
+    ) -> None:
+        pass
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "ReceiveHandler": {
+                "address": "receive",
+                "messages": {
+                    "ReceiveHandlerMessage": {
+                        "$ref": "#/components/messages/ReceiveHandlerMessage"
+                    }
+                },
+            },
+            "SendA": {
+                "address": "send_a",
+                "messages": {"SendA": {"$ref": "#/components/messages/SendA"}},
+            },
+            "SendB": {
+                "address": "send_b",
+                "messages": {"SendB": {"$ref": "#/components/messages/SendB"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "ReceiveHandlerMessage": {"payload": {"type": "integer"}},
+                "SendA": {"payload": {"type": "integer"}},
+                "SendB": {"payload": {"type": "integer"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveReceiveHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/ReceiveHandler"},
+            },
+            "sendSendA": {"action": "send", "channel": {"$ref": "#/channels/SendA"}},
+            "sendSendB": {"action": "send", "channel": {"$ref": "#/channels/SendB"}},
         },
     }

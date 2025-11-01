@@ -18,6 +18,7 @@ from typing import Annotated
 from typing import Any
 from typing import Callable
 from typing import ClassVar
+from typing import Generic
 from typing import Optional
 from typing import TypeVar
 from typing import Union
@@ -45,10 +46,28 @@ from typing_extensions import get_args
 from typing_extensions import get_origin
 
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
-
+M = TypeVar("M", bound=Mapping[str, Any])
 
 _FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_\-]+$")
 _PARAMETER_PATTERN = re.compile(r"{(.*)}")
+
+
+async def _send_message(send: AMGISendCallable, message: Mapping[str, Any]) -> None:
+    message_send_event: MessageSendEvent = {
+        "type": "message.send",
+        "address": message["address"],
+        "headers": message["headers"],
+        "payload": message.get("payload"),
+    }
+    await send(message_send_event)
+
+
+class MessageSender(Generic[M]):
+    def __init__(self, send: AMGISendCallable) -> None:
+        self._send = send
+
+    async def send(self, message: M) -> None:
+        await _send_message(self._send, message)
 
 
 class Message(Mapping[str, Any]):
@@ -165,7 +184,6 @@ def _generate_message_annotations(
     fields: dict[str, Any],
 ) -> Generator[tuple[str, type[Annotated[Any, Any]]], None, None]:
     address_parameters = _get_address_parameters(address)
-
     for name, field in fields.items():
         if get_origin(field) is Annotated:
             yield name, field
@@ -225,30 +243,57 @@ class AsyncFast:
         headers = {
             name: TypeAdapter(annotated)
             for name, annotated in annotations
-            if isinstance(get_args(annotated)[1], Header)
+            if get_origin(annotated) is Annotated
+            and isinstance(get_args(annotated)[1], Header)
         }
 
         parameters = {
             name: TypeAdapter(annotated)
             for name, annotated in annotations
-            if isinstance(get_args(annotated)[1], Parameter)
+            if get_origin(annotated) is Annotated
+            and isinstance(get_args(annotated)[1], Parameter)
         }
 
         payloads = [
             (name, TypeAdapter(annotated))
             for name, annotated in annotations
-            if isinstance(get_args(annotated)[1], Payload)
+            if get_origin(annotated) is Annotated
+            and isinstance(get_args(annotated)[1], Payload)
         ]
 
         bindings = {
             name: TypeAdapter(annotated)
             for name, annotated in annotations
-            if isinstance(get_args(annotated)[1], Binding)
+            if get_origin(annotated) is Annotated
+            and isinstance(get_args(annotated)[1], Binding)
         }
+
+        message_senders = [
+            name
+            for name, annotated in annotations
+            if get_origin(annotated) is MessageSender
+        ]
+        for name, annotated in annotations:
+            if get_origin(annotated) is MessageSender:
+                (message_sender_type,) = get_args(annotated)
+                if get_origin(message_sender_type) is Union:  # type: ignore[comparison-overlap]
+                    messages = [
+                        type
+                        for type in get_args(message_sender_type)
+                        if _is_message(type)
+                    ]
+                elif _is_message(message_sender_type):
+                    messages = [message_sender_type]
 
         assert len(payloads) <= 1, "Channel must have no more than 1 payload"
 
         payload = payloads[0] if len(payloads) == 1 else None
+
+        assert (
+            len(message_senders) <= 1
+        ), "Channel must have no more than 1 message sender"
+
+        message_sender = message_senders[0] if len(message_senders) == 1 else None
 
         address_pattern = _address_pattern(address)
 
@@ -261,6 +306,7 @@ class AsyncFast:
             payload,
             messages,
             bindings,
+            message_sender,
         )
 
         self._channels.append(channel)
@@ -351,7 +397,7 @@ class AsyncFast:
 def _generate_annotations(
     address: str,
     signature: Signature,
-) -> Generator[tuple[str, type[Annotated[Any, Any]]], None, None]:
+) -> Generator[tuple[str, type[Any]], None, None]:
 
     address_parameters = _get_address_parameters(address)
 
@@ -362,22 +408,12 @@ def _generate_annotations(
                 args = get_args(annotation)
                 args[1].default = parameter.default
             yield name, annotation
+        elif get_origin(annotation) is MessageSender:
+            yield name, annotation
         elif name in address_parameters:
             yield name, Annotated[annotation, Parameter()]  # type: ignore[misc]
         else:
             yield name, Annotated[annotation, Payload()]  # type: ignore[misc]
-
-
-async def _send_message(
-    send_message: Mapping[str, Any], send: AMGISendCallable
-) -> None:
-    message_send_event: MessageSendEvent = {
-        "type": "message.send",
-        "address": send_message["address"],
-        "headers": send_message["headers"],
-        "payload": send_message.get("payload"),
-    }
-    await send(message_send_event)
 
 
 async def _handle_async_generator(
@@ -394,7 +430,7 @@ async def _handle_async_generator(
             else:
                 send_message = await agen.athrow(exception)
             try:
-                await _send_message(send_message, send)
+                await _send_message(send, send_message)
             except Exception as e:
                 exception = e
             else:
@@ -425,7 +461,7 @@ async def _handle_generator(
         if send_message is None:
             break
         try:
-            await _send_message(send_message, send)
+            await _send_message(send, send_message)
         except Exception as e:
             exception = e
         else:
@@ -444,6 +480,7 @@ class Channel:
         payload: Optional[tuple[str, TypeAdapter[Any]]],
         messages: Sequence[type[Message]],
         bindings: Mapping[str, TypeAdapter[Any]],
+        message_sender: Optional[str],
     ) -> None:
         self._address = address
         self._address_pattern = address_pattern
@@ -453,6 +490,7 @@ class Channel:
         self._payload = payload
         self._messages = messages
         self._bindings = bindings
+        self._message_sender = message_sender
 
     @property
     def address(self) -> str:
@@ -517,7 +555,7 @@ class Channel:
                 continue
             more_messages = message.get("more_messages", False)
             try:
-                arguments = dict(self._generate_arguments(message, parameters))
+                arguments = dict(self._generate_arguments(message, parameters, send))
 
                 if inspect.isasyncgenfunction(self._handler):
                     await _handle_async_generator(self._handler, arguments, send)
@@ -542,7 +580,10 @@ class Channel:
                 await send(message_nack_event)
 
     def _generate_arguments(
-        self, message_receive_event: MessageReceiveEvent, parameters: dict[str, str]
+        self,
+        message_receive_event: MessageReceiveEvent,
+        parameters: dict[str, str],
+        send: AMGISendCallable,
     ) -> Generator[tuple[str, Any], None, None]:
 
         if self.headers:
@@ -581,6 +622,8 @@ class Channel:
                         binding_type.__field_name__
                     )
                 )
+        if self._message_sender:
+            yield self._message_sender, MessageSender(send)
 
 
 def _generate_messages(
