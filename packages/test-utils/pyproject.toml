@@ -1,11 +1,10 @@
 [project]
 name = "test-utils"
 version = "0.0.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
   "Private :: Do Not Upload",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
