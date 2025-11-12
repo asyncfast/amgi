@@ -85,6 +85,29 @@ class Server:
         self._stoppable.stop()
 ```
 
+## OperationBatcher
+
+This class can simplify batch operations, for example, publishing multiple messages simultaneous. The implementation
+allows you to enqueue an item to run the operation on, and the operation will be scheduled in batches:
+
+```python
+from amgi_common import OperationBatcher
+
+
+async def batch_operation(items):
+    # Do a batch operation to get the batch result
+    return [item for item in batch_result]
+
+
+operation_batcher = OperationBatcher(batch_operation)
+
+# You can enqueue an item, it will be processed in the background automatically
+result = await operation_batcher.enqueue({"an": "item"})
+```
+
+The batch operation should return an iterable of results, or exceptions. This allows for per item errors. The batch
+sizes can also be limited, which is usefully when APIs have a hard limit.
+
 ## Contact
 
 For questions or suggestions, please contact [jack.burridge@mail.com](mailto:jack.burridge@mail.com).

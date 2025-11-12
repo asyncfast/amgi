@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+from asyncio import AbstractEventLoop
 from asyncio import Event
+from asyncio import Future
 from asyncio import Queue
 from collections.abc import Coroutine
+from collections.abc import Iterable
 from types import TracebackType
 from typing import Any
 from typing import Callable
@@ -21,6 +24,7 @@ from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
 T = TypeVar("T")
+R = TypeVar("R")
 
 
 class Lifespan:
@@ -130,3 +134,38 @@ class _StoppableAsyncIterator(Generic[T]):
             callable_task.cancel()
             raise StopAsyncIteration
         return await callable_task
+
+
+class OperationBatcher(Generic[T, R]):
+    def __init__(
+        self,
+        function: Callable[[Iterable[T]], Coroutine[Any, Any, Iterable[R | Exception]]],
+        batch_size: int | None = None,
+    ) -> None:
+        self._function = function
+        self._batch_size = batch_size
+        self._queue = Queue[tuple[T, Future[R]]]()
+
+    async def _process_batch_async(self, batch: Iterable[tuple[T, Future[R]]]) -> None:
+        batch_items, batch_futures = zip(*batch)
+        for result, future in zip(await self._function(batch_items), batch_futures):
+            if isinstance(result, Exception):
+                future.set_exception(result)
+            else:
+                future.set_result(result)
+
+    def _process_batch(self, loop: AbstractEventLoop) -> None:
+        batch: list[tuple[T, Future[R]]] = []
+        while not self._queue.empty() and (
+            self._batch_size is None or len(batch) < self._batch_size
+        ):
+            batch.append(self._queue.get_nowait())
+        if batch:
+            loop.create_task(self._process_batch_async(batch))
+
+    async def enqueue(self, item: T) -> R:
+        loop = asyncio.get_running_loop()
+        future: Future[R] = loop.create_future()
+        self._queue.put_nowait((item, future))
+        loop.call_soon(self._process_batch, loop)
+        return await future
