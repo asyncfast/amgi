@@ -5,7 +5,7 @@ This package includes some useful helpers for writing AMGI servers.
 ## Installation
 
 ```
-pip install amgi-common==0.15.2
+pip install amgi-common==0.16.0
 ```
 
 ## Constructs

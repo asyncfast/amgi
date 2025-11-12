@@ -1,3 +1,10 @@
+## 0.16.0 (2025-11-12)
+
+### Feat
+
+- remove python3.9 support
+- **amgi-common**: add OperationBatcher to allow for simple batch operations
+
 ## 0.15.2 (2025-10-30)
 
 ### Fix
