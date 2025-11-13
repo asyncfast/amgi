@@ -1,3 +1,12 @@
+## 0.17.0 (2025-11-13)
+
+### Feat
+
+- **amgi-paho-mqtt**: keep track of handling tasks, only closing the client when all handling tasks are complete
+- **amgi-paho-mqtt**: add entrypoint for amgi-paho-mqtt so that it can be run via the cli
+- **amgi-paho-mqtt**: add the ability to send from the mqtt amgi server
+- add new amgi server for mqtt
+
 ## 0.16.0 (2025-11-12)
 
 ### Feat
