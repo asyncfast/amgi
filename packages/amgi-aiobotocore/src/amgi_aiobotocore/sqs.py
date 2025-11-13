@@ -13,6 +13,63 @@ from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 
 
+def run(
+    app: AMGIApplication,
+    *queues: str,
+    region_name: Optional[str] = None,
+    endpoint_url: Optional[str] = None,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+) -> None:
+    asyncio.run(
+        _run_async(
+            app,
+            *queues,
+            region_name=region_name,
+            endpoint_url=endpoint_url,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+    )
+
+
+async def _run_async(
+    app: AMGIApplication,
+    *queues: str,
+    region_name: Optional[str],
+    endpoint_url: Optional[str],
+    aws_access_key_id: Optional[str],
+    aws_secret_access_key: Optional[str],
+) -> None:
+    server = Server(
+        app,
+        *queues,
+        region_name=region_name,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    await server.serve()
+
+
+def _run_cli(
+    app: AMGIApplication,
+    queues: list[str],
+    region_name: Optional[str] = None,
+    endpoint_url: Optional[str] = None,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+) -> None:
+    run(
+        app,
+        *queues,
+        region_name=region_name,
+        endpoint_url=endpoint_url,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
+
 def _encode_message_attributes(
     message_attributes: dict[str, Any],
 ) -> Iterable[tuple[bytes, bytes]]:
@@ -64,7 +121,10 @@ class _Send:
                     "" if event["payload"] is None else event["payload"].decode()
                 ),
                 MessageAttributes={
-                    name.decode(): {"BinaryValue": value, "DataType": "BinaryValue"}
+                    name.decode(): {
+                        "StringValue": value.decode(),
+                        "DataType": "StringValue",
+                    }
                     for name, value in event["headers"]
                 },
             )
