@@ -1,3 +1,9 @@
+## 0.18.0 (2025-11-13)
+
+### Feat
+
+- **asyncfast**: add a method to send messages without yielding
+
 ## 0.17.0 (2025-11-13)
 
 ### Feat
