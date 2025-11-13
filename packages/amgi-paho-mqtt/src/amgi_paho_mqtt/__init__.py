@@ -1,5 +1,6 @@
 import asyncio
 from asyncio import Event
+from asyncio import Task
 from socket import SO_SNDBUF
 from socket import SOL_SOCKET
 from typing import Any
@@ -91,6 +92,7 @@ class Server:
         self._subscribe_event = Event()
         self._disconnected_event = Event()
         self._stop_event = Event()
+        self._tasks = set[Task[None]]()
 
     def _on_connect(
         self,
@@ -103,7 +105,9 @@ class Server:
         client.subscribe(self._topic)
 
     def _on_message(self, client: Client, userdata: Any, message: MQTTMessage) -> None:
-        self._loop.create_task(self._handle_message(message))
+        task = self._loop.create_task(self._handle_message(message))
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     async def _handle_message(self, message: MQTTMessage) -> None:
         scope: MessageScope = {
@@ -170,6 +174,8 @@ class Server:
 
         async with Lifespan(self._app) as state:
             await self._stop_event.wait()
+            self._client.unsubscribe(self._topic)
+            await asyncio.gather(*self._tasks)
         self._client.disconnect()
         await self._disconnected_event.wait()
 
