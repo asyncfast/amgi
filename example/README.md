@@ -62,3 +62,24 @@ Connect the app via MQTT with:
 ```commandline
 asyncfast run amgi-paho-mqtt main:app input_channel
 ```
+
+## SQS
+
+Run the SQS compose file with:
+
+```commandline
+docker compose --file sqs/docker-compose.yaml up --detach
+```
+
+This includes:
+
+- Localstack to emulate AWS `localhost:4566`
+- SQS Admin UI ([`http://localhost:3999/`](http://localhost:3999/))
+
+You can then use SQS Admin UI to create the two queues `input_channel`, and `output_channel`.
+
+Connect the app via SQS with:
+
+```commandline
+asyncfast run amgi-aiobotocore-sqs main:app input_channel --region-name us-west-1 --endpoint-url http://localhost:4566 --aws-access-key-id localstack --aws-secret-access-key localstack
+```

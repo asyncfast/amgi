@@ -1,0 +1,16 @@
+services:
+  localstack:
+    image: localstack/localstack:4.9.2
+    ports:
+      - "4566:4566"
+    environment:
+      AWS_DEFAULT_REGION: us-west-1
+      AWS_ACCESS_KEY_ID: localstack
+      AWS_SECRET_ACCESS_KEY: localstack
+  sqs-admin:
+    ports:
+      - "3999:3999"
+    environment:
+      SQS_ENDPOINT_URL: http://localstack:4566
+      SQS_AWS_REGION: us-west-1
+    image: pacovk/sqs-admin:0.8.1

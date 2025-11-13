@@ -198,5 +198,5 @@ async def test_message_send(
         message = messages_response["Messages"][0]
         assert message["Body"] == "test"
         assert message["MessageAttributes"] == {
-            "test": {"BinaryValue": b"test", "DataType": "BinaryValue"}
+            "test": {"StringValue": "test", "DataType": "StringValue"}
         }

@@ -22,6 +22,7 @@ classifiers = [
 dependencies = [
   "aiobotocore>=2.25.0",
 ]
+entry-points.amgi_server.amgi-aiobotocore-sqs = "amgi_aiobotocore.sqs:_run_cli"
 
 [dependency-groups]
 dev = [
