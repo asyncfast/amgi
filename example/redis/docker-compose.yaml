@@ -1,0 +1,11 @@
+services:
+  redis:
+    image: redis:8.2.2
+    ports:
+      - "6379:6379"
+  redisinsight:
+    image: redis/redisinsight:2.70
+    ports:
+      - "5540:5540"
+    environment:
+      RI_REDIS_HOST: redis
