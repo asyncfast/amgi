@@ -13,6 +13,21 @@ from redis.asyncio.client import PubSub
 from redis.asyncio.client import Redis
 
 
+def run(app: AMGIApplication, *channels: str, url: str) -> None:
+    asyncio.run(_run_async(app, *channels, url=url))
+
+
+async def _run_async(app: AMGIApplication, *channels: str, url: str) -> None:
+    server = Server(app, *channels, url=url)
+    await server.serve()
+
+
+def _run_cli(
+    app: AMGIApplication, channels: list[str], url: str = "redis://localhost"
+) -> None:
+    run(app, *channels, url=url)
+
+
 class _MessageReceive:
     def __init__(self, message: dict[str, Any]) -> None:
         self._message = message
