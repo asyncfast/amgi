@@ -342,6 +342,7 @@ name = "amgi-paho-mqtt"
 version = "0.19.0"
 source = { editable = "packages/amgi-paho-mqtt" }
 dependencies = [
+    { name = "amgi-common" },
     { name = "amgi-types" },
     { name = "paho-mqtt" },
 ]
@@ -354,6 +355,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "amgi-common", editable = "packages/amgi-common" },
     { name = "amgi-types", editable = "packages/amgi-types" },
     { name = "paho-mqtt", specifier = ">=2.1.0" },
 ]
