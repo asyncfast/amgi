@@ -83,3 +83,22 @@ Connect the app via SQS with:
 ```commandline
 asyncfast run amgi-aiobotocore-sqs main:app input_channel --region-name us-west-1 --endpoint-url http://localhost:4566 --aws-access-key-id localstack --aws-secret-access-key localstack
 ```
+
+## Redis
+
+Run the redis compose file with:
+
+```commandline
+docker compose --file redis/docker-compose.yaml up --detach
+```
+
+This includes:
+
+- Redis `redis://localhost:6379/`
+- Redis Insight ([`http://localhost:5540/`](http://localhost:5540/))
+
+Connect the app via Redis with:
+
+```commandline
+asyncfast run amgi-redis main:app  input_channel
+```
