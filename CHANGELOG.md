@@ -1,3 +1,10 @@
+## 0.19.0 (2025-11-15)
+
+### Feat
+
+- **amgi-aiobotocore**: add sqs entrypoint and example
+- add sqs support
+
 ## 0.18.0 (2025-11-13)
 
 ### Feat

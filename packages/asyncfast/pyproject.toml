@@ -5,7 +5,7 @@ requires = [ "uv-build>=0.8.4,<0.9" ]
 
 [project]
 name = "asyncfast"
-version = "0.18.0"
+version = "0.19.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -29,7 +29,7 @@ classifiers = [
 ]
 
 dependencies = [
-  "amgi-types==0.18.0",
+  "amgi-types==0.19.0",
   "pydantic==2.11.7",
   "typer>=0.16.0",
 ]
