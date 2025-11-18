@@ -1,3 +1,15 @@
+## 0.20.0 (2025-11-18)
+
+### Feat
+
+- **amgi-redis**: add redis entrypoint and example
+- add a redis amgi server
+
+### Fix
+
+- **amgi-aiobotocore**: fix amgi dependencies
+- **amgi-paho-mqtt**: fix amgi dependencies
+
 ## 0.19.0 (2025-11-15)
 
 ### Feat
