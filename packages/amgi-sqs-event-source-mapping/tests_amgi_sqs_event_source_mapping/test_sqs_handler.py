@@ -323,3 +323,46 @@ async def test_sqs_handler_record_message_attribute_binary_value(
 
     batch_item_failures = await call_task
     assert batch_item_failures == {"batchItemFailures": []}
+
+
+async def test_sqs_handler_record_corrupted(
+    app: MockApp, sqs_handler: SqsHandler
+) -> None:
+    call_task = asyncio.get_running_loop().create_task(
+        sqs_handler._call(
+            {
+                "Records": [
+                    {
+                        "messageId": "059f36b4-87a3-44ab-83d2-661975830a7d",
+                        "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                        "body": "Test message.",
+                        "attributes": {
+                            "ApproximateReceiveCount": "1",
+                            "SentTimestamp": "1545082649183",
+                            "SenderId": "AIDAIENQZJOLO23YVJ4VO",
+                            "ApproximateFirstReceiveTimestamp": "1545082649185",
+                        },
+                        "messageAttributes": {
+                            "myAttribute": {
+                                "stringValue": "myValue",
+                                "stringListValues": [],
+                                "binaryListValues": [],
+                                "dataType": "String",
+                            }
+                        },
+                        "md5OfBody": "00000000000000000000000000000000",
+                        "eventSource": "aws:sqs",
+                        "eventSourceARN": "arn:aws:sqs:us-east-2:123456789012:my-queue",
+                        "awsRegion": "us-east-2",
+                    }
+                ]
+            },
+        )
+    )
+
+    batch_item_failures = await call_task
+    assert batch_item_failures == {
+        "batchItemFailures": [
+            {"itemIdentifier": "059f36b4-87a3-44ab-83d2-661975830a7d"}
+        ]
+    }
