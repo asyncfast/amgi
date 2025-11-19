@@ -26,6 +26,7 @@ async def test_sqs_handler_record_send(
         endpoint_url=localstack_container.get_url(),
         aws_access_key_id="testcontainers-localstack",
         aws_secret_access_key="testcontainers-localstack",
+        lifespan=False,
     )
     sqs_client = localstack_container.get_client("sqs")
 

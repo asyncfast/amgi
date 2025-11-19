@@ -1,5 +1,6 @@
 import asyncio
 import base64
+from collections.abc import AsyncGenerator
 from collections.abc import Generator
 from unittest.mock import Mock
 from unittest.mock import patch
@@ -16,10 +17,52 @@ def mock_sqs_client() -> Generator[Mock, None, None]:
         yield mock_sqs_client
 
 
-async def test_sqs_handler_records(mock_sqs_client: Mock) -> None:
+@pytest.fixture
+async def app_sqs_handler(
+    mock_sqs_client: Mock,
+) -> AsyncGenerator[tuple[MockApp, SqsHandler], None]:
     app = MockApp()
     sqs_handler = SqsHandler(app)
 
+    loop = asyncio.get_event_loop()
+
+    call_task = loop.create_task(
+        sqs_handler._call(
+            {"Records": []},
+        )
+    )
+    async with app.call() as (scope, receive, send):
+        assert scope == {
+            "type": "lifespan",
+            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "state": {},
+        }
+        lifespan_startup = await receive()
+        assert lifespan_startup == {"type": "lifespan.startup"}
+        await send({"type": "lifespan.startup.complete"})
+
+        yield app, sqs_handler
+
+        shutdown_task = loop.create_task(sqs_handler._shutdown())
+        lifespan_shutdown = await receive()
+        assert lifespan_shutdown == {"type": "lifespan.shutdown"}
+        await send({"type": "lifespan.shutdown.complete"})
+
+        await shutdown_task
+        await call_task
+
+
+@pytest.fixture
+def app(app_sqs_handler: tuple[MockApp, SqsHandler]) -> MockApp:
+    return app_sqs_handler[0]
+
+
+@pytest.fixture
+def sqs_handler(app_sqs_handler: tuple[MockApp, SqsHandler]) -> SqsHandler:
+    return app_sqs_handler[1]
+
+
+async def test_sqs_handler_records(app: MockApp, sqs_handler: SqsHandler) -> None:
     call_task = asyncio.get_running_loop().create_task(
         sqs_handler._call(
             {
@@ -105,10 +148,7 @@ async def test_sqs_handler_records(mock_sqs_client: Mock) -> None:
     assert batch_item_failures == {"batchItemFailures": []}
 
 
-async def test_sqs_handler_record_nack(mock_sqs_client: Mock) -> None:
-    app = MockApp()
-    sqs_handler = SqsHandler(app)
-
+async def test_sqs_handler_record_nack(app: MockApp, sqs_handler: SqsHandler) -> None:
     call_task = asyncio.get_running_loop().create_task(
         sqs_handler._call(
             {
@@ -170,10 +210,9 @@ async def test_sqs_handler_record_nack(mock_sqs_client: Mock) -> None:
     }
 
 
-async def test_sqs_handler_record_unacked(mock_sqs_client: Mock) -> None:
-    app = MockApp()
-    sqs_handler = SqsHandler(app)
-
+async def test_sqs_handler_record_unacked(
+    app: MockApp, sqs_handler: SqsHandler
+) -> None:
     call_task = asyncio.get_running_loop().create_task(
         sqs_handler._call(
             {
@@ -229,11 +268,9 @@ async def test_sqs_handler_record_unacked(mock_sqs_client: Mock) -> None:
 
 
 async def test_sqs_handler_record_message_attribute_binary_value(
-    mock_sqs_client: Mock,
+    app: MockApp,
+    sqs_handler: SqsHandler,
 ) -> None:
-    app = MockApp()
-    sqs_handler = SqsHandler(app)
-
     call_task = asyncio.get_running_loop().create_task(
         sqs_handler._call(
             {

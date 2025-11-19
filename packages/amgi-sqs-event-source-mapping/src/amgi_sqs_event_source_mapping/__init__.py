@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import re
+import signal
 import sys
 from collections import defaultdict
 from collections import deque
@@ -11,6 +12,7 @@ from typing import Optional
 from typing import TypedDict
 
 import boto3
+from amgi_common import Lifespan
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
 from amgi_types import MessageReceiveEvent
@@ -125,6 +127,7 @@ class SqsHandler:
         endpoint_url: Optional[str] = None,
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
+        lifespan: bool = True,
     ) -> None:
         self._app = app
         self._loop = asyncio.get_event_loop()
@@ -135,6 +138,10 @@ class SqsHandler:
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
+        self._lifespan = lifespan
+
+        self._lifespan_context: Optional[Lifespan] = None
+        self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
 
     def __call__(
         self, event: _SqsEventSourceMapping, context: Any
@@ -142,6 +149,9 @@ class SqsHandler:
         return self._loop.run_until_complete(self._call(event))
 
     async def _call(self, event: _SqsEventSourceMapping) -> _BatchItemFailures:
+        if not self._lifespan_context and self._lifespan:
+            self._lifespan_context = Lifespan(self._app)
+            await self._lifespan_context.__aenter__()
         event_source_arn_records = defaultdict(list)
         for record in event["Records"]:
             event_source_arn_records[record["eventSourceARN"]].append(record)
@@ -177,3 +187,10 @@ class SqsHandler:
         records_send = _Send(self._sqs_client, message_ids)
         await self._app(scope, _Receive(records), records_send)
         return records_send.message_ids
+
+    def _sigterm_handler(self) -> None:
+        self._loop.run_until_complete(self._shutdown())
+
+    async def _shutdown(self) -> None:
+        if self._lifespan_context:
+            await self._lifespan_context.__aexit__(None, None, None)
