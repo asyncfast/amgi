@@ -31,25 +31,12 @@ async def app_sqs_handler(
             {"Records": []},
         )
     )
-    async with app.call() as (scope, receive, send):
-        assert scope == {
-            "type": "lifespan",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
-            "state": {},
-        }
-        lifespan_startup = await receive()
-        assert lifespan_startup == {"type": "lifespan.startup"}
-        await send({"type": "lifespan.startup.complete"})
-
+    async with app.lifespan():
         yield app, sqs_handler
-
         shutdown_task = loop.create_task(sqs_handler._shutdown())
-        lifespan_shutdown = await receive()
-        assert lifespan_shutdown == {"type": "lifespan.shutdown"}
-        await send({"type": "lifespan.shutdown.complete"})
 
-        await shutdown_task
-        await call_task
+    await shutdown_task
+    await call_task
 
 
 @pytest.fixture
