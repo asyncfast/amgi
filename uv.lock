@@ -10,6 +10,7 @@ members = [
     "amgi-common",
     "amgi-paho-mqtt",
     "amgi-redis",
+    "amgi-sqs-event-source-mapping",
     "amgi-types",
     "asyncfast",
     "example",
@@ -403,6 +404,35 @@ requires-dist = [
 dev = [
     { name = "test-utils", editable = "packages/test-utils" },
     { name = "testcontainers", extras = ["redis"], specifier = ">=4.13.0" },
+]
+
+[[package]]
+name = "amgi-sqs-event-source-mapping"
+version = "0.20.0"
+source = { editable = "packages/amgi-sqs-event-source-mapping" }
+dependencies = [
+    { name = "amgi-common" },
+    { name = "amgi-types" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "boto3" },
+    { name = "test-utils" },
+    { name = "testcontainers", extra = ["localstack"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amgi-common", editable = "packages/amgi-common" },
+    { name = "amgi-types", editable = "packages/amgi-types" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "boto3", specifier = ">=1.40.70" },
+    { name = "test-utils", editable = "packages/test-utils" },
+    { name = "testcontainers", extras = ["localstack"], specifier = ">=4.13.0" },
 ]
 
 [[package]]
