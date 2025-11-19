@@ -18,11 +18,10 @@ def topic() -> str:
     return f"receive-{uuid4()}"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 async def mosquitto_container() -> AsyncGenerator[MosquittoContainer, None]:
     with MosquittoContainer() as mosquitto_container:
         yield mosquitto_container
-        print(mosquitto_container)
 
 
 @pytest.fixture

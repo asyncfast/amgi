@@ -10,7 +10,7 @@ from test_utils import MockApp
 from testcontainers.redis import AsyncRedisContainer
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 async def redis_container() -> AsyncGenerator[AsyncRedisContainer, None]:
     with AsyncRedisContainer(image="redis:8.2.2") as redis_container:
         yield redis_container

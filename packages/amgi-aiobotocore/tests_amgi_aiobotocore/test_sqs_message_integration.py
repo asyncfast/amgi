@@ -17,7 +17,7 @@ class _StrMatcher:
         return isinstance(other, str)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 async def localstack_container() -> AsyncGenerator[LocalStackContainer, None]:
     with LocalStackContainer(
         image="localstack/localstack:4.9.2"
