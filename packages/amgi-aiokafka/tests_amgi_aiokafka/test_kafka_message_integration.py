@@ -11,7 +11,7 @@ from test_utils import MockApp
 from testcontainers.kafka import KafkaContainer
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 async def kafka_container() -> AsyncGenerator[KafkaContainer, None]:
     with KafkaContainer() as kafka_container:
         yield kafka_container
