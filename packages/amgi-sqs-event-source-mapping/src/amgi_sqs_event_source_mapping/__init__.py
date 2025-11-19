@@ -1,5 +1,7 @@
 import asyncio
 import base64
+import hashlib
+import itertools
 import re
 import signal
 import sys
@@ -153,8 +155,12 @@ class SqsHandler:
             self._lifespan_context = Lifespan(self._app)
             await self._lifespan_context.__aenter__()
         event_source_arn_records = defaultdict(list)
+        corrupted_message_ids = []
         for record in event["Records"]:
-            event_source_arn_records[record["eventSourceARN"]].append(record)
+            if hashlib.md5(record["body"].encode()).hexdigest() == record["md5OfBody"]:
+                event_source_arn_records[record["eventSourceARN"]].append(record)
+            else:
+                corrupted_message_ids.append(record["messageId"])
 
         unacked_message_ids = await asyncio.gather(
             *(
@@ -166,8 +172,9 @@ class SqsHandler:
         return {
             "batchItemFailures": [
                 {"itemIdentifier": message_id}
-                for unacked_message_ids_batch in unacked_message_ids
-                for message_id in unacked_message_ids_batch
+                for message_id in itertools.chain(
+                    *unacked_message_ids, corrupted_message_ids
+                )
             ]
         }
 
