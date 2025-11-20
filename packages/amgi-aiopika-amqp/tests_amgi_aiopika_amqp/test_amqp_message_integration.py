@@ -209,6 +209,5 @@ async def test_message_nack(app: MockApp, amqp_url: str, queue_name: str) -> Non
         assert message_receive_requeued["headers"] == [(b"test", b"test")]
 
         await send(
-            cast(Any, {"type": "message.ack",
-                 "id": message_receive_requeued["id"]})
+            cast(Any, {"type": "message.ack", "id": message_receive_requeued["id"]})
         )
