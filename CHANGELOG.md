@@ -1,3 +1,10 @@
+## 0.21.0 (2025-11-19)
+
+### Feat
+
+- **amgi-aiopika-amqp**: add amqp entrypoint and example
+- add an amqp amgi server
+
 ## 0.20.0 (2025-11-18)
 
 ### Feat

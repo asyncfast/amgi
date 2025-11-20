@@ -10,14 +10,12 @@ The application consumes messages from the `input_channel` in the form:
 }
 ```
 
-This example includes mult
-
 And sends messages to `output_channel` in the form:
 
 ```json
 {
-	"state": "processed",
-	"id": "1dde5e4e-c690-49ac-a6c0-d63cf26edef0"
+  "state": "processed",
+  "id": "1dde5e4e-c690-49ac-a6c0-d63cf26edef0"
 }
 ```
 
@@ -28,7 +26,7 @@ This example includes multiple docker compose files for different protocols, whi
 Run the Kafka compose file with:
 
 ```commandline
-docker compose --file kafka/docker-compose.yml up --detach
+docker compose --file kafka/docker-compose.yaml up --detach
 ```
 
 This includes:
@@ -47,7 +45,7 @@ asyncfast run amgi-aiokafka main:app input_channel
 Run the MQTT compose file with:
 
 ```commandline
-docker compose --file mqtt/docker-compose.yml up --detach
+docker compose --file mqtt/docker-compose.yaml up --detach
 ```
 
 This includes:
@@ -100,5 +98,24 @@ This includes:
 Connect the app via Redis with:
 
 ```commandline
-asyncfast run amgi-redis main:app  input_channel
+asyncfast run amgi-redis main:app input_channel
+```
+
+## AMQP
+
+Run the AMQP compose file with:
+
+```commandline
+docker compose --file amqp/docker-compose.yaml up --detach
+```
+
+This includes:
+
+- RabbitMQ `amqp://guest:guest@localhost:5672/`
+- RabbitMQ Management UI ([`http://localhost:15672/`](http://localhost:15672/)) (username: `guest`, password: `guest`)
+
+Connect the app via AMQP with:
+
+```commandline
+asyncfast run amgi-aiopika-amqp main:app input_channel
 ```
