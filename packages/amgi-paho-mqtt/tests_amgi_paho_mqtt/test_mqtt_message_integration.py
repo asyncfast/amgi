@@ -18,11 +18,10 @@ def topic() -> str:
     return f"receive-{uuid4()}"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 async def mosquitto_container() -> AsyncGenerator[MosquittoContainer, None]:
     with MosquittoContainer() as mosquitto_container:
         yield mosquitto_container
-        print(mosquitto_container)
 
 
 @pytest.fixture
@@ -39,20 +38,9 @@ async def app(
     )
     loop = asyncio.get_running_loop()
     serve_task = loop.create_task(server.serve())
-    async with app.call() as (scope, receive, send):
-        assert scope == {
-            "amgi": {"spec_version": "1.0", "version": "1.0"},
-            "type": "lifespan",
-            "state": {},
-        }
-        lifespan_startup = await receive()
-        assert lifespan_startup == {"type": "lifespan.startup"}
-        await send({"type": "lifespan.startup.complete"})
+    async with app.lifespan():
         yield app
         server.stop()
-        lifespan_shutdown = await receive()
-        assert lifespan_shutdown == {"type": "lifespan.shutdown"}
-        await send({"type": "lifespan.shutdown.complete"})
 
     await serve_task
 

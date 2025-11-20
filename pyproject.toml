@@ -1,6 +1,6 @@
 [project]
 name = "amgi"
-version = "0.20.0"
+version = "0.21.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -40,6 +40,10 @@ members = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 timeout = 60
+filterwarnings = [
+  "ignore:^The wait_for_logs function with string or callable predicates is deprecated:DeprecationWarning",
+  "ignore:^The @wait_container_is_ready decorator is deprecated:DeprecationWarning",
+]
 
 [tool.mypy]
 warn_unused_configs = true

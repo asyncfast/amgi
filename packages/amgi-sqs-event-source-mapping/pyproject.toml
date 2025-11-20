@@ -3,7 +3,7 @@ build-backend = "uv_build"
 requires = [ "uv-build>=0.8.14,<0.9.0" ]
 
 [project]
-name = "amgi-redis"
+name = "amgi-sqs-event-source-mapping"
 version = "0.21.0"
 description = "Add your description here"
 readme = "README.md"
@@ -22,17 +22,16 @@ classifiers = [
 dependencies = [
   "amgi-common==0.21.0",
   "amgi-types==0.21.0",
-  "redis>=7.0.1",
 ]
-entry-points.amgi_server.amgi-redis = "amgi_redis:_run_cli"
 
 [dependency-groups]
 dev = [
+  "boto3>=1.40.70",
   "test-utils",
-  "testcontainers[redis]>=4.13.0",
+  "testcontainers[localstack]>=4.13.0",
 ]
 
 [tool.uv.sources]
-amgi-common = { workspace = true }
 test-utils = { workspace = true }
+amgi-common = { workspace = true }
 amgi-types = { workspace = true }

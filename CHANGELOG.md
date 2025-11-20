@@ -1,3 +1,12 @@
+## 0.21.0 (2025-11-20)
+
+### Feat
+
+- **asyncfast**: add support for lifespan
+- **amgi-sqs-event-source-mapping**: add integrity check to records, only processing valid records
+- **amgi-sqs-event-source-mapping**: add support for lifespan
+- add sqs lambda support
+
 ## 0.20.0 (2025-11-18)
 
 ### Feat

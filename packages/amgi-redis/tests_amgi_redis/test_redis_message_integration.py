@@ -10,7 +10,7 @@ from test_utils import MockApp
 from testcontainers.redis import AsyncRedisContainer
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 async def redis_container() -> AsyncGenerator[AsyncRedisContainer, None]:
     with AsyncRedisContainer(image="redis:8.2.2") as redis_container:
         yield redis_container
@@ -33,20 +33,9 @@ async def app(
     server = Server(app, channel, url=f"redis://{host}:{port}")
     loop = asyncio.get_running_loop()
     serve_task = loop.create_task(server.serve())
-    async with app.call() as (scope, receive, send):
-        assert scope == {
-            "amgi": {"spec_version": "1.0", "version": "1.0"},
-            "type": "lifespan",
-            "state": {},
-        }
-        lifespan_startup = await receive()
-        assert lifespan_startup == {"type": "lifespan.startup"}
-        await send({"type": "lifespan.startup.complete"})
+    async with app.lifespan():
         yield app
         server.stop()
-        lifespan_shutdown = await receive()
-        assert lifespan_shutdown == {"type": "lifespan.shutdown"}
-        await send({"type": "lifespan.shutdown.complete"})
 
     await serve_task
 

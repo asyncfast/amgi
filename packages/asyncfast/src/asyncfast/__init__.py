@@ -16,6 +16,7 @@ from inspect import Signature
 from re import Pattern
 from typing import Annotated
 from typing import Any
+from typing import AsyncContextManager
 from typing import Callable
 from typing import ClassVar
 from typing import Generic
@@ -202,11 +203,15 @@ def _is_message(cls: type[Any]) -> bool:
 
 class AsyncFast:
     def __init__(
-        self, title: Optional[str] = None, version: Optional[str] = None
+        self,
+        title: str = "AsyncFast",
+        version: str = "0.1.0",
+        lifespan: Optional[AsyncContextManager[None]] = None,
     ) -> None:
         self._channels: list[Channel] = []
-        self._title = title or "AsyncFast"
-        self._version = version or "0.1.0"
+        self._title = title
+        self._version = version
+        self._lifespan = lifespan
 
     @property
     def title(self) -> str:
@@ -319,11 +324,15 @@ class AsyncFast:
             while True:
                 message = await receive()
                 if message["type"] == "lifespan.startup":
+                    if self._lifespan is not None:
+                        await self._lifespan.__aenter__()
                     lifespan_startup_complete_event: LifespanStartupCompleteEvent = {
                         "type": "lifespan.startup.complete"
                     }
                     await send(lifespan_startup_complete_event)
                 elif message["type"] == "lifespan.shutdown":
+                    if self._lifespan is not None:
+                        await self._lifespan.__aexit__(None, None, None)
                     lifespan_shutdown_complete_event: LifespanShutdownCompleteEvent = {
                         "type": "lifespan.shutdown.complete"
                     }
