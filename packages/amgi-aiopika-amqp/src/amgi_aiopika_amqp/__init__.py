@@ -1,15 +1,13 @@
 import asyncio
 from asyncio import Event
 from asyncio import Task
-from collections.abc import Set
-from typing import Any
 from typing import Optional
 
 import aio_pika
 from aio_pika import connect_robust
 from aio_pika import IncomingMessage
-from aio_pika.abc import AbstractRobustConnection
 from aio_pika.abc import AbstractRobustChannel
+from aio_pika.abc import AbstractRobustConnection
 from amgi_common import Lifespan
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
@@ -48,7 +46,10 @@ class _MessageReceive:
         return {
             "type": "message.receive",
             "id": str(self._message.delivery_tag),
-            "headers": [(key.encode(), value.encode()) for key, value in (self._message.headers or {}).items()],
+            "headers": [
+                (key.encode(), value.encode())
+                for key, value in (self._message.headers or {}).items()
+            ],
             "payload": self._message.body,
         }
 
@@ -62,8 +63,10 @@ class _MessageSend:
             await self._channel.default_exchange.publish(
                 aio_pika.Message(
                     body=event.get("payload", b""),
-                    headers={key.decode(): value.decode()
-                             for key, value in event.get("headers", [])}
+                    headers={
+                        key.decode(): value.decode()
+                        for key, value in event.get("headers", [])
+                    },
                 ),
                 routing_key=event["address"],
             )
@@ -82,7 +85,7 @@ class Server:
         self._url = url
         self._durable = durable
         self._stop_event = Event()
-        self._tasks: Set[Task[None]] = set()
+        self._tasks: set[Task[None]] = set()
         self._connection: Optional[AbstractRobustConnection] = None
         self._channel: Optional[AbstractRobustChannel] = None
 
@@ -94,7 +97,9 @@ class Server:
         }
 
         try:
-            await self._app(scope, _MessageReceive(message), _MessageSend(self._channel))
+            await self._app(
+                scope, _MessageReceive(message), _MessageSend(self._channel)
+            )
             await message.ack()
         except Exception:
             await message.nack(requeue=True)

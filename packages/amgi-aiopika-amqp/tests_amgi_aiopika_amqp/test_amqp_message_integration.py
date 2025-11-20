@@ -1,5 +1,8 @@
 import asyncio
 from collections.abc import AsyncGenerator
+from collections.abc import Generator
+from typing import Any
+from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -11,8 +14,8 @@ from testcontainers.rabbitmq import RabbitMqContainer
 
 
 @pytest.fixture(scope="session")
-def rabbitmq_container() -> AsyncGenerator[RabbitMqContainer, None]:
-    with RabbitMqContainer("rabbitmq:3.9.10") as rabbitmq:
+def rabbitmq_container() -> Generator[RabbitMqContainer, None, None]:
+    with RabbitMqContainer("rabbitmq:4.2.1-management") as rabbitmq:
         yield rabbitmq
 
 
@@ -29,9 +32,7 @@ def queue_name() -> str:
 
 
 @pytest.fixture()
-async def app(
-    amqp_url: str, queue_name: str
-) -> AsyncGenerator[MockApp, None]:
+async def app(amqp_url: str, queue_name: str) -> AsyncGenerator[MockApp, None]:
     app = MockApp()
     server = Server(app, queue_name, url=amqp_url)
     loop = asyncio.get_running_loop()
@@ -44,7 +45,7 @@ async def app(
         }
         lifespan_startup = await receive()
         assert lifespan_startup == {"type": "lifespan.startup"}
-        await send({"type": "lifespan.startup.complete"})
+        await send(cast(Any, {"type": "lifespan.startup.complete"}))
         yield app
         server.stop()
         for name in dir(server):
@@ -67,7 +68,7 @@ async def app(
                         pass
         lifespan_shutdown = await receive()
         assert lifespan_shutdown == {"type": "lifespan.shutdown"}
-        await send({"type": "lifespan.shutdown.complete"})
+        await send(cast(Any, {"type": "lifespan.shutdown.complete"}))
         serve_task.cancel()
         try:
             await serve_task
@@ -84,7 +85,7 @@ async def test_message(app: MockApp, amqp_url: str, queue_name: str) -> None:
         except ConnectionResetError:
             if attempt == 4:
                 raise
-            await asyncio.sleep(0.5 * (2 ** attempt))
+            await asyncio.sleep(0.5 * (2**attempt))
     async with connection:
         channel = await connection.channel()
         queue = await channel.declare_queue(queue_name, durable=True)
@@ -105,7 +106,7 @@ async def test_message(app: MockApp, amqp_url: str, queue_name: str) -> None:
         assert message_receive["payload"] == b"value"
         assert message_receive["headers"] == [(b"test", b"test")]
 
-        await send({"type": "message.ack", "id": message_receive["id"]})
+        await send(cast(Any, {"type": "message.ack", "id": message_receive["id"]}))
 
 
 async def test_message_send(app: MockApp, amqp_url: str, queue_name: str) -> None:
@@ -119,7 +120,7 @@ async def test_message_send(app: MockApp, amqp_url: str, queue_name: str) -> Non
         except ConnectionResetError:
             if attempt == 4:
                 raise
-            await asyncio.sleep(0.5 * (2 ** attempt))
+            await asyncio.sleep(0.5 * (2**attempt))
 
     async with connection:
         channel = await connection.channel()
@@ -133,12 +134,15 @@ async def test_message_send(app: MockApp, amqp_url: str, queue_name: str) -> Non
 
         async with app.call() as (scope, receive, send):
             await send(
-                {
-                    "type": "message.send",
-                    "address": send_queue_name,
-                    "headers": [(b"test", b"test")],
-                    "payload": b"test",
-                }
+                cast(
+                    Any,
+                    {
+                        "type": "message.send",
+                        "address": send_queue_name,
+                        "headers": [(b"test", b"test")],
+                        "payload": b"test",
+                    },
+                )
             )
 
             incoming_message = await send_queue.get(timeout=5)
@@ -147,9 +151,7 @@ async def test_message_send(app: MockApp, amqp_url: str, queue_name: str) -> Non
             await incoming_message.ack()
 
 
-async def test_message_nack(
-    app: MockApp, amqp_url: str, queue_name: str
-) -> None:
+async def test_message_nack(app: MockApp, amqp_url: str, queue_name: str) -> None:
     """Test negative acknowledgement of messages."""
     for attempt in range(5):
         try:
@@ -158,7 +160,7 @@ async def test_message_nack(
         except ConnectionResetError:
             if attempt == 4:
                 raise
-            await asyncio.sleep(0.5 * (2 ** attempt))
+            await asyncio.sleep(0.5 * (2**attempt))
     async with connection:
         channel = await connection.channel()
         queue = await channel.declare_queue(queue_name, durable=True)
@@ -179,12 +181,17 @@ async def test_message_nack(
         assert message_receive["payload"] == b"value"
         assert message_receive["headers"] == [(b"test", b"test")]
 
-        await send({
-            "type": "message.nack",
-            "id": message_receive["id"],
-            "message": "",
-            "requeue": True,
-        })
+        await send(
+            cast(
+                Any,
+                {
+                    "type": "message.nack",
+                    "id": message_receive["id"],
+                    "message": "",
+                    "requeue": True,
+                },
+            )
+        )
 
         message_receive_requeued = None
         for attempt in range(10):
@@ -194,12 +201,14 @@ async def test_message_nack(
             except asyncio.TimeoutError:
                 await asyncio.sleep(0.2)
 
-        assert message_receive_requeued is not None, "Message was not re-delivered to the application after NACK/requeue"
+        assert (
+            message_receive_requeued is not None
+        ), "Message was not re-delivered to the application after NACK/requeue"
         assert message_receive_requeued["type"] == "message.receive"
         assert message_receive_requeued["payload"] == b"value"
         assert message_receive_requeued["headers"] == [(b"test", b"test")]
 
-        await send({
-            "type": "message.ack",
-            "id": message_receive_requeued["id"],
-        })
+        await send(
+            cast(Any, {"type": "message.ack",
+                 "id": message_receive_requeued["id"]})
+        )

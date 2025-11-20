@@ -18,9 +18,11 @@ from amgi_aiopika_amqp import run
 
 app = AsyncFast()
 
+
 @app.channel("my_queue")
 async def handle_message(payload: str) -> None:
     print(f"Received: {payload}")
+
 
 if __name__ == "__main__":
     run(app, "my_queue", url="amqp://guest:guest@localhost/")
