@@ -6,6 +6,7 @@ from typing import Optional
 
 from aiobotocore.session import get_session
 from amgi_common import Lifespan
+from amgi_common import server_serve
 from amgi_common import Stoppable
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
@@ -21,26 +22,6 @@ def run(
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
 ) -> None:
-    asyncio.run(
-        _run_async(
-            app,
-            *queues,
-            region_name=region_name,
-            endpoint_url=endpoint_url,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
-    )
-
-
-async def _run_async(
-    app: AMGIApplication,
-    *queues: str,
-    region_name: Optional[str],
-    endpoint_url: Optional[str],
-    aws_access_key_id: Optional[str],
-    aws_secret_access_key: Optional[str],
-) -> None:
     server = Server(
         app,
         *queues,
@@ -49,7 +30,7 @@ async def _run_async(
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
-    await server.serve()
+    server_serve(server)
 
 
 def _run_cli(
