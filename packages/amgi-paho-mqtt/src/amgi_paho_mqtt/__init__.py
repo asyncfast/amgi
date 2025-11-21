@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from weakref import WeakValueDictionary
 
 from amgi_common import Lifespan
+from amgi_common import server_serve
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
 from amgi_types import MessageReceiveEvent
@@ -36,14 +37,8 @@ def run(
     port: int = 1883,
     client_id: Optional[str] = None,
 ) -> None:
-    asyncio.run(_run(app, topic, host, port, client_id))
-
-
-async def _run(
-    app: AMGIApplication, topic: str, host: str, port: int, client_id: Optional[str]
-) -> None:
     server = Server(app, topic, host, port, client_id)
-    await server.serve()
+    server_serve(server)
 
 
 class PublishError(OSError):
