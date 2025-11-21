@@ -1,13 +1,16 @@
 import asyncio
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from threading import Event
 from typing import Any
 from uuid import uuid4
 
 import pytest
+from amgi_paho_mqtt import PublishError
 from amgi_paho_mqtt import Server
 from paho.mqtt.client import Client
 from paho.mqtt.client import MQTTMessage
+from paho.mqtt.client import MQTTv5
 from paho.mqtt.enums import CallbackAPIVersion
 from test_utils import MockApp
 from testcontainers.mqtt import MosquittoContainer
@@ -15,13 +18,20 @@ from testcontainers.mqtt import MosquittoContainer
 
 @pytest.fixture
 def topic() -> str:
-    return f"receive-{uuid4()}"
+    return f"receive/{uuid4()}"
 
 
 @pytest.fixture(scope="module")
 async def mosquitto_container() -> AsyncGenerator[MosquittoContainer, None]:
-    with MosquittoContainer() as mosquitto_container:
+    mosquitto_container = MosquittoContainer().with_volume_mapping(
+        Path(__file__).parent / "mqtt.acl",
+        "/mosquitto/config/mqtt.acl",
+    )
+    try:
+        mosquitto_container.start(str(Path(__file__).parent / "mosquitto.conf"))
         yield mosquitto_container
+    finally:
+        mosquitto_container.stop()
 
 
 @pytest.fixture
@@ -35,6 +45,7 @@ async def app(
         mosquitto_container.get_container_host_ip(),
         mosquitto_container.get_exposed_port(mosquitto_container.MQTT_PORT),
         str(uuid4()),
+        MQTTv5,
     )
     async with app.lifespan(server=server):
         yield app
@@ -65,7 +76,7 @@ async def test_message(
 async def test_message_send(
     app: MockApp, topic: str, mosquitto_container: MosquittoContainer
 ) -> None:
-    send_topic = f"send-{uuid4()}"
+    send_topic = f"send/{uuid4()}"
 
     subscribe_event = Event()
     message: MQTTMessage
@@ -135,3 +146,21 @@ async def test_lifespan(topic: str, mosquitto_container: MosquittoContainer) -> 
                 "type": "message",
                 "state": {"item": state_item},
             }
+
+
+async def test_message_send_deny(
+    app: MockApp, topic: str, mosquitto_container: MosquittoContainer
+) -> None:
+    mosquitto_container.publish_message(topic, "")
+
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(PublishError, match="Not authorized"):
+            await send(
+                {
+                    "type": "message.send",
+                    "address": f"deny/{uuid4()}",
+                    "headers": [],
+                    "payload": b"test",
+                    "bindings": {"mqtt": {"qos": 1}},
+                }
+            )

@@ -1,11 +1,13 @@
 import asyncio
 from asyncio import Event
+from asyncio import Future
 from asyncio import Task
 from socket import SO_SNDBUF
 from socket import SOL_SOCKET
 from typing import Any
 from typing import Optional
 from typing import TYPE_CHECKING
+from weakref import WeakValueDictionary
 
 from amgi_common import Lifespan
 from amgi_types import AMGIApplication
@@ -17,7 +19,9 @@ from paho.mqtt.client import ConnectFlags
 from paho.mqtt.client import DisconnectFlags
 from paho.mqtt.client import MQTT_ERR_SUCCESS
 from paho.mqtt.client import MQTTMessage
+from paho.mqtt.client import MQTTv311
 from paho.mqtt.enums import CallbackAPIVersion
+from paho.mqtt.enums import MQTTProtocolVersion
 from paho.mqtt.properties import Properties
 from paho.mqtt.reasoncodes import ReasonCode
 
@@ -42,7 +46,11 @@ async def _run(
     await server.serve()
 
 
-class _MessageReceive:
+class PublishError(OSError):
+    """Raised when publishing fails."""
+
+
+class _Receive:
     def __init__(self, message: MQTTMessage) -> None:
         self._message = message
 
@@ -55,15 +63,6 @@ class _MessageReceive:
         }
 
 
-class _MessageSend:
-    def __init__(self, client: Client) -> None:
-        self._client = client
-
-    async def __call__(self, message: AMGISendEvent) -> None:
-        if message["type"] == "message.send":
-            self._client.publish(message["address"], message["payload"])
-
-
 class Server:
     def __init__(
         self,
@@ -72,6 +71,7 @@ class Server:
         host: str,
         port: int,
         client_id: Optional[str],
+        protocol: MQTTProtocolVersion = MQTTv311,
     ) -> None:
         self._app = app
         self._topic = topic
@@ -79,7 +79,9 @@ class Server:
         self._port = port
         self._loop = asyncio.get_running_loop()
 
-        self._client = Client(CallbackAPIVersion.VERSION2, client_id=client_id)
+        self._client = Client(
+            CallbackAPIVersion.VERSION2, client_id=client_id, protocol=protocol
+        )
         self._client.on_connect = self._on_connect
         self._client.on_message = self._on_message
         self._client.on_disconnect = self._on_disconnect
@@ -88,11 +90,13 @@ class Server:
         self._client.on_socket_register_write = self._on_socket_register_write
         self._client.on_socket_unregister_write = self._on_socket_unregister_write
         self._client.on_subscribe = self._on_subscribe
+        self._client.on_publish = self._on_publish
 
         self._subscribe_event = Event()
         self._disconnected_event = Event()
         self._stop_event = Event()
         self._tasks = set[Task[None]]()
+        self._publish_futures = WeakValueDictionary[int, Future[None]]()
         self._state: dict[str, Any] = {}
 
     def _on_connect(
@@ -117,7 +121,7 @@ class Server:
             "address": message.topic,
             "state": self._state.copy(),
         }
-        await self._app(scope, _MessageReceive(message), _MessageSend(self._client))
+        await self._app(scope, _Receive(message), self._send)
 
     def _on_disconnect(
         self,
@@ -160,6 +164,32 @@ class Server:
         properties: Optional[Properties],
     ) -> None:
         self._subscribe_event.set()
+
+    def _on_publish(
+        self,
+        client: Client,
+        userdata: Any,
+        mid: int,
+        reason_code: ReasonCode,
+        properties: Properties,
+    ) -> None:
+        message_future = self._publish_futures.get(mid)
+
+        if message_future is not None:
+            if reason_code.is_failure:
+                message_future.set_exception(PublishError(reason_code.getName()))
+            else:
+                message_future.set_result(None)
+
+    async def _send(self, message: AMGISendEvent) -> None:
+        if message["type"] == "message.send":
+            qos = message.get("bindings", {}).get("mqtt", {}).get("qos", 0)
+            mqtt_message_info = self._client.publish(
+                message["address"], message["payload"], qos=qos
+            )
+            message_future = self._loop.create_future()
+            self._publish_futures[mqtt_message_info.mid] = message_future
+            await message_future
 
     async def _misc_loop(self) -> None:
         while self._client.loop_misc() == MQTT_ERR_SUCCESS:
