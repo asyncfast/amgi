@@ -1,7 +1,4 @@
-import asyncio
 import logging
-import signal
-from asyncio import AbstractEventLoop
 from asyncio import Lock
 from collections import deque
 from collections.abc import Awaitable
@@ -16,6 +13,7 @@ from aiokafka import AIOKafkaProducer
 from aiokafka import ConsumerRecord
 from aiokafka import TopicPartition
 from amgi_common import Lifespan
+from amgi_common import server_serve
 from amgi_common import Stoppable
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
@@ -36,8 +34,7 @@ def run(
     server = Server(
         app, *topics, bootstrap_servers=bootstrap_servers, group_id=group_id
     )
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(_serve(server, loop))
+    server_serve(server)
 
 
 def _run_cli(
@@ -185,11 +182,3 @@ class Server:
 
     def stop(self) -> None:
         self._stoppable.stop()
-
-
-async def _serve(server: Server, loop: AbstractEventLoop) -> None:
-    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
-    for s in signals:
-        loop.add_signal_handler(s, server.stop)
-
-    await server.serve()
