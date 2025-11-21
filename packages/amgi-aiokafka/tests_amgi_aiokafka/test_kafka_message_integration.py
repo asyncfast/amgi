@@ -33,7 +33,7 @@ async def app(bootstrap_server: str, topic: str) -> AsyncGenerator[MockApp, None
         app,
         topic,
         bootstrap_servers=bootstrap_server,
-        group_id=None,
+        group_id=str(uuid4()),
     )
 
     async with app.lifespan(server=server):
