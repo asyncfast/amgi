@@ -3,6 +3,7 @@ from asyncio import Task
 from typing import Any
 
 from amgi_common import Lifespan
+from amgi_common import server_serve
 from amgi_common import Stoppable
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
@@ -14,12 +15,8 @@ from redis.asyncio.client import Redis
 
 
 def run(app: AMGIApplication, *channels: str, url: str) -> None:
-    asyncio.run(_run_async(app, *channels, url=url))
-
-
-async def _run_async(app: AMGIApplication, *channels: str, url: str) -> None:
     server = Server(app, *channels, url=url)
-    await server.serve()
+    server_serve(server)
 
 
 def _run_cli(
