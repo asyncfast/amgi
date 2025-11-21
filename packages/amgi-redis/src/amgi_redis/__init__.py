@@ -28,7 +28,7 @@ def _run_cli(
     run(app, *channels, url=url)
 
 
-class _MessageReceive:
+class _Receive:
     def __init__(self, message: dict[str, Any]) -> None:
         self._message = message
 
@@ -42,7 +42,7 @@ class _MessageReceive:
         }
 
 
-class _MessageSend:
+class _Send:
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
@@ -89,7 +89,7 @@ class Server:
             "address": message["channel"].decode(),
             "state": state.copy(),
         }
-        await self._app(scope, _MessageReceive(message), _MessageSend(redis))
+        await self._app(scope, _Receive(message), _Send(redis))
 
     def stop(self) -> None:
         self._stoppable.stop()
