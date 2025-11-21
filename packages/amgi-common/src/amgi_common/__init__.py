@@ -8,10 +8,13 @@ from asyncio import Future
 from asyncio import Queue
 from collections.abc import Coroutine
 from collections.abc import Iterable
+from signal import SIGINT
+from signal import SIGTERM
 from types import TracebackType
 from typing import Any
 from typing import Callable
 from typing import Generic
+from typing import Protocol
 from typing import TypeVar
 from typing import Union
 
@@ -197,3 +200,23 @@ class OperationBatcher(Generic[T, R]):
         self._queue.put_nowait((item, future))
         loop.call_soon(self._process_batch, loop)
         return await future
+
+
+class _Server(Protocol):
+    async def serve(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+
+
+def server_serve(server: _Server) -> None:
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(_server_serve_async(server, loop))
+
+
+async def _server_serve_async(server: _Server, loop: AbstractEventLoop) -> None:
+    for signal in (SIGINT, SIGTERM):
+        loop.add_signal_handler(signal, server.stop)
+
+    await server.serve()
