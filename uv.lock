@@ -8,6 +8,7 @@ members = [
     "amgi-aiobotocore",
     "amgi-aiokafka",
     "amgi-common",
+    "amgi-nats-py",
     "amgi-paho-mqtt",
     "amgi-redis",
     "amgi-sqs-event-source-mapping",
@@ -347,6 +348,35 @@ dev = [
 name = "amgi-common"
 version = "0.21.0"
 source = { editable = "packages/amgi-common" }
+
+[[package]]
+name = "amgi-nats-py"
+version = "0.21.0"
+source = { editable = "packages/amgi-nats-py" }
+dependencies = [
+    { name = "amgi-common" },
+    { name = "amgi-types" },
+    { name = "nats-py" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "test-utils" },
+    { name = "testcontainers", extra = ["nats"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amgi-common", editable = "packages/amgi-common" },
+    { name = "amgi-types", editable = "packages/amgi-types" },
+    { name = "nats-py", specifier = ">=2.12.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "test-utils", editable = "packages/test-utils" },
+    { name = "testcontainers", extras = ["nats"], specifier = ">=4.13.0" },
+]
 
 [[package]]
 name = "amgi-paho-mqtt"
@@ -1307,6 +1337,12 @@ wheels = [
 ]
 
 [[package]]
+name = "nats-py"
+version = "2.12.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/c5/2564d917503fe8d68fe630c74bf6b678fbc15c01b58f2565894761010f57/nats_py-2.12.0.tar.gz", hash = "sha256:2981ca4b63b8266c855573fa7871b1be741f1889fd429ee657e5ffc0971a38a1", size = 119821, upload-time = "2025-10-31T05:27:31.247Z" }
+
+[[package]]
 name = "nodeenv"
 version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2029,6 +2065,9 @@ wheels = [
 [package.optional-dependencies]
 localstack = [
     { name = "boto3" },
+]
+nats = [
+    { name = "nats-py" },
 ]
 redis = [
     { name = "redis" },
