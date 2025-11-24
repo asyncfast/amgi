@@ -54,40 +54,41 @@ def _run_cli(
     )
 
 
-class _RecordsEvents:
+class _Receive:
     def __init__(
         self,
-        consumer: AIOKafkaConsumer,
         records: Iterable[ConsumerRecord],
-        message_send: Callable[[MessageSendEvent], Awaitable[None]],
-        ackable_consumer: bool,
     ) -> None:
         self._deque = deque(records)
-        self._consumer = consumer
-        self._message_send = message_send
-        self._message_receive_ids: dict[str, dict[TopicPartition, int]] = {}
-        self._ackable_consumer = ackable_consumer
 
-    async def receive(self) -> MessageReceiveEvent:
+    async def __call__(self) -> MessageReceiveEvent:
         record = self._deque.popleft()
-        message_receive_id = f"{record.topic}:{record.partition}:{record.offset}"
-        if self._ackable_consumer:
-            self._message_receive_ids[message_receive_id] = {
-                TopicPartition(record.topic, record.partition): record.offset + 1
-            }
-
         encoded_headers = [(key.encode(), value) for key, value in record.headers]
-        message_receive_event: MessageReceiveEvent = {
+
+        return {
             "type": "message.receive",
-            "id": message_receive_id,
+            "id": f"{record.topic}:{record.partition}:{record.offset}",
             "headers": encoded_headers,
             "payload": record.value,
             "bindings": {"kafka": {"key": record.key}},
             "more_messages": len(self._deque) != 0,
         }
-        return message_receive_event
 
-    async def send(self, event: AMGISendEvent) -> None:
+
+class _Send:
+    def __init__(
+        self,
+        consumer: AIOKafkaConsumer,
+        message_receive_ids: dict[str, dict[TopicPartition, int]],
+        message_send: Callable[[MessageSendEvent], Awaitable[None]],
+        ackable_consumer: bool,
+    ) -> None:
+        self._consumer = consumer
+        self._message_send = message_send
+        self._message_receive_ids = message_receive_ids
+        self._ackable_consumer = ackable_consumer
+
+    async def __call__(self, event: AMGISendEvent) -> None:
         if event["type"] == "message.ack" and self._ackable_consumer:
             offsets = self._message_receive_ids.pop(event["id"])
             await self._consumer.commit(offsets)
@@ -141,22 +142,30 @@ class Server:
                         "state": state.copy(),
                     }
 
-                    records_events = _RecordsEvents(
-                        self._consumer,
-                        records,
-                        self._message_send,
-                        self._ackable_consumer,
-                    )
+                    message_receive_ids = {
+                        f"{record.topic}:{record.partition}:{record.offset}": {
+                            TopicPartition(
+                                record.topic, record.partition
+                            ): record.offset
+                            + 1
+                        }
+                        for record in records
+                    }
 
                     await self._app(
                         scope,
-                        records_events.receive,
-                        records_events.send,
+                        _Receive(records),
+                        _Send(
+                            self._consumer,
+                            message_receive_ids,
+                            self._message_send,
+                            self._ackable_consumer,
+                        ),
                     )
 
     async def _get_producer(self) -> AIOKafkaProducer:
-        if self._producer is None:
-            async with self._producer_lock:
+        async with self._producer_lock:
+            if self._producer is None:
                 producer = AIOKafkaProducer(bootstrap_servers=self._bootstrap_servers)
                 await producer.start()
                 self._producer = producer
