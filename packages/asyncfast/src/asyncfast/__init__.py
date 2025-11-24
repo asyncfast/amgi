@@ -10,13 +10,13 @@ from collections.abc import Iterable
 from collections.abc import Iterator
 from collections.abc import Mapping
 from collections.abc import Sequence
+from contextlib import AbstractAsyncContextManager
 from functools import cached_property
 from functools import partial
 from inspect import Signature
 from re import Pattern
 from typing import Annotated
 from typing import Any
-from typing import AsyncContextManager
 from typing import Callable
 from typing import ClassVar
 from typing import Generic
@@ -48,6 +48,8 @@ from typing_extensions import get_origin
 
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
 M = TypeVar("M", bound=Mapping[str, Any])
+Lifespan = Callable[["AsyncFast"], AbstractAsyncContextManager[None]]
+
 
 _FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_\-]+$")
 _PARAMETER_PATTERN = re.compile(r"{(.*)}")
@@ -206,12 +208,13 @@ class AsyncFast:
         self,
         title: str = "AsyncFast",
         version: str = "0.1.0",
-        lifespan: Optional[AsyncContextManager[None]] = None,
+        lifespan: Optional[Lifespan] = None,
     ) -> None:
         self._channels: list[Channel] = []
         self._title = title
         self._version = version
-        self._lifespan = lifespan
+        self._lifespan_context = lifespan
+        self._lifespan: Optional[AbstractAsyncContextManager[None]] = None
 
     @property
     def title(self) -> str:
@@ -324,7 +327,8 @@ class AsyncFast:
             while True:
                 message = await receive()
                 if message["type"] == "lifespan.startup":
-                    if self._lifespan is not None:
+                    if self._lifespan_context is not None:
+                        self._lifespan = self._lifespan_context(self)
                         await self._lifespan.__aenter__()
                     lifespan_startup_complete_event: LifespanStartupCompleteEvent = {
                         "type": "lifespan.startup.complete"
