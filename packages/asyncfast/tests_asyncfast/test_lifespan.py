@@ -39,7 +39,8 @@ async def test_lifespan() -> None:
 
 async def test_lifespan_context_manager() -> None:
     lifespan_mock = AsyncMock()
-    app = AsyncFast(lifespan=lifespan_mock)
+    lifespan_context_mock = Mock(return_value=lifespan_mock)
+    app = AsyncFast(lifespan=lifespan_context_mock)
 
     parent_mock = Mock()
     receive_mock = AsyncMock(
@@ -48,6 +49,7 @@ async def test_lifespan_context_manager() -> None:
     send_mock = AsyncMock()
     parent_mock.attach_mock(receive_mock, "receive")
     parent_mock.attach_mock(send_mock, "send")
+    parent_mock.attach_mock(lifespan_context_mock, "lifespan_context")
     parent_mock.attach_mock(lifespan_mock, "lifespan")
 
     lifespan_scope: LifespanScope = {
@@ -63,6 +65,7 @@ async def test_lifespan_context_manager() -> None:
     parent_mock.assert_has_calls(
         [
             call.receive(),
+            call.lifespan_context(app),
             call.lifespan.__aenter__(),
             call.send({"type": "lifespan.startup.complete"}),
             call.receive(),

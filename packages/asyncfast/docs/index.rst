@@ -77,6 +77,7 @@ Taking ideas from:
 
    receiving
    sending
+   lifespan
 
 .. _amgi: https://amgi.readthedocs.io/en/latest/
 
