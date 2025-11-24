@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from asyncio import AbstractEventLoop
 from asyncio import Event
 from asyncio import Future
@@ -27,6 +28,13 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
+_logger = logging.getLogger("amgi-common.error")
+
+
+class LifespanFailureError(Exception):
+    """Error thrown during startup, or shutdown"""
+
+
 class Lifespan:
     def __init__(
         self, app: AMGIApplication, state: dict[str, Any] | None = None
@@ -37,8 +45,11 @@ class Lifespan:
         ]()
 
         self._startup_event = Event()
+        self._startup_error_message: str | None = None
         self._shutdown_event = Event()
+        self._shutdown_error_message: str | None = None
         self._state = {} if state is None else state
+        self._error_occurred = False
 
     async def __aenter__(self) -> dict[str, Any]:
         loop = asyncio.get_running_loop()
@@ -49,6 +60,8 @@ class Lifespan:
         }
         await self._receive_queue.put(startup_event)
         await self._startup_event.wait()
+        if self._startup_error_message:
+            raise LifespanFailureError(self._startup_error_message)
         return self._state
 
     async def _main(self) -> None:
@@ -57,11 +70,16 @@ class Lifespan:
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "state": self._state,
         }
-        await self._app(
-            scope,
-            self.receive,
-            self.send,
-        )
+        try:
+            await self._app(
+                scope,
+                self.receive,
+                self.send,
+            )
+        except Exception:
+            self._error_occurred = True
+            _logger.info("AMGI 'lifespan' protocol appears unsupported.")
+            self._startup_event.set()
 
     async def __aexit__(
         self,
@@ -69,22 +87,30 @@ class Lifespan:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
+        if self._error_occurred:
+            return
         shutdown_event: LifespanShutdownEvent = {
             "type": "lifespan.shutdown",
         }
         await self._receive_queue.put(shutdown_event)
         await self._shutdown_event.wait()
+        if self._shutdown_error_message:
+            raise LifespanFailureError(self._shutdown_error_message)
 
     async def receive(self) -> AMGIReceiveEvent:
         return await self._receive_queue.get()
 
     async def send(self, event: AMGISendEvent) -> None:
-        event_type = event["type"]
-
-        if event_type in {"lifespan.startup.complete", "lifespan.startup.failed"}:
+        if event["type"] == "lifespan.startup.complete":
             self._startup_event.set()
-        elif event_type in {"lifespan.shutdown.complete", "lifespan.shutdown.failed"}:
+        elif event["type"] == "lifespan.startup.failed":
+            self._startup_event.set()
+            self._startup_error_message = event["message"]
+        elif event["type"] == "lifespan.shutdown.complete":
             self._shutdown_event.set()
+        elif event["type"] == "lifespan.shutdown.failed":
+            self._shutdown_event.set()
+            self._shutdown_error_message = event["message"]
 
 
 class Stoppable:
