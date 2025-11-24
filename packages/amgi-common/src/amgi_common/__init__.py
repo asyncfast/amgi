@@ -28,7 +28,9 @@ R = TypeVar("R")
 
 
 class Lifespan:
-    def __init__(self, app: AMGIApplication) -> None:
+    def __init__(
+        self, app: AMGIApplication, state: dict[str, Any] | None = None
+    ) -> None:
         self._app = app
         self._receive_queue = Queue[
             Union[LifespanStartupEvent, LifespanShutdownEvent]
@@ -36,7 +38,7 @@ class Lifespan:
 
         self._startup_event = Event()
         self._shutdown_event = Event()
-        self._state: dict[str, Any] = {}
+        self._state = {} if state is None else state
 
     async def __aenter__(self) -> dict[str, Any]:
         loop = asyncio.get_running_loop()
