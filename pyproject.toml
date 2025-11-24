@@ -71,7 +71,7 @@ version_provider = "uv"
 update_changelog_on_bump = true
 major_version_zero = true
 version_files = [
-  "packages/*/pyproject.toml:version|amgi",
+  "packages/*/pyproject.toml:version|amgi|asyncfast",
   "packages/*/README.md:pip install",
   "conf.py:release",
 ]

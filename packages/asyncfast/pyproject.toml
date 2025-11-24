@@ -31,9 +31,11 @@ classifiers = [
 dependencies = [
   "amgi-types==0.21.0",
   "pydantic==2.11.7",
-  "typer>=0.16.0",
 ]
 
+optional-dependencies.standard = [
+  "asyncfast-cli==0.21.0",
+]
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
 urls.Documentation = "https://asyncfast.readthedocs.io/en/latest/"
 urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/asyncfast"
@@ -49,3 +51,4 @@ dev = [
 
 [tool.uv.sources]
 amgi-types = { workspace = true }
+asyncfast-cli = { workspace = true }
