@@ -33,7 +33,7 @@ the focus here is event-based applications.
 
 .. code::
 
-   pip install asyncfast
+   pip install "asyncfast[standard]"
 
 *************
  Basic Usage

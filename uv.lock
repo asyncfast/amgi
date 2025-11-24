@@ -13,6 +13,7 @@ members = [
     "amgi-sqs-event-source-mapping",
     "amgi-types",
     "asyncfast",
+    "asyncfast-cli",
     "example",
     "test-utils",
 ]
@@ -474,7 +475,11 @@ source = { editable = "packages/asyncfast" }
 dependencies = [
     { name = "amgi-types" },
     { name = "pydantic" },
-    { name = "typer" },
+]
+
+[package.optional-dependencies]
+standard = [
+    { name = "asyncfast-cli" },
 ]
 
 [package.dev-dependencies]
@@ -486,14 +491,30 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "amgi-types", editable = "packages/amgi-types" },
+    { name = "asyncfast-cli", marker = "extra == 'standard'", editable = "packages/asyncfast-cli" },
     { name = "pydantic", specifier = "==2.11.7" },
-    { name = "typer", specifier = ">=0.16.0" },
 ]
+provides-extras = ["standard"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-asyncio", specifier = ">=1.1" },
+]
+
+[[package]]
+name = "asyncfast-cli"
+version = "0.21.0"
+source = { editable = "packages/asyncfast-cli" }
+dependencies = [
+    { name = "amgi-types" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amgi-types", editable = "packages/amgi-types" },
+    { name = "typer", specifier = ">=0.16.0" },
 ]
 
 [[package]]
