@@ -93,6 +93,7 @@ class Server:
         self._disconnected_event = Event()
         self._stop_event = Event()
         self._tasks = set[Task[None]]()
+        self._state: dict[str, Any] = {}
 
     def _on_connect(
         self,
@@ -114,6 +115,7 @@ class Server:
             "type": "message",
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": message.topic,
+            "state": self._state.copy(),
         }
         await self._app(scope, _MessageReceive(message), _MessageSend(self._client))
 
@@ -172,7 +174,7 @@ class Server:
 
         await self._subscribe_event.wait()
 
-        async with Lifespan(self._app) as state:
+        async with Lifespan(self._app, self._state):
             await self._stop_event.wait()
             self._client.unsubscribe(self._topic)
             await asyncio.gather(*self._tasks)
