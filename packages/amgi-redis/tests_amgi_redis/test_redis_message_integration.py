@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
 from uuid import uuid4
@@ -31,13 +30,8 @@ async def app(
     host = redis_container.get_container_host_ip()
     port = redis_container.get_exposed_port(redis_container.port)
     server = Server(app, channel, url=f"redis://{host}:{port}")
-    loop = asyncio.get_running_loop()
-    serve_task = loop.create_task(server.serve())
-    async with app.lifespan():
+    async with app.lifespan(server=server):
         yield app
-        server.stop()
-
-    await serve_task
 
 
 async def test_message(
@@ -101,3 +95,26 @@ async def test_message_send(
             "channel": send_channel.encode(),
             "data": b"test",
         }
+
+
+async def test_lifespan(redis_container: AsyncRedisContainer, channel: str) -> None:
+    client = await redis_container.get_async_client()
+
+    app = MockApp()
+
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(redis_container.port)
+    server = Server(app, channel, url=f"redis://{host}:{port}")
+
+    state_item = uuid4()
+
+    async with app.lifespan({"item": state_item}, server):
+        await client.publish(channel, "")
+
+        async with app.call() as (scope, receive, send):
+            assert scope == {
+                "address": channel,
+                "amgi": {"spec_version": "1.0", "version": "1.0"},
+                "type": "message",
+                "state": {"item": state_item},
+            }
