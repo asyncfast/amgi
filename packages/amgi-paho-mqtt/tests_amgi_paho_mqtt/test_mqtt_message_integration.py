@@ -36,13 +36,8 @@ async def app(
         mosquitto_container.get_exposed_port(mosquitto_container.MQTT_PORT),
         str(uuid4()),
     )
-    loop = asyncio.get_running_loop()
-    serve_task = loop.create_task(server.serve())
-    async with app.lifespan():
+    async with app.lifespan(server=server):
         yield app
-        server.stop()
-
-    await serve_task
 
 
 async def test_message(
@@ -55,6 +50,7 @@ async def test_message(
             "address": topic,
             "amgi": {"spec_version": "1.0", "version": "1.0"},
             "type": "message",
+            "state": {},
         }
 
         message_receive = await receive()
@@ -115,3 +111,27 @@ async def test_message_send(
         assert message.payload == b"test"
 
     client.disconnect()
+
+
+async def test_lifespan(topic: str, mosquitto_container: MosquittoContainer) -> None:
+    app = MockApp()
+    server = Server(
+        app,
+        topic,
+        mosquitto_container.get_container_host_ip(),
+        mosquitto_container.get_exposed_port(mosquitto_container.MQTT_PORT),
+        str(uuid4()),
+    )
+
+    state_item = uuid4()
+
+    async with app.lifespan({"item": state_item}, server):
+        mosquitto_container.publish_message(topic, "")
+
+        async with app.call() as (scope, receive, send):
+            assert scope == {
+                "address": topic,
+                "amgi": {"spec_version": "1.0", "version": "1.0"},
+                "type": "message",
+                "state": {"item": state_item},
+            }
