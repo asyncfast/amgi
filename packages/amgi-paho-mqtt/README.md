@@ -7,7 +7,7 @@ AMGI will be here very soon
 ## Installation
 
 ```
-pip install amgi-paho-mqtt==0.22.0
+pip install amgi-paho-mqtt==0.23.0
 ```
 
 ## Contact

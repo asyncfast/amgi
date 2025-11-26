@@ -1,3 +1,16 @@
+## 0.23.0 (2025-11-26)
+
+### Feat
+
+- **amgi-common**: allow state to be passed into Lifespan context manager
+
+### Fix
+
+- **amgi-sqs-event-source-mapping**: correctly handle amgi state after startup
+- **amgi-paho-mqtt**: correctly handle amgi state after startup
+- **asyncfast**: fix behaviour of lifespan, it is expected to be called with the running application
+- **amgi-common**: correctly handle lifespan failures
+
 ## 0.22.0 (2025-11-26)
 
 ### Feat
