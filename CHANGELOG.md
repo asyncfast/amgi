@@ -1,3 +1,20 @@
+## 0.24.0 (2025-11-26)
+
+### Feat
+
+- **amgi-common**: move graceful serving code to amgi-common so it can be reused
+
+### Fix
+
+- **amgi-redis**: use server_serve from amgi-common so server is shutdown gracefully
+- **amgi-paho-mqtt**: use server_serve from amgi-common so server is shutdown gracefully
+- **amgi-aiobotocore**: use server_serve from amgi-common so server is shutdown gracefully
+- **amgi-paho-mqtt**: handle publish correctly, waiting for success, or failure
+
+### Refactor
+
+- **amgi-redis**: rename send, and receive classes so they match the naming convention of other servers
+
 ## 0.23.1 (2025-11-26)
 
 ### Refactor
