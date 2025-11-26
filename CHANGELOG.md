@@ -1,3 +1,9 @@
+## 0.23.1 (2025-11-26)
+
+### Refactor
+
+- **amgi-aiokafka**: split send and receive into two seperate classes
+
 ## 0.23.0 (2025-11-26)
 
 ### Feat
