@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncGenerator
 from uuid import uuid4
 
@@ -28,14 +27,7 @@ def topic() -> str:
 
 
 @pytest.fixture
-def state_item() -> str:
-    return f"state-{uuid4()}"
-
-
-@pytest.fixture
-async def app(
-    bootstrap_server: str, topic: str, state_item: str
-) -> AsyncGenerator[MockApp, None]:
+async def app(bootstrap_server: str, topic: str) -> AsyncGenerator[MockApp, None]:
     app = MockApp()
     server = Server(
         app,
@@ -43,19 +35,12 @@ async def app(
         bootstrap_servers=bootstrap_server,
         group_id=None,
     )
-    loop = asyncio.get_running_loop()
-    serve_task = loop.create_task(server.serve())
 
-    async with app.lifespan({"item": state_item}):
+    async with app.lifespan(server=server):
         yield app
-        server.stop()
-
-    await serve_task
 
 
-async def test_message(
-    bootstrap_server: str, app: MockApp, topic: str, state_item: str
-) -> None:
+async def test_message(bootstrap_server: str, app: MockApp, topic: str) -> None:
 
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
@@ -66,7 +51,7 @@ async def test_message(
             "address": topic,
             "amgi": {"spec_version": "1.0", "version": "1.0"},
             "type": "message",
-            "state": {"item": state_item},
+            "state": {},
         }
 
         message_receive = await receive()
@@ -144,3 +129,30 @@ async def test_message_send_kafka_key(
         assert message.key == b"test"
 
     await producer.stop()
+
+
+async def test_lifespan(bootstrap_server: str, topic: str) -> None:
+    app = MockApp()
+    server = Server(
+        app,
+        topic,
+        bootstrap_servers=bootstrap_server,
+        group_id=None,
+    )
+    producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
+    await producer.start()
+
+    state_item = uuid4()
+
+    async with app.lifespan({"item": state_item}, server):
+        await producer.send_and_wait(
+            topic,
+            b"",
+        )
+        async with app.call() as (scope, receive, send):
+            assert scope == {
+                "address": topic,
+                "amgi": {"spec_version": "1.0", "version": "1.0"},
+                "type": "message",
+                "state": {"item": state_item},
+            }
