@@ -1,3 +1,9 @@
+## 0.22.0 (2025-11-26)
+
+### Feat
+
+- create new asyncfast-cli package to allow dependencies to be optional
+
 ## 0.21.0 (2025-11-20)
 
 ### Feat

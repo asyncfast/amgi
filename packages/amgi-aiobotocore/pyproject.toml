@@ -4,7 +4,7 @@ requires = [ "uv-build>=0.8.14,<0.9.0" ]
 
 [project]
 name = "amgi-aiobotocore"
-version = "0.21.0"
+version = "0.22.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -21,8 +21,8 @@ classifiers = [
 ]
 dependencies = [
   "aiobotocore>=2.25.0",
-  "amgi-common==0.21.0",
-  "amgi-types==0.21.0",
+  "amgi-common==0.22.0",
+  "amgi-types==0.22.0",
 ]
 entry-points.amgi_server.amgi-aiobotocore-sqs = "amgi_aiobotocore.sqs:_run_cli"
 
