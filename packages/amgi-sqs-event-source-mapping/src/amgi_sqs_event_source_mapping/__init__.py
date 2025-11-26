@@ -141,8 +141,8 @@ class SqsHandler:
             aws_secret_access_key=aws_secret_access_key,
         )
         self._lifespan = lifespan
-
         self._lifespan_context: Optional[Lifespan] = None
+        self._state: dict[str, Any] = {}
         self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
 
     def __call__(
@@ -152,7 +152,7 @@ class SqsHandler:
 
     async def _call(self, event: _SqsEventSourceMapping) -> _BatchItemFailures:
         if not self._lifespan_context and self._lifespan:
-            self._lifespan_context = Lifespan(self._app)
+            self._lifespan_context = Lifespan(self._app, self._state)
             await self._lifespan_context.__aenter__()
         event_source_arn_records = defaultdict(list)
         corrupted_message_ids = []
@@ -189,6 +189,7 @@ class SqsHandler:
             "type": "message",
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": event_source_arn_match["queue"],
+            "state": self._state.copy(),
         }
 
         records_send = _Send(self._sqs_client, message_ids)

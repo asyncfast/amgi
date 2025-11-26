@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from collections.abc import Generator
 from unittest.mock import Mock
 from unittest.mock import patch
+from uuid import uuid4
 
 import boto3
 import pytest
@@ -102,6 +103,7 @@ async def test_sqs_handler_records(app: MockApp, sqs_handler: SqsHandler) -> Non
             "type": "message",
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
+            "state": {},
         }
 
         assert await receive() == {
@@ -172,6 +174,7 @@ async def test_sqs_handler_record_nack(app: MockApp, sqs_handler: SqsHandler) ->
             "type": "message",
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
+            "state": {},
         }
 
         assert await receive() == {
@@ -236,6 +239,7 @@ async def test_sqs_handler_record_unacked(
             "type": "message",
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
+            "state": {},
         }
 
         assert await receive() == {
@@ -292,6 +296,7 @@ async def test_sqs_handler_record_message_attribute_binary_value(
             "type": "message",
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
+            "state": {},
         }
 
         assert await receive() == {
@@ -353,3 +358,65 @@ async def test_sqs_handler_record_corrupted(
             {"itemIdentifier": "059f36b4-87a3-44ab-83d2-661975830a7d"}
         ]
     }
+
+
+async def test_lifespan(
+    mock_sqs_client: Mock,
+) -> None:
+    app = MockApp()
+    sqs_handler = SqsHandler(app)
+
+    loop = asyncio.get_event_loop()
+    state_item = uuid4()
+
+    lifespan_task = loop.create_task(
+        sqs_handler._call(
+            {"Records": []},
+        )
+    )
+    async with app.lifespan({"item": state_item}):
+        await lifespan_task
+
+        call_task = asyncio.get_running_loop().create_task(
+            sqs_handler._call(
+                {
+                    "Records": [
+                        {
+                            "messageId": "059f36b4-87a3-44ab-83d2-661975830a7d",
+                            "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                            "body": "Test message.",
+                            "attributes": {
+                                "ApproximateReceiveCount": "1",
+                                "SentTimestamp": "1545082649183",
+                                "SenderId": "AIDAIENQZJOLO23YVJ4VO",
+                                "ApproximateFirstReceiveTimestamp": "1545082649185",
+                            },
+                            "messageAttributes": {
+                                "myAttribute": {
+                                    "stringValue": "myValue",
+                                    "stringListValues": [],
+                                    "binaryListValues": [],
+                                    "dataType": "String",
+                                }
+                            },
+                            "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
+                            "eventSource": "aws:sqs",
+                            "eventSourceARN": "arn:aws:sqs:us-east-2:123456789012:my-queue",
+                            "awsRegion": "us-east-2",
+                        }
+                    ]
+                },
+            )
+        )
+        async with app.call() as (scope, receive, send):
+            assert scope == {
+                "type": "message",
+                "amgi": {"version": "1.0", "spec_version": "1.0"},
+                "address": "my-queue",
+                "state": {"item": state_item},
+            }
+
+        await call_task
+        shutdown_task = loop.create_task(sqs_handler._shutdown())
+
+    await shutdown_task
