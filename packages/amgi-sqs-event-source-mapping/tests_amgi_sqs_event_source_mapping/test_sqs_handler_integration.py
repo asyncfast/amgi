@@ -69,6 +69,7 @@ async def test_sqs_handler_record_send(
             "type": "message",
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
+            "state": {},
         }
 
         assert await receive() == {
