@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
 from typing import cast
@@ -65,13 +64,8 @@ async def app(
         aws_access_key_id="testcontainers-localstack",
         aws_secret_access_key="testcontainers-localstack",
     )
-    loop = asyncio.get_running_loop()
-    serve_task = loop.create_task(server.serve())
-    async with app.lifespan():
+    async with app.lifespan(server=server):
         yield app
-        server.stop()
-
-    await serve_task
 
 
 async def test_message(
@@ -189,3 +183,40 @@ async def test_message_send(
         assert message["MessageAttributes"] == {
             "test": {"StringValue": "test", "DataType": "StringValue"}
         }
+
+
+async def test_lifespan(
+    queue_url: str,
+    queue_name: str,
+    localstack_container: LocalStackContainer,
+    sqs_client: Any,
+) -> None:
+    app = MockApp()
+    server = Server(
+        app,
+        queue_name,
+        region_name=localstack_container.region_name,
+        endpoint_url=localstack_container.get_url(),
+        aws_access_key_id="testcontainers-localstack",
+        aws_secret_access_key="testcontainers-localstack",
+    )
+
+    state_item = uuid4()
+
+    async with app.lifespan({"item": state_item}, server):
+        sqs_client.send_message(
+            QueueUrl=queue_url,
+            MessageBody="value",
+            MessageAttributes={
+                "string-value": {"StringValue": "string", "DataType": "StringValue"},
+                "bytes-value": {"BinaryValue": b"bytes", "DataType": "BinaryValue"},
+            },
+        )
+
+        async with app.call() as (scope, receive, send):
+            assert scope == {
+                "address": queue_name,
+                "amgi": {"spec_version": "1.0", "version": "1.0"},
+                "type": "message",
+                "state": {"item": state_item},
+            }
