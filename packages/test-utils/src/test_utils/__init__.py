@@ -1,13 +1,23 @@
+import asyncio
 from asyncio import Event
 from asyncio import Queue
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 from typing import Optional
+from typing import Protocol
 
 from amgi_types import AMGIReceiveCallable
 from amgi_types import AMGISendCallable
 from amgi_types import Scope
+
+
+class _Server(Protocol):
+    async def serve(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
 
 
 class MockApp:
@@ -28,8 +38,11 @@ class MockApp:
 
     @asynccontextmanager
     async def lifespan(
-        self, state: Optional[dict[str, Any]] = None
+        self, state: Optional[dict[str, Any]] = None, server: Optional[_Server] = None
     ) -> AsyncGenerator[None, None]:
+        loop = asyncio.get_running_loop()
+        serve_task = loop.create_task(server.serve()) if server else None
+
         async with self.call() as (scope, receive, send):
             assert scope == {
                 "amgi": {"spec_version": "1.0", "version": "1.0"},
@@ -42,9 +55,14 @@ class MockApp:
             assert lifespan_startup == {"type": "lifespan.startup"}
             await send({"type": "lifespan.startup.complete"})
             yield
+            if server:
+                server.stop()
+
             lifespan_shutdown = await receive()
             assert lifespan_shutdown == {"type": "lifespan.shutdown"}
             await send({"type": "lifespan.shutdown.complete"})
+        if serve_task:
+            await serve_task
 
     async def __call__(
         self, scope: Scope, receive: AMGIReceiveCallable, send: AMGISendCallable
