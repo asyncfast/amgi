@@ -3,10 +3,10 @@
 [![Tests](https://github.com/asyncfast/amgi/actions/workflows/tests.yml/badge.svg)](https://github.com/asyncfast/amgi/actions/workflows/tests.yml)
 
 AMGI (*Asynchronous Messaging Gateway Interface*) is the spiritual sibling of
-[ASGI](https://asgi.readthedocs.io/en/latest/). While the focus of [ASGI\_](https://asgi.readthedocs.io/en/latest/) is
-HTTP, the focus here is event-based applications.
+[ASGI](https://asgi.readthedocs.io/en/latest/). While the focus of [ASGI](https://asgi.readthedocs.io/en/latest/) is
+HTTP, the focus of AMGI is event-based applications.
 
-This repository contains multiple AMGI implementations, as well as a typed microframework AsyncFast, in the spirit of
+This repository contains multiple AMGI implementations, as well as a typed microframework, AsyncFast, in the spirit of
 [FastAPI](https://fastapi.tiangolo.com/) it attempts to make typed asynchronous APIs easy to develop.
 
 ## Core Aims
@@ -21,7 +21,7 @@ Core aims of both AMGI and AsyncFast:
 - **Standards-based**: Based on [AsyncAPI](https://www.asyncapi.com/), and [JSON Schema](https://json-schema.org/). The
   framework should allow for easy documentation generation
 
-- **Clean Implementation**: Each protocol should be implemented well, this means easy to use, and as optimal as possible
+- **Clean Implementation**: Each protocol should be implemented well; this means easy to use, and as optimal as possible
 
 ## Documentation
 
@@ -29,8 +29,6 @@ Core aims of both AMGI and AsyncFast:
 - For documentation on [AsyncFast](https://asyncfast.readthedocs.io/en/latest/)
 
 ## Servers
-
-At the moment there are base implementations for the following protocols, these are all working AMGI servers:
 
 At the moment there are base implementations for the following protocols, these are all working
 [AMGI](https://amgi.readthedocs.io/en/latest/) servers:
