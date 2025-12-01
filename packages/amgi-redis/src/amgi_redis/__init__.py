@@ -14,7 +14,7 @@ from redis.asyncio.client import PubSub
 from redis.asyncio.client import Redis
 
 
-def run(app: AMGIApplication, *channels: str, url: str) -> None:
+def run(app: AMGIApplication, *channels: str, url: str = "redis://localhost") -> None:
     server = Server(app, *channels, url=url)
     server_serve(server)
 
