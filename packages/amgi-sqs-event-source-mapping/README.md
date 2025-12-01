@@ -1,7 +1,7 @@
 # amgi-sqs-event-source-mapping
 
-amgi-sqs-event-source-mapping is an adaptor for [AMGI](https://amgi.readthedocs.io/en/latest/) to run in a SQS event
-source mapped Lambda.
+amgi-sqs-event-source-mapping is an adaptor for [AMGI](https://amgi.readthedocs.io/en/latest/) applications to run in an
+SQS event source mapped Lambda.
 
 ## Installation
 
@@ -10,6 +10,8 @@ pip install amgi-sqs-event-source-mapping==0.24.0
 ```
 
 ## Example
+
+This example uses [AsyncFast](https://pypi.org/project/asyncfast/):
 
 ```python
 from dataclasses import dataclass
