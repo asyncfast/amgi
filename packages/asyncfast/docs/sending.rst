@@ -30,3 +30,16 @@ example would be:
 .. async-fast-example:: examples/send_message.py
 
 This follows the same rules as setting up a receiver. For example, one payload, and using annotated types for headers.
+
+***************************
+ Concurrent Message Sender
+***************************
+
+If you want to send messages concurrently this is supported by the :py:class:`MessageSender` class. This can be passed
+into the arguments of a handler, which will allow you to send using the :py:meth:`MessageSender.send` method:
+
+.. async-fast-example:: examples/message_sender.py
+
+As :py:meth:`MessageSender.send` is a coroutine you can await multiple sends:
+
+.. async-fast-example:: examples/message_sender_concurrent.py
