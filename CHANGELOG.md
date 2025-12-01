@@ -1,3 +1,9 @@
+## 0.24.1 (2025-12-01)
+
+### Refactor
+
+- **amgi-redis**: add default to url argument for run function
+
 ## 0.24.0 (2025-11-26)
 
 ### Feat

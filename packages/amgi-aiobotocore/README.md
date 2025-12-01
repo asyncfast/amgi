@@ -6,7 +6,7 @@ running AMGI applications against [SQS](https://aws.amazon.com/sqs/).
 ## Installation
 
 ```
-pip install amgi-aiobotocore==0.24.0
+pip install amgi-aiobotocore==0.24.1
 ```
 
 ## Example

@@ -4,7 +4,7 @@ requires = [ "uv-build>=0.8.14,<0.9.0" ]
 
 [project]
 name = "asyncfast-cli"
-version = "0.24.0"
+version = "0.24.1"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -20,7 +20,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "amgi-types==0.24.0",
+  "amgi-types==0.24.1",
   "typer>=0.16.0",
 ]
 
