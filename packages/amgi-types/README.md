@@ -1,8 +1,6 @@
-# types-amgi
+# amgi-types
 
-:construction: This package is currently under development :construction:
-
-AMGI will be here very soon
+This package contains the types for [AMGI](https://amgi.readthedocs.io/en/latest/) applications.
 
 ## Installation
 
