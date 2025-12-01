@@ -5,7 +5,7 @@ requires = [ "uv-build>=0.8.4,<0.9" ]
 [project]
 name = "amgi-types"
 version = "0.24.0"
-description = "Add your description here"
+description = "AMGI Types"
 readme = "README.md"
 authors = [
   { name = "jack.burridge", email = "jack.burridge@mail.com" },
