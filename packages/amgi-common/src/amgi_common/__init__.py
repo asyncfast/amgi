@@ -8,6 +8,7 @@ from asyncio import Future
 from asyncio import Queue
 from asyncio import Task
 from collections import defaultdict
+from collections.abc import Callable
 from collections.abc import Coroutine
 from collections.abc import Hashable
 from collections.abc import Iterable
@@ -18,7 +19,6 @@ from signal import SIGINT
 from signal import SIGTERM
 from types import TracebackType
 from typing import Any
-from typing import Callable
 from typing import Generic
 from typing import Protocol
 from typing import TypeVar

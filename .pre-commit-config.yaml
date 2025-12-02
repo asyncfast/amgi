@@ -44,7 +44,8 @@ repos:
     rev: v3.21.2
     hooks:
       - id: pyupgrade
-        args: [--py39-plus]
+        args: [--py310-plus]
+        exclude: '^.*test.*\.py$'
   - repo: https://github.com/tox-dev/tox-ini-fmt
     rev: "1.7.0"
     hooks:

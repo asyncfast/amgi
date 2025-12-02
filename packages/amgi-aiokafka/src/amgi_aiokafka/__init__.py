@@ -2,11 +2,9 @@ import logging
 from asyncio import Lock
 from collections import deque
 from collections.abc import Awaitable
+from collections.abc import Callable
 from collections.abc import Iterable
 from typing import Any
-from typing import Callable
-from typing import Optional
-from typing import Union
 
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
@@ -28,8 +26,8 @@ logger = logging.getLogger("amgi-aiokafka.error")
 def run(
     app: AMGIApplication,
     *topics: Iterable[str],
-    bootstrap_servers: Union[str, list[str]] = "localhost",
-    group_id: Optional[str] = None,
+    bootstrap_servers: str | list[str] = "localhost",
+    group_id: str | None = None,
 ) -> None:
     server = Server(
         app, *topics, bootstrap_servers=bootstrap_servers, group_id=group_id
@@ -40,8 +38,8 @@ def run(
 def _run_cli(
     app: AMGIApplication,
     topics: list[str],
-    bootstrap_servers: Optional[list[str]] = None,
-    group_id: Optional[str] = None,
+    bootstrap_servers: list[str] | None = None,
+    group_id: str | None = None,
 ) -> None:
     run(
         app,
@@ -100,15 +98,15 @@ class Server:
         self,
         app: AMGIApplication,
         *topics: Iterable[str],
-        bootstrap_servers: Union[str, list[str]],
-        group_id: Optional[str],
+        bootstrap_servers: str | list[str],
+        group_id: str | None,
     ) -> None:
         self._app = app
         self._topics = topics
         self._bootstrap_servers = bootstrap_servers
         self._group_id = group_id
         self._ackable_consumer = self._group_id is not None
-        self._producer: Optional[AIOKafkaProducer] = None
+        self._producer: AIOKafkaProducer | None = None
         self._producer_lock = Lock()
         self._stoppable = Stoppable()
 

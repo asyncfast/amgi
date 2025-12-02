@@ -5,6 +5,7 @@ import re
 from collections import Counter
 from collections.abc import AsyncGenerator
 from collections.abc import Awaitable
+from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Iterable
 from collections.abc import Iterator
@@ -17,10 +18,10 @@ from inspect import Signature
 from re import Pattern
 from typing import Annotated
 from typing import Any
-from typing import Callable
 from typing import ClassVar
 from typing import Generic
-from typing import Optional
+from typing import get_args
+from typing import get_origin
 from typing import TypeVar
 from typing import Union
 
@@ -43,8 +44,6 @@ from pydantic.json_schema import GenerateJsonSchema
 from pydantic.json_schema import JsonSchemaMode
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
-from typing_extensions import get_args
-from typing_extensions import get_origin
 
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
 M = TypeVar("M", bound=Mapping[str, Any])
@@ -75,13 +74,13 @@ class MessageSender(Generic[M]):
 
 class Message(Mapping[str, Any]):
 
-    __address__: ClassVar[Optional[str]] = None
+    __address__: ClassVar[str | None] = None
     __headers__: ClassVar[dict[str, TypeAdapter[Any]]]
     __parameters__: ClassVar[dict[str, TypeAdapter[Any]]]
-    __payload__: ClassVar[Optional[tuple[str, TypeAdapter[Any]]]]
+    __payload__: ClassVar[tuple[str, TypeAdapter[Any]] | None]
     __bindings__: ClassVar[dict[str, TypeAdapter[Any]]]
 
-    def __init_subclass__(cls, address: Optional[str] = None, **kwargs: Any) -> None:
+    def __init_subclass__(cls, address: str | None = None, **kwargs: Any) -> None:
         cls.__address__ = address
         annotations = list(_generate_message_annotations(address, cls.__annotations__))
 
@@ -141,7 +140,7 @@ class Message(Mapping[str, Any]):
         if self.__bindings__:
             yield "bindings"
 
-    def _get_address(self) -> Optional[str]:
+    def _get_address(self) -> str | None:
         if self.__address__ is None:
             return None
         parameters = {
@@ -164,7 +163,7 @@ class Message(Mapping[str, Any]):
             return value.encode()
         return json_value
 
-    def _get_payload(self) -> Optional[bytes]:
+    def _get_payload(self) -> bytes | None:
         if self.__payload__ is None:
             return None
         name, type_adapter = self.__payload__
@@ -183,7 +182,7 @@ class Message(Mapping[str, Any]):
 
 
 def _generate_message_annotations(
-    address: Optional[str],
+    address: str | None,
     fields: dict[str, Any],
 ) -> Generator[tuple[str, type[Annotated[Any, Any]]], None, None]:
     address_parameters = _get_address_parameters(address)
@@ -208,13 +207,13 @@ class AsyncFast:
         self,
         title: str = "AsyncFast",
         version: str = "0.1.0",
-        lifespan: Optional[Lifespan] = None,
+        lifespan: Lifespan | None = None,
     ) -> None:
         self._channels: list[Channel] = []
         self._title = title
         self._version = version
         self._lifespan_context = lifespan
-        self._lifespan: Optional[AbstractAsyncContextManager[None]] = None
+        self._lifespan: AbstractAsyncContextManager[None] | None = None
 
     @property
     def title(self) -> str:
@@ -239,7 +238,7 @@ class AsyncFast:
             or get_origin(return_annotation) is Generator
         ):
             async_generator_type = get_args(return_annotation)[0]
-            if get_origin(async_generator_type) is Union:  # type: ignore[comparison-overlap]
+            if get_origin(async_generator_type) is Union:
                 messages = [
                     type for type in get_args(async_generator_type) if _is_message(type)
                 ]
@@ -284,7 +283,7 @@ class AsyncFast:
         for name, annotated in annotations:
             if get_origin(annotated) is MessageSender:
                 (message_sender_type,) = get_args(annotated)
-                if get_origin(message_sender_type) is Union:  # type: ignore[comparison-overlap]
+                if get_origin(message_sender_type) is Union:
                     messages = [
                         type
                         for type in get_args(message_sender_type)
@@ -435,7 +434,7 @@ async def _handle_async_generator(
     send: AMGISendCallable,
 ) -> None:
     agen = handler(**arguments)
-    exception: Optional[Exception] = None
+    exception: Exception | None = None
     while True:
         try:
             if exception is None:
@@ -465,7 +464,7 @@ async def _handle_generator(
     send: AMGISendCallable,
 ) -> None:
     gen = handler(**arguments)
-    exception: Optional[Exception] = None
+    exception: Exception | None = None
     while True:
         if exception is None:
             send_message = await asyncio.to_thread(next, gen, None)
@@ -490,10 +489,10 @@ class Channel:
         handler: Callable[..., Awaitable[None]],
         headers: Mapping[str, TypeAdapter[Any]],
         parameters: Mapping[str, TypeAdapter[Any]],
-        payload: Optional[tuple[str, TypeAdapter[Any]]],
+        payload: tuple[str, TypeAdapter[Any]] | None,
         messages: Sequence[type[Message]],
         bindings: Mapping[str, TypeAdapter[Any]],
-        message_sender: Optional[str],
+        message_sender: str | None,
     ) -> None:
         self._address = address
         self._address_pattern = address_pattern
@@ -522,7 +521,7 @@ class Channel:
         return self._headers
 
     @cached_property
-    def headers_model(self) -> Optional[type[BaseModel]]:
+    def headers_model(self) -> type[BaseModel] | None:
         if self._headers:
             headers_name = f"{self.title}Headers"
             headers_model = create_model(
@@ -537,7 +536,7 @@ class Channel:
         return None
 
     @property
-    def payload(self) -> Optional[tuple[str, TypeAdapter[Any]]]:
+    def payload(self) -> tuple[str, TypeAdapter[Any]] | None:
         return self._payload
 
     @property
@@ -548,7 +547,7 @@ class Channel:
     def messages(self) -> Sequence[type[Message]]:
         return self._messages
 
-    def match(self, address: str) -> Optional[dict[str, str]]:
+    def match(self, address: str) -> dict[str, str] | None:
         match = self._address_pattern.match(address)
         if match:
             return match.groupdict()
@@ -759,7 +758,7 @@ class Parameter(FieldInfo):
     pass
 
 
-def _get_address_parameters(address: Optional[str]) -> set[str]:
+def _get_address_parameters(address: str | None) -> set[str]:
     if address is None:
         return set()
     parameters = _PARAMETER_PATTERN.findall(address)

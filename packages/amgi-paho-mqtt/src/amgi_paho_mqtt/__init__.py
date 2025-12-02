@@ -5,7 +5,6 @@ from asyncio import Task
 from socket import SO_SNDBUF
 from socket import SOL_SOCKET
 from typing import Any
-from typing import Optional
 from typing import TYPE_CHECKING
 from weakref import WeakValueDictionary
 
@@ -35,7 +34,7 @@ def run(
     topic: str,
     host: str = "localhost",
     port: int = 1883,
-    client_id: Optional[str] = None,
+    client_id: str | None = None,
 ) -> None:
     server = Server(app, topic, host, port, client_id)
     server_serve(server)
@@ -65,7 +64,7 @@ class Server:
         topic: str,
         host: str,
         port: int,
-        client_id: Optional[str],
+        client_id: str | None,
         protocol: MQTTProtocolVersion = MQTTv311,
     ) -> None:
         self._app = app
@@ -100,7 +99,7 @@ class Server:
         userdata: Any,
         connect_flags: ConnectFlags,
         reason_code: ReasonCode,
-        properties: Optional[Properties],
+        properties: Properties | None,
     ) -> None:
         client.subscribe(self._topic)
 
@@ -124,7 +123,7 @@ class Server:
         userdata: Any,
         disconnect_flags: DisconnectFlags,
         reason_code: ReasonCode,
-        properties: Optional[Properties],
+        properties: Properties | None,
     ) -> None:
         self._disconnected_event.set()
 
@@ -156,7 +155,7 @@ class Server:
         userdata: Any,
         mid: int,
         reason_code_list: list[ReasonCode],
-        properties: Optional[Properties],
+        properties: Properties | None,
     ) -> None:
         self._subscribe_event.set()
 
