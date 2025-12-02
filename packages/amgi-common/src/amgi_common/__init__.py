@@ -6,11 +6,13 @@ from asyncio import AbstractEventLoop
 from asyncio import Event
 from asyncio import Future
 from asyncio import Queue
+from asyncio import Task
 from collections import defaultdict
 from collections.abc import Coroutine
 from collections.abc import Hashable
 from collections.abc import Iterable
 from collections.abc import Sequence
+from functools import partial
 from itertools import islice
 from signal import SIGINT
 from signal import SIGTERM
@@ -158,7 +160,6 @@ class _StoppableAsyncIterator(Generic[T]):
     async def __anext__(self) -> T:
         if self._stop_event.is_set():
             raise StopAsyncIteration
-
         callable_task = self._loop.create_task(
             self._function(*self._args, **self._kwargs)
         )
@@ -244,6 +245,24 @@ class OperationBatcher(Generic[T, H, R]):
         self._queue.put_nowait((item, future))
         loop.call_soon(self._process_batch, loop)
         return await future
+
+
+class OperationCacher(Generic[H, R]):
+    def __init__(self, function: Callable[[H], Coroutine[Any, Any, R]]) -> None:
+        self._function = function
+        self._cache_tasks: dict[H, Task[R]] = {}
+
+    async def get(self, key: H) -> R:
+        task = self._cache_tasks.get(key)
+        if task is None:
+            task = asyncio.create_task(self._function(key))
+            task.add_done_callback(partial(self._remove_on_exception, key))
+            self._cache_tasks[key] = task
+        return await task
+
+    def _remove_on_exception(self, key: H, task: Task[R]) -> None:
+        if task.exception() is not None:
+            del self._cache_tasks[key]
 
 
 class _Server(Protocol):
