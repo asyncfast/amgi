@@ -151,6 +151,9 @@ class _StoppableAsyncIterator(Generic[T]):
         return self
 
     async def __anext__(self) -> T:
+        if self._stop_event.is_set():
+            raise StopAsyncIteration
+
         callable_task = self._loop.create_task(
             self._function(*self._args, **self._kwargs)
         )
