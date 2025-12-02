@@ -15,3 +15,7 @@ wheels/
 
 # Sphinx
 _build
+
+# coverage
+.coverage
+coverage.xml
