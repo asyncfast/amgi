@@ -19,7 +19,7 @@ def test_asyncapi_header() -> None:
 
     @app.channel("hello")
     async def on_hello(request_id: Annotated[int, Header()]) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -63,7 +63,7 @@ def test_asyncapi_header_sync() -> None:
 
     @app.channel("hello")
     def on_hello(request_id: Annotated[int, Header()]) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -109,7 +109,7 @@ def test_asyncapi_header_description() -> None:
     async def on_hello(
         request_id: Annotated[int, Header(description="Id to correlate the request")],
     ) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -161,7 +161,7 @@ def test_asyncapi_payload() -> None:
 
     @app.channel("hello")
     async def on_hello(payload: MessagePayload) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -211,7 +211,7 @@ def test_asyncapi_payload_dataclass() -> None:
 
     @app.channel("hello")
     async def on_hello(payload: MessagePayload) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -256,7 +256,7 @@ def test_asyncapi_payload_simple() -> None:
 
     @app.channel("hello")
     async def on_hello(message: Annotated[str, Payload()]) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -295,7 +295,7 @@ def test_asyncapi_payload_nested() -> None:
 
     @app.channel("register")
     async def on_register(person: Person) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -352,7 +352,7 @@ def test_asyncapi_address_parameter() -> None:
 
     @app.channel("order.{user_id}")
     async def order_handler(user_id: str) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -389,7 +389,7 @@ def test_asyncapi_send() -> None:
 
     @app.channel("receive")
     async def receive_handler(id: int) -> AsyncGenerator[Send, None]:
-        yield Send(id=id)
+        yield Send(id=id)  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -433,7 +433,7 @@ def test_asyncapi_send_sync() -> None:
 
     @app.channel("receive")
     def receive_handler(id: int) -> Generator[Send, None, None]:
-        yield Send(id=id)
+        yield Send(id=id)  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -480,7 +480,7 @@ def test_asyncapi_send_payload() -> None:
 
     @app.channel("receive")
     async def receive_handler(id: int) -> AsyncGenerator[Send, None]:
-        yield Send(payload=SendPayload(id=id))
+        yield Send(payload=SendPayload(id=id))  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -536,7 +536,7 @@ def test_asyncapi_send_multiple() -> None:
 
     @app.channel("receive")
     async def receive_handler(id: int) -> AsyncGenerator[Union[SendA, SendB], None]:
-        yield SendA(id=id)
+        yield SendA(id=id)  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -636,7 +636,7 @@ async def test_asyncapi_binding_kafka_key() -> None:
 
     @app.channel("topic")
     async def topic_handler(key: Annotated[UUID, KafkaKey()]) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -676,7 +676,7 @@ def test_asyncapi_send_binding_kafka_key() -> None:
 
     @app.channel("receive")
     async def receive_handler() -> AsyncGenerator[Send, None]:
-        yield Send(key=UUID("8291bc91-b884-4a1d-a738-0833cde15b84"))
+        yield Send(key=UUID("8291bc91-b884-4a1d-a738-0833cde15b84"))  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -722,7 +722,7 @@ def test_asyncapi_message_sender() -> None:
 
     @app.channel("receive")
     async def receive_handler(id: int, message_sender: MessageSender[Send]) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
@@ -772,7 +772,7 @@ def test_asyncapi_message_sender_multiple() -> None:
     async def receive_handler(
         id: int, message_sender: MessageSender[Union[SendA, SendB]]
     ) -> None:
-        pass
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",
