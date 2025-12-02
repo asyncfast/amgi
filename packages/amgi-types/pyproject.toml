@@ -4,7 +4,7 @@ requires = [ "uv-build>=0.8.4,<0.9" ]
 
 [project]
 name = "amgi-types"
-version = "0.24.1"
+version = "0.25.0"
 description = "AMGI Types"
 readme = "README.md"
 authors = [

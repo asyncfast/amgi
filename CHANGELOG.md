@@ -1,3 +1,22 @@
+## 0.25.0 (2025-12-02)
+
+### Feat
+
+- **amgi-common**: add operation cacher
+
+### Fix
+
+- **amgi-common**: stoppable will not start task if already cancelled
+
+### Refactor
+
+- **amgi-common**: update operation batcher so it groups items
+
+### Perf
+
+- **amgi-sqs-event-source-mapping**: use caching, and batching to improve sqs performance
+- **amgi-aiobotocore**: use caching, and batching to improve sqs performance
+
 ## 0.24.1 (2025-12-01)
 
 ### Refactor
