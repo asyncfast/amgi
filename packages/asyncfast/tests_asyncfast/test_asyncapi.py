@@ -577,6 +577,60 @@ def test_asyncapi_send_multiple() -> None:
     }
 
 
+def test_asyncapi_send_multiple_pipe_union() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class SendA(Message, address="send_a"):
+        id: int
+
+    @dataclass
+    class SendB(Message, address="send_b"):
+        id: int
+
+    @app.channel("receive")
+    async def receive_handler(id: int) -> AsyncGenerator[SendA | SendB, None]:
+        yield SendA(id=id)  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "ReceiveHandler": {
+                "address": "receive",
+                "messages": {
+                    "ReceiveHandlerMessage": {
+                        "$ref": "#/components/messages/ReceiveHandlerMessage"
+                    }
+                },
+            },
+            "SendA": {
+                "address": "send_a",
+                "messages": {"SendA": {"$ref": "#/components/messages/SendA"}},
+            },
+            "SendB": {
+                "address": "send_b",
+                "messages": {"SendB": {"$ref": "#/components/messages/SendB"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "ReceiveHandlerMessage": {"payload": {"type": "integer"}},
+                "SendA": {"payload": {"type": "integer"}},
+                "SendB": {"payload": {"type": "integer"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveReceiveHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/ReceiveHandler"},
+            },
+            "sendSendA": {"action": "send", "channel": {"$ref": "#/channels/SendA"}},
+            "sendSendB": {"action": "send", "channel": {"$ref": "#/channels/SendB"}},
+        },
+    }
+
+
 async def test_asyncapi_binding_kafka_key() -> None:
     app = AsyncFast()
 
@@ -719,6 +773,62 @@ def test_asyncapi_message_sender_multiple() -> None:
         id: int, message_sender: MessageSender[Union[SendA, SendB]]
     ) -> None:
         pass
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "ReceiveHandler": {
+                "address": "receive",
+                "messages": {
+                    "ReceiveHandlerMessage": {
+                        "$ref": "#/components/messages/ReceiveHandlerMessage"
+                    }
+                },
+            },
+            "SendA": {
+                "address": "send_a",
+                "messages": {"SendA": {"$ref": "#/components/messages/SendA"}},
+            },
+            "SendB": {
+                "address": "send_b",
+                "messages": {"SendB": {"$ref": "#/components/messages/SendB"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "ReceiveHandlerMessage": {"payload": {"type": "integer"}},
+                "SendA": {"payload": {"type": "integer"}},
+                "SendB": {"payload": {"type": "integer"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveReceiveHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/ReceiveHandler"},
+            },
+            "sendSendA": {"action": "send", "channel": {"$ref": "#/channels/SendA"}},
+            "sendSendB": {"action": "send", "channel": {"$ref": "#/channels/SendB"}},
+        },
+    }
+
+
+def test_asyncapi_message_sender_multiple_pipe_union() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class SendA(Message, address="send_a"):
+        id: int
+
+    @dataclass
+    class SendB(Message, address="send_b"):
+        id: int
+
+    @app.channel("receive")
+    async def receive_handler(
+        id: int, message_sender: MessageSender[SendA | SendB]
+    ) -> None:
+        pass  # pragma: no cover
 
     assert app.asyncapi() == {
         "asyncapi": "3.0.0",

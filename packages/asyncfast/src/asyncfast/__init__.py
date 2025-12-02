@@ -16,6 +16,7 @@ from functools import cached_property
 from functools import partial
 from inspect import Signature
 from re import Pattern
+from types import UnionType
 from typing import Annotated
 from typing import Any
 from typing import ClassVar
@@ -202,6 +203,11 @@ def _is_message(cls: type[Any]) -> bool:
         return False
 
 
+def _is_union(type_annotation: type) -> bool:
+    origin = get_origin(type_annotation)
+    return origin is Union or origin is UnionType
+
+
 class AsyncFast:
     def __init__(
         self,
@@ -238,7 +244,7 @@ class AsyncFast:
             or get_origin(return_annotation) is Generator
         ):
             async_generator_type = get_args(return_annotation)[0]
-            if get_origin(async_generator_type) is Union:
+            if _is_union(async_generator_type):
                 messages = [
                     type for type in get_args(async_generator_type) if _is_message(type)
                 ]
@@ -283,7 +289,7 @@ class AsyncFast:
         for name, annotated in annotations:
             if get_origin(annotated) is MessageSender:
                 (message_sender_type,) = get_args(annotated)
-                if get_origin(message_sender_type) is Union:
+                if _is_union(message_sender_type):
                     messages = [
                         type
                         for type in get_args(message_sender_type)
