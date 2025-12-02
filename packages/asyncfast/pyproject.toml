@@ -8,6 +8,8 @@ name = "asyncfast"
 version = "0.25.1"
 description = "Add your description here"
 readme = "README.md"
+license = "MIT"
+license-files = [ "LICENSE" ]
 authors = [
   { name = "jack.burridge", email = "jack.burridge@mail.com" },
 ]

@@ -8,6 +8,8 @@ name = "amgi-aiokafka"
 version = "0.25.1"
 description = "AMGI Kafka Server"
 readme = "README.md"
+license = "MIT"
+license-files = [ "LICENSE" ]
 authors = [
   { name = "jack.burridge", email = "jack.burridge@mail.com" },
 ]
