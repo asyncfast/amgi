@@ -17,11 +17,13 @@ dependencies = [  ]
 [dependency-groups]
 dev = [
   "commitizen>=4.8.3",
+  "coverage>=7.12.0",
   "furo>=2025.7.19",
   "mdformat>=0.7.22",
   "mypy>=1.17.1",
   "myst-parser>=3.0.1",
   "pre-commit-uv>=4.1.4",
+  "pytest-cov>=7.0.0",
   "pytest-timeout>=2.4.0",
   "sphinx>=7.4.7",
   "sphinx-copybutton>=0.5.2",
