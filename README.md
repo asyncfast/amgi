@@ -1,6 +1,6 @@
 # AMGI
 
-[![Tests](https://github.com/asyncfast/amgi/actions/workflows/tests.yml/badge.svg)](https://github.com/asyncfast/amgi/actions/workflows/tests.yml)
+[![Tests](https://github.com/asyncfast/amgi/actions/workflows/tests.yml/badge.svg)](https://github.com/asyncfast/amgi/actions/workflows/tests.yml) [![codecov](https://codecov.io/gh/asyncfast/amgi/graph/badge.svg?token=QXLUFJ0GOO)](https://codecov.io/gh/asyncfast/amgi)
 
 AMGI (*Asynchronous Messaging Gateway Interface*) is the spiritual sibling of
 [ASGI](https://asgi.readthedocs.io/en/latest/). While the focus of [ASGI](https://asgi.readthedocs.io/en/latest/) is
