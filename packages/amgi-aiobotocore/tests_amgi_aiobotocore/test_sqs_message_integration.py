@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 from amgi_aiobotocore.sqs import Server
+from amgi_aiobotocore.sqs import SqsBatchFailureError
 from amgi_types import MessageAckEvent
 from amgi_types import MessageNackEvent
 from test_utils import MockApp
@@ -183,6 +184,73 @@ async def test_message_send(
         assert message["MessageAttributes"] == {
             "test": {"StringValue": "test", "DataType": "StringValue"}
         }
+
+
+async def test_message_send_invalid_message(
+    app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
+) -> None:
+    send_queue_name = f"send-{uuid4()}"
+    sqs_client.create_queue(
+        QueueName=send_queue_name, Attributes={"MaximumMessageSize": "1024"}
+    )
+    sqs_client.send_message(
+        QueueUrl=queue_url,
+        MessageBody="value",
+    )
+
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(SqsBatchFailureError):
+            await send(
+                {
+                    "type": "message.send",
+                    "address": send_queue_name,
+                    "headers": [],
+                    "payload": b"a" * 1025,
+                }
+            )
+
+
+async def test_message_send_does_not_cache_invalid_queue_url(
+    app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
+) -> None:
+    send_queue_name = f"send-{uuid4()}"
+    sqs_client.send_message(
+        QueueUrl=queue_url,
+        MessageBody="value",
+    )
+
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(
+            match="GetQueueUrl operation: The specified queue does not exist"
+        ):
+            await send(
+                {
+                    "type": "message.send",
+                    "address": send_queue_name,
+                    "headers": [(b"test", b"test")],
+                    "payload": b"test",
+                }
+            )
+
+        send_queue_url = sqs_client.create_queue(QueueName=send_queue_name)["QueueUrl"]
+
+        await send(
+            {
+                "type": "message.send",
+                "address": send_queue_name,
+                "headers": [],
+                "payload": b"test",
+            }
+        )
+
+        messages_response = sqs_client.receive_message(
+            QueueUrl=send_queue_url, MessageAttributeNames=["All"]
+        )
+        assert "Messages" in messages_response
+        assert len(messages_response["Messages"]) == 1
+        message = messages_response["Messages"][0]
+        assert message["Body"] == "test"
+        assert message["MessageAttributes"] == {}
 
 
 async def test_lifespan(
