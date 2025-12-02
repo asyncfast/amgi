@@ -7,7 +7,9 @@ import signal
 import sys
 from collections import defaultdict
 from collections import deque
+from collections.abc import Generator
 from collections.abc import Iterable
+from collections.abc import Sequence
 from typing import Any
 from typing import Literal
 from typing import Optional
@@ -15,6 +17,8 @@ from typing import TypedDict
 
 import boto3
 from amgi_common import Lifespan
+from amgi_common import OperationBatcher
+from amgi_common import OperationCacher
 from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
 from amgi_types import MessageReceiveEvent
@@ -93,31 +97,112 @@ class _Receive:
         }
 
 
+class _QueueUrlCache:
+    def __init__(self, client: Any) -> None:
+        self._client = client
+        self._operation_cacher = OperationCacher(self._get_queue_url)
+
+    async def get_queue_url(self, queue_name: str) -> str:
+        return await self._operation_cacher.get(queue_name)
+
+    async def _get_queue_url(self, queue_name: str) -> str:
+        queue_url_response = await asyncio.to_thread(
+            self._client.get_queue_url, QueueName=queue_name
+        )
+        queue_url = queue_url_response["QueueUrl"]
+        assert isinstance(queue_url, str)
+        return queue_url
+
+
+class SqsBatchFailureError(IOError):
+    def __init__(self, sender_fault: bool, code: str, message: str):
+        self.sender_fault = sender_fault
+        self.code = code
+        super().__init__(message)
+
+
+def _generate_response_failures(
+    response: dict[str, Any], count: int
+) -> Generator[SqsBatchFailureError | None, None, None]:
+    failed_map = {int(failed["Id"]): failed for failed in response.get("Failed", ())}
+    for i in range(count):
+        failed = failed_map.get(i)
+        if failed:
+            yield SqsBatchFailureError(
+                failed["SenderFault"], failed["Code"], failed["Message"]
+            )
+        else:
+            yield None
+
+
+class _SendBatcher:
+    def __init__(self, client: Any) -> None:
+        self._client = client
+        self._operation_batcher = OperationBatcher(
+            self.send_message_batch, lambda item: item[0], batch_size=10
+        )
+
+    async def send_message_batch(
+        self,
+        batch: Iterable[tuple[str, Optional[bytes], Iterable[tuple[bytes, bytes]]]],
+    ) -> Sequence[None | Exception]:
+        queue_urls, batch_payloads, batch_headers = zip(*batch)
+        assert len(set(queue_urls)) == 1
+        queue_url = queue_urls[0]
+        send_message_batch_response = await asyncio.to_thread(
+            self._client.send_message_batch,
+            QueueUrl=queue_url,
+            Entries=[
+                {
+                    "Id": str(i),
+                    "MessageBody": ("" if payload is None else payload.decode()),
+                    "MessageAttributes": {
+                        name.decode(): {
+                            "StringValue": value.decode(),
+                            "DataType": "StringValue",
+                        }
+                        for name, value in headers
+                    },
+                }
+                for i, (payload, headers) in enumerate(
+                    zip(batch_payloads, batch_headers)
+                )
+            ],
+        )
+
+        return tuple(
+            _generate_response_failures(
+                send_message_batch_response, len(batch_payloads)
+            )
+        )
+
+    async def send_message(
+        self,
+        queue_url: str,
+        payload: Optional[bytes],
+        headers: Iterable[tuple[bytes, bytes]],
+    ) -> None:
+        await self._operation_batcher.enqueue((queue_url, payload, headers))
+
+
 class _Send:
-    def __init__(self, sqs_client: Any, message_ids: Iterable[str]) -> None:
-        self._sqs_client = sqs_client
-        self.message_ids = set(message_ids)
+    def __init__(
+        self,
+        queue_url_cache: _QueueUrlCache,
+        send_batcher: _SendBatcher,
+        message_ids: set[str],
+    ) -> None:
+        self.message_ids = message_ids
+        self._queue_url_cache = queue_url_cache
+        self._send_batcher = send_batcher
 
     async def __call__(self, event: AMGISendEvent) -> None:
         if event["type"] == "message.ack":
             self.message_ids.discard(event["id"])
         if event["type"] == "message.send":
-            queue_url_response = await asyncio.to_thread(
-                self._sqs_client.get_queue_url, QueueName=event["address"]
-            )
-            await asyncio.to_thread(
-                self._sqs_client.send_message,
-                QueueUrl=queue_url_response["QueueUrl"],
-                MessageBody=(
-                    "" if event["payload"] is None else event["payload"].decode()
-                ),
-                MessageAttributes={
-                    name.decode(): {
-                        "StringValue": value.decode(),
-                        "DataType": "StringValue",
-                    }
-                    for name, value in event["headers"]
-                },
+            queue_url = await self._queue_url_cache.get_queue_url(event["address"])
+            await self._send_batcher.send_message(
+                queue_url, event["payload"], event["headers"]
             )
 
 
@@ -133,13 +218,15 @@ class SqsHandler:
     ) -> None:
         self._app = app
         self._loop = asyncio.get_event_loop()
-        self._sqs_client = boto3.client(
+        self._client = boto3.client(
             "sqs",
             region_name=region_name,
             endpoint_url=endpoint_url,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
+        self._queue_url_cache = _QueueUrlCache(self._client)
+        self._send_batcher = _SendBatcher(self._client)
         self._lifespan = lifespan
         self._lifespan_context: Optional[Lifespan] = None
         self._state: dict[str, Any] = {}
@@ -182,7 +269,7 @@ class SqsHandler:
         self, event_source_arn: str, records: Iterable[_Record]
     ) -> Iterable[str]:
         event_source_arn_match = EVENT_SOURCE_ARN_PATTERN.match(event_source_arn)
-        message_ids = [record["messageId"] for record in records]
+        message_ids = {record["messageId"] for record in records}
         if event_source_arn_match is None:
             return message_ids
         scope: MessageScope = {
@@ -192,7 +279,7 @@ class SqsHandler:
             "state": self._state.copy(),
         }
 
-        records_send = _Send(self._sqs_client, message_ids)
+        records_send = _Send(self._queue_url_cache, self._send_batcher, message_ids)
         await self._app(scope, _Receive(records), records_send)
         return records_send.message_ids
 
