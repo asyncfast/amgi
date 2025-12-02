@@ -14,10 +14,10 @@ from amgi_types import Scope
 
 class _Server(Protocol):
     async def serve(self) -> None:
-        pass
+        pass  # pragma: no cover
 
     def stop(self) -> None:
-        pass
+        pass  # pragma: no cover
 
 
 class MockApp:

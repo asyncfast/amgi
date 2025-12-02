@@ -754,7 +754,7 @@ async def test_message_invalid_payload_nack() -> None:
 
     @app.channel("topic")
     async def topic_handler(id: int) -> None:
-        pass
+        pass  # pragma: no cover
 
     message_scope: MessageScope = {
         "type": "message",
