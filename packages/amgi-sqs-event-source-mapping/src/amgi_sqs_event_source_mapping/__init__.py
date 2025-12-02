@@ -12,7 +12,6 @@ from collections.abc import Iterable
 from collections.abc import Sequence
 from typing import Any
 from typing import Literal
-from typing import Optional
 from typing import TypedDict
 
 import boto3
@@ -144,7 +143,7 @@ class _SendBatcher:
 
     async def send_message_batch(
         self,
-        batch: Iterable[tuple[str, Optional[bytes], Iterable[tuple[bytes, bytes]]]],
+        batch: Iterable[tuple[str, bytes | None, Iterable[tuple[bytes, bytes]]]],
     ) -> Sequence[None | Exception]:
         queue_urls, batch_payloads, batch_headers = zip(*batch)
         assert len(set(queue_urls)) == 1
@@ -179,7 +178,7 @@ class _SendBatcher:
     async def send_message(
         self,
         queue_url: str,
-        payload: Optional[bytes],
+        payload: bytes | None,
         headers: Iterable[tuple[bytes, bytes]],
     ) -> None:
         await self._operation_batcher.enqueue((queue_url, payload, headers))
@@ -210,10 +209,10 @@ class SqsHandler:
     def __init__(
         self,
         app: AMGIApplication,
-        region_name: Optional[str] = None,
-        endpoint_url: Optional[str] = None,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
+        region_name: str | None = None,
+        endpoint_url: str | None = None,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
         lifespan: bool = True,
     ) -> None:
         self._app = app
@@ -228,7 +227,7 @@ class SqsHandler:
         self._queue_url_cache = _QueueUrlCache(self._client)
         self._send_batcher = _SendBatcher(self._client)
         self._lifespan = lifespan
-        self._lifespan_context: Optional[Lifespan] = None
+        self._lifespan_context: Lifespan | None = None
         self._state: dict[str, Any] = {}
         self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
 

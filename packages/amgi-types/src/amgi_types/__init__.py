@@ -1,10 +1,9 @@
 import sys
 from collections.abc import Awaitable
+from collections.abc import Callable
 from collections.abc import Iterable
 from typing import Any
-from typing import Callable
 from typing import Literal
-from typing import Optional
 from typing import TypedDict
 from typing import Union
 
@@ -16,7 +15,7 @@ else:
 
 class AMGIVersions(TypedDict):
     spec_version: str
-    version: Union[Literal["1.0"]]
+    version: Literal["1.0"]
 
 
 class MessageScope(TypedDict):
@@ -62,7 +61,7 @@ class MessageReceiveEvent(TypedDict):
     type: Literal["message.receive"]
     id: str
     headers: Iterable[tuple[bytes, bytes]]
-    payload: NotRequired[Optional[bytes]]
+    payload: NotRequired[bytes | None]
     bindings: NotRequired[dict[str, dict[str, Any]]]
     more_messages: NotRequired[bool]
 
@@ -82,7 +81,7 @@ class MessageSendEvent(TypedDict):
     type: Literal["message.send"]
     address: str
     headers: Iterable[tuple[bytes, bytes]]
-    payload: NotRequired[Optional[bytes]]
+    payload: NotRequired[bytes | None]
     bindings: NotRequired[dict[str, dict[str, Any]]]
 
 

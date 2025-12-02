@@ -4,7 +4,6 @@ from collections.abc import Generator
 from collections.abc import Iterable
 from collections.abc import Sequence
 from typing import Any
-from typing import Optional
 
 from aiobotocore.session import get_session
 from amgi_common import Lifespan
@@ -21,10 +20,10 @@ from amgi_types import MessageScope
 def run(
     app: AMGIApplication,
     *queues: str,
-    region_name: Optional[str] = None,
-    endpoint_url: Optional[str] = None,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
+    region_name: str | None = None,
+    endpoint_url: str | None = None,
+    aws_access_key_id: str | None = None,
+    aws_secret_access_key: str | None = None,
 ) -> None:
     server = Server(
         app,
@@ -40,10 +39,10 @@ def run(
 def _run_cli(
     app: AMGIApplication,
     queues: list[str],
-    region_name: Optional[str] = None,
-    endpoint_url: Optional[str] = None,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
+    region_name: str | None = None,
+    endpoint_url: str | None = None,
+    aws_access_key_id: str | None = None,
+    aws_secret_access_key: str | None = None,
 ) -> None:
     run(
         app,
@@ -162,7 +161,7 @@ class _SendBatcher:
 
     async def send_message_batch(
         self,
-        batch: Iterable[tuple[str, Optional[bytes], Iterable[tuple[bytes, bytes]]]],
+        batch: Iterable[tuple[str, bytes | None, Iterable[tuple[bytes, bytes]]]],
     ) -> Sequence[None | Exception]:
         queue_urls, batch_payloads, batch_headers = zip(*batch)
         assert len(set(queue_urls)) == 1
@@ -197,7 +196,7 @@ class _SendBatcher:
     async def send_message(
         self,
         queue_url: str,
-        payload: Optional[bytes],
+        payload: bytes | None,
         headers: Iterable[tuple[bytes, bytes]],
     ) -> None:
         await self._operation_batcher.enqueue((queue_url, payload, headers))
@@ -234,10 +233,10 @@ class Server:
         self,
         app: AMGIApplication,
         *queues: str,
-        region_name: Optional[str] = None,
-        endpoint_url: Optional[str] = None,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
+        region_name: str | None = None,
+        endpoint_url: str | None = None,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
     ) -> None:
         self._app = app
         self._queues = queues
