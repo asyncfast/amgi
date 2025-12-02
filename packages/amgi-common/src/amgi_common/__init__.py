@@ -6,8 +6,12 @@ from asyncio import AbstractEventLoop
 from asyncio import Event
 from asyncio import Future
 from asyncio import Queue
+from collections import defaultdict
 from collections.abc import Coroutine
+from collections.abc import Hashable
 from collections.abc import Iterable
+from collections.abc import Sequence
+from itertools import islice
 from signal import SIGINT
 from signal import SIGTERM
 from types import TracebackType
@@ -29,6 +33,7 @@ from typing_extensions import ParamSpec
 P = ParamSpec("P")
 T = TypeVar("T")
 R = TypeVar("R")
+H = TypeVar("H", bound=Hashable)
 
 
 _logger = logging.getLogger("amgi-common.error")
@@ -170,32 +175,68 @@ class _StoppableAsyncIterator(Generic[T]):
         return await callable_task
 
 
-class OperationBatcher(Generic[T, R]):
+class OperationBatcherError(Exception):
+    """Error raised during operation batch error"""
+
+
+class OperationBatcher(Generic[T, H, R]):
     def __init__(
         self,
-        function: Callable[[Iterable[T]], Coroutine[Any, Any, Iterable[R | Exception]]],
+        function: Callable[[Iterable[T]], Coroutine[Any, Any, Sequence[R | Exception]]],
+        key: Callable[[T], H],
         batch_size: int | None = None,
     ) -> None:
         self._function = function
+        self._key = key
         self._batch_size = batch_size
         self._queue = Queue[tuple[T, Future[R]]]()
 
     async def _process_batch_async(self, batch: Iterable[tuple[T, Future[R]]]) -> None:
         batch_items, batch_futures = zip(*batch)
-        for result, future in zip(await self._function(batch_items), batch_futures):
-            if isinstance(result, Exception):
-                future.set_exception(result)
-            else:
-                future.set_result(result)
+
+        batch_result = await self._function_invoke(batch_items)
+        if isinstance(batch_result, Exception):
+            for future in batch_futures:
+                future.set_exception(batch_result)
+        else:
+            for result, future in zip(batch_result, batch_futures):
+                if isinstance(result, Exception):
+                    future.set_exception(result)
+                else:
+                    future.set_result(result)
+
+    async def _function_invoke(
+        self, batch_items: Sequence[T]
+    ) -> Exception | Sequence[R | Exception]:
+        try:
+            batch_result = await self._function(batch_items)
+        except Exception as e:
+            return e
+        if len(batch_result) != len(batch_items):
+            return OperationBatcherError(
+                "Batch function did not return the correct number of results"
+            )
+        return batch_result
 
     def _process_batch(self, loop: AbstractEventLoop) -> None:
-        batch: list[tuple[T, Future[R]]] = []
-        while not self._queue.empty() and (
-            self._batch_size is None or len(batch) < self._batch_size
-        ):
-            batch.append(self._queue.get_nowait())
-        if batch:
-            loop.create_task(self._process_batch_async(batch))
+        groups = defaultdict(list)
+        while not self._queue.empty():
+            item, future = self._queue.get_nowait()
+            groups[self._key(item)].append((item, future))
+        if groups:
+            for group in groups.values():
+                for batch in self._get_batch(group):
+                    loop.create_task(self._process_batch_async(batch))
+
+    def _get_batch(
+        self, group: Iterable[tuple[T, Future[R]]]
+    ) -> Iterable[Iterable[tuple[T, Future[R]]]]:
+        if self._batch_size is None:
+            yield group
+        else:
+            iterator = iter(group)
+            while batch := tuple(islice(iterator, self._batch_size)):
+                yield batch
 
     async def enqueue(self, item: T) -> R:
         loop = asyncio.get_running_loop()
