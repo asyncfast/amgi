@@ -1,0 +1,12 @@
+services:
+  nats:
+    image: nats:2.12.2
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+  nui:
+    image: ghcr.io/nats-nui/nui:0.8.1
+    ports:
+      - 31311:31311
+    depends_on:
+      - nats

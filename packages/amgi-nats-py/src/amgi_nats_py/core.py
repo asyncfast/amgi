@@ -1,3 +1,4 @@
+from amgi_common import server_serve
 from amgi_nats_py._base import _BaseServer
 from amgi_nats_py._base import _message_send
 from amgi_nats_py._base import NatsClient
@@ -6,6 +7,21 @@ from amgi_types import AMGISendCallable
 from amgi_types import AMGISendEvent
 from nats.aio.client import Client
 from nats.aio.msg import Msg
+
+
+def run(app: AMGIApplication, *subjects: str, servers: str | list[str]) -> None:
+    server = Server(app, *subjects, servers=servers)
+    server_serve(server)
+
+
+def _run_cli(
+    app: AMGIApplication,
+    subjects: list[str],
+    servers: list[str] | None = None,
+) -> None:
+    if servers is None:
+        servers = ["nats://localhost:4222"]
+    run(app, *subjects, servers=servers)
 
 
 class _Send:
