@@ -274,7 +274,7 @@ class _Server(Protocol):
 
 
 def server_serve(server: _Server) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     loop.run_until_complete(_server_serve_async(server, loop))
 
 
