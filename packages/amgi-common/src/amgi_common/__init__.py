@@ -271,11 +271,9 @@ class OperationCacher(Generic[H, R]):
 
 
 class _Server(Protocol):
-    async def serve(self) -> None:
-        pass
+    async def serve(self) -> None: ...
 
-    def stop(self) -> None:
-        pass
+    def stop(self) -> None: ...
 
 
 def server_serve(server: _Server) -> None:
