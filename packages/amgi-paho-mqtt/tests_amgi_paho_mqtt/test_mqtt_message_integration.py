@@ -7,11 +7,13 @@ from uuid import uuid4
 
 import pytest
 from amgi_paho_mqtt import PublishError
+from amgi_paho_mqtt import run
 from amgi_paho_mqtt import Server
 from paho.mqtt.client import Client
 from paho.mqtt.client import MQTTMessage
 from paho.mqtt.client import MQTTv5
 from paho.mqtt.enums import CallbackAPIVersion
+from test_utils import assert_run_can_terminate
 from test_utils import MockApp
 from testcontainers.mqtt import MosquittoContainer
 
@@ -164,3 +166,12 @@ async def test_message_send_deny(
                     "bindings": {"mqtt": {"qos": 1}},
                 }
             )
+
+
+def test_run(topic: str, mosquitto_container: MosquittoContainer) -> None:
+    assert_run_can_terminate(
+        run,
+        topic,
+        host=mosquitto_container.get_container_host_ip(),
+        port=mosquitto_container.get_exposed_port(mosquitto_container.MQTT_PORT),
+    )
