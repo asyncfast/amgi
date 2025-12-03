@@ -1,7 +1,9 @@
 import asyncio
+from asyncio import AbstractEventLoop
 from asyncio import Event
 from asyncio import Future
 from asyncio import Task
+from functools import cached_property
 from socket import SO_SNDBUF
 from socket import SOL_SOCKET
 from typing import Any
@@ -71,7 +73,6 @@ class Server:
         self._topic = topic
         self._host = host
         self._port = port
-        self._loop = asyncio.get_running_loop()
 
         self._client = Client(
             CallbackAPIVersion.VERSION2, client_id=client_id, protocol=protocol
@@ -92,6 +93,10 @@ class Server:
         self._tasks = set[Task[None]]()
         self._publish_futures = WeakValueDictionary[int, Future[None]]()
         self._state: dict[str, Any] = {}
+
+    @cached_property
+    def _loop(self) -> AbstractEventLoop:
+        return asyncio.get_running_loop()
 
     def _on_connect(
         self,
