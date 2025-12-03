@@ -2,8 +2,11 @@ from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 import pytest
+from amgi_nats_py.core import _run_cli
+from amgi_nats_py.core import run
 from amgi_nats_py.core import Server
 from nats.aio.client import Client
+from test_utils import assert_run_can_terminate
 from test_utils import MockApp
 from testcontainers.nats import NatsContainer
 
@@ -95,3 +98,15 @@ async def test_lifespan(
                 "type": "message",
                 "state": {"item": state_item},
             }
+
+
+def test_run(client: Client, nats_container: NatsContainer) -> None:
+    assert_run_can_terminate(
+        run, f"receive-{uuid4()}", servers=nats_container.nats_uri()
+    )
+
+
+def test_run_cli(client: Client, nats_container: NatsContainer) -> None:
+    assert_run_can_terminate(
+        _run_cli, [f"receive-{uuid4()}"], servers=[nats_container.nats_uri()]
+    )
