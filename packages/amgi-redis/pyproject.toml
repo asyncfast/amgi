@@ -4,7 +4,7 @@ requires = [ "uv-build>=0.8.14,<0.9.0" ]
 
 [project]
 name = "amgi-redis"
-version = "0.25.0"
+version = "0.25.1"
 description = "AMGI Redis Server"
 readme = "README.md"
 authors = [
@@ -20,8 +20,8 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "amgi-common==0.25.0",
-  "amgi-types==0.25.0",
+  "amgi-common==0.25.1",
+  "amgi-types==0.25.1",
   "redis>=7.0.1",
 ]
 entry-points.amgi_server.amgi-redis = "amgi_redis:_run_cli"

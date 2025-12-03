@@ -1,3 +1,13 @@
+## 0.25.1 (2025-12-03)
+
+### Fix
+
+- **asyncfast**: allow for pipe unions for sending types
+
+### Refactor
+
+- update syntax to python3.10
+
 ## 0.25.0 (2025-12-02)
 
 ### Feat
