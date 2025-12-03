@@ -1,9 +1,11 @@
 import asyncio
+import multiprocessing
 from asyncio import Event
 from asyncio import Queue
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
+from typing import Callable
 from typing import Optional
 from typing import Protocol
 
@@ -70,3 +72,30 @@ class MockApp:
         return_event = Event()
         self._call_queue.put_nowait((scope, receive, send, return_event))
         await return_event.wait()
+
+
+def assert_run_can_terminate(
+    run: Callable[..., None], *args: Any, **kwargs: Any
+) -> None:
+    lifespan_event = multiprocessing.Event()
+
+    async def _app(
+        scope: Scope, receive: AMGIReceiveCallable, send: AMGISendCallable
+    ) -> None:
+        if scope["type"] == "lifespan":
+            lifespan_event.set()
+            raise Exception
+
+    process = multiprocessing.Process(
+        target=run,
+        args=(_app, *args),
+        kwargs=kwargs,
+    )
+    process.start()
+
+    lifespan_event.wait()
+    assert lifespan_event.is_set()
+
+    process.terminate()
+    process.join()
+    assert not process.is_alive()
