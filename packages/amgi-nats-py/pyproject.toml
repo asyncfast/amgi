@@ -1,0 +1,40 @@
+[build-system]
+build-backend = "uv_build"
+requires = [ "uv-build>=0.8.14,<0.9.0" ]
+
+[project]
+name = "amgi-nats-py"
+version = "0.25.1"
+description = "Add your description here"
+readme = "README.md"
+license = "MIT"
+license-files = [ "LICENSE" ]
+authors = [
+  { name = "jack.burridge", email = "jack.burridge@mail.com" },
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "amgi-common==0.25.1",
+  "amgi-types==0.25.1",
+  "nats-py>=2.12.0",
+]
+entry-points.amgi_server.amgi-nats-py-core = "amgi_nats_py.core:_run_cli"
+
+[dependency-groups]
+dev = [
+  "test-utils",
+  "testcontainers[nats]>=4.13.0",
+]
+
+[tool.uv.sources]
+amgi-common = { workspace = true }
+amgi-types = { workspace = true }
+test-utils = { workspace = true }
