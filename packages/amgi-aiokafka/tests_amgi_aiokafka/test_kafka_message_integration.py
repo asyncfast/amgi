@@ -4,8 +4,11 @@ from uuid import uuid4
 import pytest
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
+from amgi_aiokafka import _run_cli
+from amgi_aiokafka import run
 from amgi_aiokafka import Server
 from amgi_types import MessageAckEvent
+from test_utils import assert_run_can_terminate
 from test_utils import MockApp
 from testcontainers.kafka import KafkaContainer
 
@@ -156,3 +159,11 @@ async def test_lifespan(bootstrap_server: str, topic: str) -> None:
                 "type": "message",
                 "state": {"item": state_item},
             }
+
+
+def test_run(bootstrap_server: str, topic: str) -> None:
+    assert_run_can_terminate(run, topic, bootstrap_servers=bootstrap_server)
+
+
+def test_run_cli(bootstrap_server: str, topic: str) -> None:
+    assert_run_can_terminate(_run_cli, [topic], bootstrap_servers=bootstrap_server)
