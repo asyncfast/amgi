@@ -4,10 +4,13 @@ from typing import cast
 from uuid import uuid4
 
 import pytest
+from amgi_aiobotocore.sqs import _run_cli
+from amgi_aiobotocore.sqs import run
 from amgi_aiobotocore.sqs import Server
 from amgi_aiobotocore.sqs import SqsBatchFailureError
 from amgi_types import MessageAckEvent
 from amgi_types import MessageNackEvent
+from test_utils import assert_run_can_terminate
 from test_utils import MockApp
 from testcontainers.localstack import LocalStackContainer
 
@@ -288,3 +291,25 @@ async def test_lifespan(
                 "type": "message",
                 "state": {"item": state_item},
             }
+
+
+def test_run(queue_name: str, localstack_container: LocalStackContainer) -> None:
+    assert_run_can_terminate(
+        run,
+        queue_name,
+        region_name=localstack_container.region_name,
+        endpoint_url=localstack_container.get_url(),
+        aws_access_key_id="testcontainers-localstack",
+        aws_secret_access_key="testcontainers-localstack",
+    )
+
+
+def test_run_cli(queue_name: str, localstack_container: LocalStackContainer) -> None:
+    assert_run_can_terminate(
+        _run_cli,
+        [queue_name],
+        region_name=localstack_container.region_name,
+        endpoint_url=localstack_container.get_url(),
+        aws_access_key_id="testcontainers-localstack",
+        aws_secret_access_key="testcontainers-localstack",
+    )
