@@ -2,7 +2,6 @@ import asyncio
 import base64
 from collections.abc import AsyncGenerator
 from collections.abc import Generator
-from unittest.mock import Mock
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -12,16 +11,14 @@ from amgi_sqs_event_source_mapping import SqsHandler
 from test_utils import MockApp
 
 
-@pytest.fixture
-def mock_sqs_client() -> Generator[Mock, None, None]:
-    with patch.object(boto3, "client") as mock_sqs_client:
-        yield mock_sqs_client
+@pytest.fixture(autouse=True)
+def mock_sqs_client() -> Generator[None, None, None]:
+    with patch.object(boto3, "client"):
+        yield
 
 
 @pytest.fixture
-async def app_sqs_handler(
-    mock_sqs_client: Mock,
-) -> AsyncGenerator[tuple[MockApp, SqsHandler], None]:
+async def app_sqs_handler() -> AsyncGenerator[tuple[MockApp, SqsHandler], None]:
     app = MockApp()
     sqs_handler = SqsHandler(app)
 
@@ -360,9 +357,7 @@ async def test_sqs_handler_record_corrupted(
     }
 
 
-async def test_lifespan(
-    mock_sqs_client: Mock,
-) -> None:
+async def test_lifespan() -> None:
     app = MockApp()
     sqs_handler = SqsHandler(app)
 

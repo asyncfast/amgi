@@ -10,6 +10,7 @@ from collections import deque
 from collections.abc import Generator
 from collections.abc import Iterable
 from collections.abc import Sequence
+from functools import cached_property
 from typing import Any
 from typing import Literal
 from typing import TypedDict
@@ -216,20 +217,33 @@ class SqsHandler:
         lifespan: bool = True,
     ) -> None:
         self._app = app
+        self._region_name = region_name
+        self._endpoint_url = endpoint_url
+        self._aws_access_key_id = aws_access_key_id
+        self._aws_secret_access_key = aws_secret_access_key
         self._loop = asyncio.get_event_loop()
-        self._client = boto3.client(
-            "sqs",
-            region_name=region_name,
-            endpoint_url=endpoint_url,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
-        self._queue_url_cache = _QueueUrlCache(self._client)
-        self._send_batcher = _SendBatcher(self._client)
         self._lifespan = lifespan
         self._lifespan_context: Lifespan | None = None
         self._state: dict[str, Any] = {}
         self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
+
+    @cached_property
+    def _client(self) -> Any:
+        return boto3.client(
+            "sqs",
+            region_name=self._region_name,
+            endpoint_url=self._endpoint_url,
+            aws_access_key_id=self._aws_access_key_id,
+            aws_secret_access_key=self._aws_secret_access_key,
+        )
+
+    @cached_property
+    def _queue_url_cache(self) -> _QueueUrlCache:
+        return _QueueUrlCache(self._client)
+
+    @cached_property
+    def _send_batcher(self) -> _SendBatcher:
+        return _SendBatcher(self._client)
 
     def __call__(
         self, event: _SqsEventSourceMapping, context: Any
