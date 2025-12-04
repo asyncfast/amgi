@@ -2,12 +2,17 @@ import asyncio
 import base64
 from collections.abc import AsyncGenerator
 from collections.abc import Generator
+from queue import Queue
+from unittest.mock import Mock
 from unittest.mock import patch
 from uuid import uuid4
 
 import boto3
 import pytest
 from amgi_sqs_event_source_mapping import SqsHandler
+from amgi_types import AMGIReceiveCallable
+from amgi_types import AMGISendCallable
+from amgi_types import Scope
 from test_utils import MockApp
 
 
@@ -415,3 +420,40 @@ async def test_lifespan() -> None:
         shutdown_task = loop.create_task(sqs_handler._shutdown())
 
     await shutdown_task
+
+
+def test_lifespan_and_shutdown() -> None:
+    queue = Queue[Exception | None]()
+
+    async def _app(
+        scope: Scope, receive: AMGIReceiveCallable, send: AMGISendCallable
+    ) -> None:
+        try:
+            assert scope["type"] == "lifespan"
+            lifespan_startup = await receive()
+            assert lifespan_startup == {"type": "lifespan.startup"}
+            await send(
+                {
+                    "type": "lifespan.startup.complete",
+                }
+            )
+            lifespan_shutdown = await receive()
+            assert lifespan_shutdown == {"type": "lifespan.shutdown"}
+            await send(
+                {
+                    "type": "lifespan.shutdown.complete",
+                }
+            )
+            queue.put(None)
+        except Exception as e:  # pragma: no cover
+            queue.put(e)
+            raise
+
+    sqs_handler = SqsHandler(_app)
+
+    sqs_handler({"Records": []}, Mock())
+
+    sqs_handler._sigterm_handler()
+
+    exception = queue.get()
+    assert exception is None
