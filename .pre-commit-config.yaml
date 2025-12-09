@@ -35,6 +35,15 @@ repos:
         additional_dependencies:
           - mdformat-gfm
           - mdformat-black
+  - repo: local
+    hooks:
+      - id: pyproject-version-synchronize
+        name: pyproject-version-synchronize
+        entry: python -m hooks.pyproject_version_synchronize
+        language: python
+        types: [toml]
+        files: 'pyproject\.toml$'
+        additional_dependencies: ["tomli==1.2.0", "tomli-w==1.2.0", "packaging==25.0"]
   - repo: https://github.com/tox-dev/pyproject-fmt
     rev: v2.11.1
     hooks:

@@ -1,6 +1,8 @@
 [build-system]
 build-backend = "uv_build"
-requires = [ "uv-build>=0.8.4,<0.9" ]
+requires = [
+  "uv-build>=0.8.4,<0.9",
+]
 
 [project]
 name = "amgi-types"
@@ -8,7 +10,9 @@ version = "0.25.1"
 description = "AMGI Types"
 readme = "README.md"
 license = "MIT"
-license-files = [ "LICENSE" ]
+license-files = [
+  "LICENSE",
+]
 authors = [
   { name = "jack.burridge", email = "jack.burridge@mail.com" },
 ]
@@ -23,7 +27,6 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-
 dependencies = [  ]
 
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"

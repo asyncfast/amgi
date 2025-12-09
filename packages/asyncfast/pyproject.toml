@@ -1,7 +1,8 @@
 [build-system]
 build-backend = "uv_build"
-
-requires = [ "uv-build>=0.8.4,<0.9" ]
+requires = [
+  "uv-build>=0.8.4,<0.9",
+]
 
 [project]
 name = "asyncfast"
@@ -9,7 +10,9 @@ version = "0.25.1"
 description = "Add your description here"
 readme = "README.md"
 license = "MIT"
-license-files = [ "LICENSE" ]
+license-files = [
+  "LICENSE",
+]
 authors = [
   { name = "jack.burridge", email = "jack.burridge@mail.com" },
 ]
@@ -29,7 +32,6 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Application Frameworks",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-
 dependencies = [
   "amgi-types==0.25.1",
   "pydantic==2.11.7",
@@ -51,6 +53,8 @@ dev = [
   "pytest-asyncio>=1.1",
 ]
 
-[tool.uv.sources]
-amgi-types = { workspace = true }
-asyncfast-cli = { workspace = true }
+[tool.uv.sources.amgi-types]
+workspace = true
+
+[tool.uv.sources.asyncfast-cli]
+workspace = true

@@ -1,6 +1,8 @@
 [build-system]
 build-backend = "uv_build"
-requires = [ "uv-build>=0.8.14,<0.9.0" ]
+requires = [
+  "uv-build>=0.8.14,<0.9.0",
+]
 
 [project]
 name = "asyncfast-cli"
@@ -8,7 +10,9 @@ version = "0.25.1"
 description = "Add your description here"
 readme = "README.md"
 license = "MIT"
-license-files = [ "LICENSE" ]
+license-files = [
+  "LICENSE",
+]
 authors = [
   { name = "jack.burridge", email = "jack.burridge@mail.com" },
 ]
@@ -26,5 +30,5 @@ dependencies = [
   "typer>=0.16.0",
 ]
 
-[tool.uv.sources]
-amgi-types = { workspace = true }
+[tool.uv.sources.amgi-types]
+workspace = true

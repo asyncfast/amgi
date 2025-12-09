@@ -1,6 +1,8 @@
 [build-system]
 build-backend = "uv_build"
-requires = [ "uv-build>=0.8.14,<0.9.0" ]
+requires = [
+  "uv-build>=0.8.14,<0.9.0",
+]
 
 [project]
 name = "amgi-redis"
@@ -8,7 +10,9 @@ version = "0.25.1"
 description = "AMGI Redis Server"
 readme = "README.md"
 license = "MIT"
-license-files = [ "LICENSE" ]
+license-files = [
+  "LICENSE",
+]
 authors = [
   { name = "jack.burridge", email = "jack.burridge@mail.com" },
 ]
@@ -26,6 +30,7 @@ dependencies = [
   "amgi-types==0.25.1",
   "redis>=7.0.1",
 ]
+
 entry-points.amgi_server.amgi-redis = "amgi_redis:_run_cli"
 
 [dependency-groups]
@@ -34,7 +39,11 @@ dev = [
   "testcontainers[redis]>=4.13.0",
 ]
 
-[tool.uv.sources]
-amgi-common = { workspace = true }
-test-utils = { workspace = true }
-amgi-types = { workspace = true }
+[tool.uv.sources.amgi-common]
+workspace = true
+
+[tool.uv.sources.test-utils]
+workspace = true
+
+[tool.uv.sources.amgi-types]
+workspace = true
