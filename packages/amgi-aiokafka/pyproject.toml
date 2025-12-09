@@ -1,7 +1,8 @@
 [build-system]
 build-backend = "uv_build"
-
-requires = [ "uv-build>=0.8.4,<0.9" ]
+requires = [
+  "uv-build>=0.8.4,<0.9",
+]
 
 [project]
 name = "amgi-aiokafka"
@@ -9,7 +10,9 @@ version = "0.25.1"
 description = "AMGI Kafka Server"
 readme = "README.md"
 license = "MIT"
-license-files = [ "LICENSE" ]
+license-files = [
+  "LICENSE",
+]
 authors = [
   { name = "jack.burridge", email = "jack.burridge@mail.com" },
 ]
@@ -24,7 +27,6 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-
 dependencies = [
   "aiokafka>=0.12",
   "amgi-common==0.25.1",
@@ -35,7 +37,6 @@ urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
 urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-aiokafka"
 urls.Issues = "https://github.com/asyncfast/amgi/issues/"
 urls.Repository = "https://github.com/asyncfast/amgi/"
-
 entry-points.amgi_server.amgi-aiokafka = "amgi_aiokafka:_run_cli"
 
 [dependency-groups]
@@ -44,7 +45,11 @@ dev = [
   "testcontainers[kafka]>=4.13.0",
 ]
 
-[tool.uv.sources]
-amgi-types = { workspace = true }
-amgi-common = { workspace = true }
-test-utils = { workspace = true }
+[tool.uv.sources.amgi-types]
+workspace = true
+
+[tool.uv.sources.amgi-common]
+workspace = true
+
+[tool.uv.sources.test-utils]
+workspace = true
