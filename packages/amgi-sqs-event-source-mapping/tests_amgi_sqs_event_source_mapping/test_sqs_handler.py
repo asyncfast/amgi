@@ -2,6 +2,8 @@ import asyncio
 import base64
 from collections.abc import AsyncGenerator
 from collections.abc import Generator
+from queue import Queue
+from unittest.mock import AsyncMock
 from unittest.mock import Mock
 from unittest.mock import patch
 from uuid import uuid4
@@ -9,19 +11,20 @@ from uuid import uuid4
 import boto3
 import pytest
 from amgi_sqs_event_source_mapping import SqsHandler
+from amgi_types import AMGIReceiveCallable
+from amgi_types import AMGISendCallable
+from amgi_types import Scope
 from test_utils import MockApp
 
 
-@pytest.fixture
-def mock_sqs_client() -> Generator[Mock, None, None]:
-    with patch.object(boto3, "client") as mock_sqs_client:
-        yield mock_sqs_client
+@pytest.fixture(autouse=True)
+def mock_sqs_client() -> Generator[None, None, None]:
+    with patch.object(boto3, "client"):
+        yield
 
 
 @pytest.fixture
-async def app_sqs_handler(
-    mock_sqs_client: Mock,
-) -> AsyncGenerator[tuple[MockApp, SqsHandler], None]:
+async def app_sqs_handler() -> AsyncGenerator[tuple[MockApp, SqsHandler], None]:
     app = MockApp()
     sqs_handler = SqsHandler(app)
 
@@ -360,9 +363,7 @@ async def test_sqs_handler_record_corrupted(
     }
 
 
-async def test_lifespan(
-    mock_sqs_client: Mock,
-) -> None:
+async def test_lifespan() -> None:
     app = MockApp()
     sqs_handler = SqsHandler(app)
 
@@ -420,3 +421,77 @@ async def test_lifespan(
         shutdown_task = loop.create_task(sqs_handler._shutdown())
 
     await shutdown_task
+
+
+def test_lifespan_and_shutdown() -> None:
+    queue = Queue[Exception | None]()
+
+    async def _app(
+        scope: Scope, receive: AMGIReceiveCallable, send: AMGISendCallable
+    ) -> None:
+        try:
+            assert scope["type"] == "lifespan"
+            lifespan_startup = await receive()
+            assert lifespan_startup == {"type": "lifespan.startup"}
+            await send(
+                {
+                    "type": "lifespan.startup.complete",
+                }
+            )
+            lifespan_shutdown = await receive()
+            assert lifespan_shutdown == {"type": "lifespan.shutdown"}
+            await send(
+                {
+                    "type": "lifespan.shutdown.complete",
+                }
+            )
+            queue.put(None)
+        except Exception as e:  # pragma: no cover
+            queue.put(e)
+            raise
+
+    sqs_handler = SqsHandler(_app)
+
+    sqs_handler({"Records": []}, Mock())
+
+    sqs_handler._sigterm_handler()
+
+    exception = queue.get()
+    assert exception is None
+
+
+def test_sqs_handler_app_not_called_if_invalid_arn() -> None:
+    mock_app = AsyncMock()
+    sqs_handler = SqsHandler(mock_app, lifespan=False)
+    sqs_handler(
+        {
+            "Records": [
+                {
+                    "messageId": "059f36b4-87a3-44ab-83d2-661975830a7d",
+                    "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                    "body": "Test message.",
+                    "attributes": {
+                        "ApproximateReceiveCount": "1",
+                        "SentTimestamp": "1545082649183",
+                        "SenderId": "AIDAIENQZJOLO23YVJ4VO",
+                        "ApproximateFirstReceiveTimestamp": "1545082649185",
+                    },
+                    "messageAttributes": {
+                        "myAttribute": {
+                            "stringValue": "myValue",
+                            "stringListValues": [],
+                            "binaryListValues": [],
+                            "dataType": "String",
+                        }
+                    },
+                    "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
+                    "eventSource": "aws:sqs",
+                    "eventSourceARN": "invalid-arn:aws:sqs:us-east-2:123456789012:my-queue",
+                    "awsRegion": "us-east-2",
+                }
+            ]
+        },
+        Mock(),
+    )
+
+    mock_app.assert_not_awaited()
