@@ -266,15 +266,13 @@ class OperationCacher(Generic[H, R]):
 
 
 class _Server(Protocol):
-    async def serve(self) -> None:
-        pass
+    async def serve(self) -> None: ...
 
-    def stop(self) -> None:
-        pass
+    def stop(self) -> None: ...
 
 
 def server_serve(server: _Server) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     loop.run_until_complete(_server_serve_async(server, loop))
 
 

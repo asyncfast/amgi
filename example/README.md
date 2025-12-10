@@ -102,3 +102,22 @@ Connect the app via Redis with:
 ```commandline
 asyncfast run amgi-redis main:app  input_channel
 ```
+
+## NATS
+
+Run the NATS compose file with:
+
+```commandline
+docker compose --file nats/docker-compose.yaml up --detach
+```
+
+This includes:
+
+- Redis `nats://localhost:4222/`
+- NUI NATS management GUI ([`http://localhost:31311/`](http://localhost:31311/))
+
+Connect the app via Redis with:
+
+```commandline
+asyncfast run amgi-nats-py-core main:app input_channel
+```
