@@ -225,17 +225,20 @@ class SqsHandler:
         self._lifespan = lifespan
         self._lifespan_context: Lifespan | None = None
         self._state: dict[str, Any] = {}
+        self._client_instantiated = False
         self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
 
     @cached_property
     def _client(self) -> Any:
-        return boto3.client(
+        client = boto3.client(
             "sqs",
             region_name=self._region_name,
             endpoint_url=self._endpoint_url,
             aws_access_key_id=self._aws_access_key_id,
             aws_secret_access_key=self._aws_secret_access_key,
         )
+        self._client_instantiated = True
+        return client
 
     @cached_property
     def _queue_url_cache(self) -> _QueueUrlCache:
@@ -300,5 +303,7 @@ class SqsHandler:
         self._loop.run_until_complete(self._shutdown())
 
     async def _shutdown(self) -> None:
+        if self._client_instantiated:
+            self._client.close()
         if self._lifespan_context:
             await self._lifespan_context.__aexit__(None, None, None)
