@@ -27,7 +27,9 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-dependencies = [  ]
+dependencies = [
+  "typing-extensions>=4.15.0; python_full_version<'3.11'",
+]
 
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
 urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-types"
