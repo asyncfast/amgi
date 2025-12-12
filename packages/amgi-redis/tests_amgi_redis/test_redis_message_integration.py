@@ -3,8 +3,11 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from amgi_redis import _run_cli
+from amgi_redis import run
 from amgi_redis import Server
 from redis.asyncio.client import PubSub
+from test_utils import assert_run_can_terminate
 from test_utils import MockApp
 from testcontainers.redis import AsyncRedisContainer
 
@@ -118,3 +121,17 @@ async def test_lifespan(redis_container: AsyncRedisContainer, channel: str) -> N
                 "type": "message",
                 "state": {"item": state_item},
             }
+
+
+def test_run(redis_container: AsyncRedisContainer, channel: str) -> None:
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(redis_container.port)
+
+    assert_run_can_terminate(run, channel, url=f"redis://{host}:{port}")
+
+
+def test_run_cli(redis_container: AsyncRedisContainer, channel: str) -> None:
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(redis_container.port)
+
+    assert_run_can_terminate(_run_cli, [channel], url=f"redis://{host}:{port}")
