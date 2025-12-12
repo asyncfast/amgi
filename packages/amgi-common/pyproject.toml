@@ -32,3 +32,11 @@ urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
 urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-common"
 urls.Issues = "https://github.com/asyncfast/amgi/issues/"
 urls.Repository = "https://github.com/asyncfast/amgi/"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4.1",
+  "pytest-asyncio>=1.3.0",
+  "pytest-cov>=7.0.0",
+  "pytest-timeout>=2.4.0",
+]
