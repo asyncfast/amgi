@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from asyncio import AbstractEventLoop
 from asyncio import Event
 from asyncio import Future
@@ -30,7 +31,11 @@ from amgi_types import AMGISendEvent
 from amgi_types import LifespanScope
 from amgi_types import LifespanShutdownEvent
 from amgi_types import LifespanStartupEvent
-from typing_extensions import ParamSpec
+
+if sys.version_info >= (3, 13):
+    from typing import ParamSpec
+else:
+    from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
 T = TypeVar("T")

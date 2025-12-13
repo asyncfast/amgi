@@ -26,7 +26,10 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-dependencies = [  ]
+dependencies = [
+  "amgi-types==0.25.1",
+  "typing-extensions>=4.15.0; python_full_version<'3.13'",
+]
 
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
 urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-common"
@@ -39,4 +42,11 @@ dev = [
   "pytest-asyncio>=1.3.0",
   "pytest-cov>=7.0.0",
   "pytest-timeout>=2.4.0",
+  "test-utils",
 ]
+
+[tool.uv.sources.test-utils]
+workspace = true
+
+[tool.uv.sources.amgi-types]
+workspace = true
