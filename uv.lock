@@ -508,6 +508,12 @@ dev = [
 name = "amgi-types"
 version = "0.25.1"
 source = { editable = "packages/amgi-types" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "typing-extensions", marker = "python_full_version < '3.11'", specifier = ">=4.15.0" }]
 
 [[package]]
 name = "annotated-types"
