@@ -474,11 +474,16 @@ source = { editable = "packages/amgi-sqs-event-source-mapping" }
 dependencies = [
     { name = "amgi-common" },
     { name = "amgi-types" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+
+[package.optional-dependencies]
+boto3 = [
+    { name = "boto3" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "boto3" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -491,11 +496,13 @@ dev = [
 requires-dist = [
     { name = "amgi-common", editable = "packages/amgi-common" },
     { name = "amgi-types", editable = "packages/amgi-types" },
+    { name = "boto3", marker = "extra == 'boto3'", specifier = ">=1.40.70" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'", specifier = ">=4.15.0" },
 ]
+provides-extras = ["boto3"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "boto3", specifier = ">=1.40.70" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
