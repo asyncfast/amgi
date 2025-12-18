@@ -1,3 +1,13 @@
+## 0.26.0 (2025-12-18)
+
+### Feat
+
+- **amgi-common**: run servers using a new event loop, this adds multiprocess support
+
+### Fix
+
+- **amgi-paho-mqtt**: fix server so it does not attempt to get event loop at initialisation
+
 ## 0.25.2 (2025-12-18)
 
 ### Fix

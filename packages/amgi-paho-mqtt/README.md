@@ -6,7 +6,7 @@ amgi-paho-mqtt is an [AMGI](https://amgi.readthedocs.io/en/latest/) compatible s
 ## Installation
 
 ```
-pip install amgi-paho-mqtt==0.25.2
+pip install amgi-paho-mqtt==0.26.0
 ```
 
 ## Example

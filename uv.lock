@@ -247,7 +247,7 @@ wheels = [
 
 [[package]]
 name = "amgi"
-version = "0.25.2"
+version = "0.26.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
@@ -288,7 +288,7 @@ dev = [
 
 [[package]]
 name = "amgi-aiobotocore"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/amgi-aiobotocore" }
 dependencies = [
     { name = "aiobotocore" },
@@ -325,7 +325,7 @@ dev = [
 
 [[package]]
 name = "amgi-aiokafka"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/amgi-aiokafka" }
 dependencies = [
     { name = "aiokafka" },
@@ -362,7 +362,7 @@ dev = [
 
 [[package]]
 name = "amgi-common"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/amgi-common" }
 dependencies = [
     { name = "amgi-types" },
@@ -395,7 +395,7 @@ dev = [
 
 [[package]]
 name = "amgi-paho-mqtt"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/amgi-paho-mqtt" }
 dependencies = [
     { name = "amgi-common" },
@@ -432,7 +432,7 @@ dev = [
 
 [[package]]
 name = "amgi-redis"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/amgi-redis" }
 dependencies = [
     { name = "amgi-common" },
@@ -469,7 +469,7 @@ dev = [
 
 [[package]]
 name = "amgi-sqs-event-source-mapping"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/amgi-sqs-event-source-mapping" }
 dependencies = [
     { name = "amgi-common" },
@@ -513,7 +513,7 @@ dev = [
 
 [[package]]
 name = "amgi-types"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/amgi-types" }
 dependencies = [
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
@@ -551,7 +551,7 @@ wheels = [
 
 [[package]]
 name = "asyncfast"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/asyncfast" }
 dependencies = [
     { name = "amgi-types" },
@@ -589,7 +589,7 @@ dev = [
 
 [[package]]
 name = "asyncfast-cli"
-version = "0.25.2"
+version = "0.26.0"
 source = { editable = "packages/asyncfast-cli" }
 dependencies = [
     { name = "amgi-types" },
