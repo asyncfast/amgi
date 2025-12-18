@@ -1,3 +1,13 @@
+## 0.26.1 (2025-12-18)
+
+### Fix
+
+- **amgi-sqs-event-source-mapping**: close client on shutdown if the client has been instantiated
+
+### Refactor
+
+- **amgi-sqs-event-source-mapping**: make boto3 client a cached property so it is only instantiatied at call time
+
 ## 0.26.0 (2025-12-18)
 
 ### Feat

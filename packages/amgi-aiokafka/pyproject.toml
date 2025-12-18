@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "amgi-aiokafka"
-version = "0.26.0"
+version = "0.26.1"
 description = "AMGI Kafka Server"
 readme = "README.md"
 license = "MIT"
@@ -29,8 +29,8 @@ classifiers = [
 ]
 dependencies = [
   "aiokafka>=0.12",
-  "amgi-common==0.26.0",
-  "amgi-types==0.26.0",
+  "amgi-common==0.26.1",
+  "amgi-types==0.26.1",
 ]
 
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
