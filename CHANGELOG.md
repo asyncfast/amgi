@@ -1,3 +1,11 @@
+## 0.25.2 (2025-12-18)
+
+### Fix
+
+- **amgi-sqs-event-source-mapping**: make boto3 an optional dependency
+- **amgi-types**: fix typing-extensions dependency
+- **amgi-common**: fix dependencies and types
+
 ## 0.25.1 (2025-12-03)
 
 ### Fix
