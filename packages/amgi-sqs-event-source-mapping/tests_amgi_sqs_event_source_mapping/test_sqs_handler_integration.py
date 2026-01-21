@@ -11,8 +11,8 @@ from testcontainers.localstack import LocalStackContainer
 
 @pytest.fixture(scope="module")
 async def localstack_container() -> AsyncGenerator[LocalStackContainer, None]:
-    with LocalStackContainer(
-        image="localstack/localstack:4.9.2"
+    with LocalStackContainer(image="localstack/localstack:4.9.2").with_services(
+        "sqs"
     ) as localstack_container:
         yield localstack_container
 

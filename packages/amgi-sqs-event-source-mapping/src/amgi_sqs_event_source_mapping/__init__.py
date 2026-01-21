@@ -293,6 +293,7 @@ class SqsHandler:
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": event_source_arn_match["queue"],
             "state": self._state.copy(),
+            "extensions": {"message.ack.out_of_order": {}},
         }
 
         records_send = _Send(self._queue_url_cache, self._send_batcher, message_ids)
