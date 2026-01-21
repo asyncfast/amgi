@@ -23,6 +23,7 @@ class MessageScope(TypedDict):
     amgi: AMGIVersions
     address: str
     state: NotRequired[dict[str, Any]]
+    extensions: NotRequired[dict[str, dict[str, Any]]]
 
 
 class LifespanScope(TypedDict):
