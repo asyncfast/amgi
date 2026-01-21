@@ -1,3 +1,4 @@
+from asyncio import Event
 from collections.abc import AsyncGenerator
 from collections.abc import Generator
 from collections.abc import Iterable
@@ -883,4 +884,43 @@ async def test_message_sender() -> None:
                 }
             )
         ]
+    )
+
+
+async def test_message_ack_out_of_order() -> None:
+    app = AsyncFast()
+
+    received = set()
+    block_event = Event()
+
+    @app.channel("topic")
+    async def topic_handler(i: int) -> None:
+        received.add(i)
+        if received == {1, 2}:
+            block_event.set()
+        await block_event.wait()
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+        "extensions": {"message.ack.out_of_order": {}},
+    }
+    message_receive_event1: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+        "payload": b"1",
+        "more_messages": True,
+    }
+    message_receive_event2: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-2",
+        "payload": b"2",
+        "headers": [],
+    }
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event1, message_receive_event2]),
+        AsyncMock(),
     )

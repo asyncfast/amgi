@@ -486,6 +486,17 @@ async def _handle_generator(
             exception = None
 
 
+async def _receive_messages(
+    receive: AMGIReceiveCallable,
+) -> AsyncGenerator[MessageReceiveEvent, None]:
+    more_messages = True
+    while more_messages:
+        message = await receive()
+        assert message["type"] == "message.receive"
+        yield message
+        more_messages = message.get("more_messages", False)
+
+
 class Channel:
 
     def __init__(
@@ -566,36 +577,48 @@ class Channel:
         send: AMGISendCallable,
         parameters: dict[str, str],
     ) -> None:
-        more_messages = True
-        while more_messages:
-            message = await receive()
-            if message["type"] != "message.receive":
-                continue
-            more_messages = message.get("more_messages", False)
-            try:
-                arguments = dict(self._generate_arguments(message, parameters, send))
+        ack_out_of_order = "message.ack.out_of_order" in scope.get("extensions", {})
+        if ack_out_of_order:
+            await asyncio.gather(
+                *[
+                    self._handle_message(message, parameters, send)
+                    async for message in _receive_messages(receive)
+                ]
+            )
+        else:
+            async for message in _receive_messages(receive):
+                await self._handle_message(message, parameters, send)
 
-                if inspect.isasyncgenfunction(self._handler):
-                    await _handle_async_generator(self._handler, arguments, send)
-                elif inspect.isgeneratorfunction(self._handler):
-                    await _handle_generator(self._handler, arguments, send)
-                elif inspect.iscoroutinefunction(self._handler):
-                    await self._handler(**arguments)
-                else:
-                    await asyncio.to_thread(self._handler, **arguments)
+    async def _handle_message(
+        self,
+        message: MessageReceiveEvent,
+        parameters: dict[str, str],
+        send: AMGISendCallable,
+    ) -> None:
+        try:
+            arguments = dict(self._generate_arguments(message, parameters, send))
 
-                message_ack_event: MessageAckEvent = {
-                    "type": "message.ack",
-                    "id": message["id"],
-                }
-                await send(message_ack_event)
-            except Exception as e:
-                message_nack_event: MessageNackEvent = {
-                    "type": "message.nack",
-                    "id": message["id"],
-                    "message": str(e),
-                }
-                await send(message_nack_event)
+            if inspect.isasyncgenfunction(self._handler):
+                await _handle_async_generator(self._handler, arguments, send)
+            elif inspect.isgeneratorfunction(self._handler):
+                await _handle_generator(self._handler, arguments, send)
+            elif inspect.iscoroutinefunction(self._handler):
+                await self._handler(**arguments)
+            else:
+                await asyncio.to_thread(self._handler, **arguments)
+
+            message_ack_event: MessageAckEvent = {
+                "type": "message.ack",
+                "id": message["id"],
+            }
+            await send(message_ack_event)
+        except Exception as e:
+            message_nack_event: MessageNackEvent = {
+                "type": "message.nack",
+                "id": message["id"],
+                "message": str(e),
+            }
+            await send(message_nack_event)
 
     def _generate_arguments(
         self,
