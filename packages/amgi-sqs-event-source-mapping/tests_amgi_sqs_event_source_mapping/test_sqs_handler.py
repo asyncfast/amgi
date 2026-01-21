@@ -107,6 +107,7 @@ async def test_sqs_handler_records(app: MockApp, sqs_handler: SqsHandler) -> Non
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
             "state": {},
+            "extensions": {"message.ack.out_of_order": {}},
         }
 
         assert await receive() == {
@@ -178,6 +179,7 @@ async def test_sqs_handler_record_nack(app: MockApp, sqs_handler: SqsHandler) ->
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
             "state": {},
+            "extensions": {"message.ack.out_of_order": {}},
         }
 
         assert await receive() == {
@@ -243,6 +245,7 @@ async def test_sqs_handler_record_unacked(
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
             "state": {},
+            "extensions": {"message.ack.out_of_order": {}},
         }
 
         assert await receive() == {
@@ -300,6 +303,7 @@ async def test_sqs_handler_record_message_attribute_binary_value(
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": "my-queue",
             "state": {},
+            "extensions": {"message.ack.out_of_order": {}},
         }
 
         assert await receive() == {
@@ -415,6 +419,7 @@ async def test_lifespan() -> None:
                 "amgi": {"version": "1.0", "spec_version": "1.0"},
                 "address": "my-queue",
                 "state": {"item": state_item},
+                "extensions": {"message.ack.out_of_order": {}},
             }
 
         await call_task
