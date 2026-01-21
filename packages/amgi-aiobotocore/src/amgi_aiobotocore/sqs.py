@@ -305,6 +305,7 @@ class Server:
                     "amgi": {"version": "1.0", "spec_version": "1.0"},
                     "address": queue_name,
                     "state": state.copy(),
+                    "extensions": {"message.ack.out_of_order": {}},
                 }
                 await self._app(
                     scope,

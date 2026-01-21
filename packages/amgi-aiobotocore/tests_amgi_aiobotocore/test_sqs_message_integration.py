@@ -22,8 +22,8 @@ class _StrMatcher:
 
 @pytest.fixture(scope="module")
 async def localstack_container() -> AsyncGenerator[LocalStackContainer, None]:
-    with LocalStackContainer(
-        image="localstack/localstack:4.9.2"
+    with LocalStackContainer(image="localstack/localstack:4.9.2").with_services(
+        "sqs"
     ) as localstack_container:
         yield localstack_container
 
@@ -89,6 +89,7 @@ async def test_message(
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": queue_name,
             "state": {},
+            "extensions": {"message.ack.out_of_order": {}},
         }
         message_receive = await receive()
 
@@ -131,6 +132,7 @@ async def test_message_nack(
             "amgi": {"version": "1.0", "spec_version": "1.0"},
             "address": queue_name,
             "state": {},
+            "extensions": {"message.ack.out_of_order": {}},
         }
         message_receive = await receive()
 
@@ -290,6 +292,7 @@ async def test_lifespan(
                 "amgi": {"spec_version": "1.0", "version": "1.0"},
                 "type": "message",
                 "state": {"item": state_item},
+                "extensions": {"message.ack.out_of_order": {}},
             }
 
 
