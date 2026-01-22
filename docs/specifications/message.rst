@@ -7,6 +7,40 @@ The Message AMGI sub-specification outlines how messages are sent, and received 
 It is deliberately designed to be agnostic where possible. Terminology is taken from AsyncAPI_ so as to follow their
 agnosticism.
 
+A simple implementation would be:
+
+.. code:: python
+
+    async def app(scope, receive, send):
+        if scope["type"] == "message":
+            more_messages = True
+            while more_messages:
+                message = await receive()
+                message_id = message["id"]
+                try:
+                    headers = message["headers"]
+                    payload = message.get("payload")
+                    bindings = message.get("bindings", {})
+                    ...  # Do some message handling here!
+                    await send(
+                        {
+                            "type": "message.ack",
+                            "id": message_id,
+                        }
+                    )
+                except Exception as e:
+                    await send(
+                        {
+                            "type": "message.nack",
+                            "id": message_id,
+                            "message": str(e),
+                        }
+                    )
+                more_messages = message.get("more_messages")
+        else:
+            pass  # Handle other types
+
+
 *********
  Message
 *********
@@ -16,11 +50,8 @@ support batched consumption a batch of one message should be sent to the applica
 
 The message scope information passed in scope contains:
 
--  ``scope["type"]`` (:py:obj:`str`) - ``"message"``
--  ``scope["amgi"]["version"]`` (:py:obj:`str`) - Version of the AMGI spec.
--  ``scope["amgi"]["spec_version"]`` (:py:obj:`str`) - Version of the AMGI message spec this server understands.
--  ``scope["address"]`` (:py:obj:`str`) - The address of the batch of messages, for example, in Kafka this would be the
-   topic.
+.. typeddict:: amgi_types.MessageScope
+   :type: scope
 
 ********************************************
  Receive message - :py:func:`receive` event
@@ -30,23 +61,7 @@ Sent to the application to indicate an incoming message in the batch.
 
 Keys:
 
--  ``message["type"]`` (:py:obj:`str`) – ``"message.receive"``
-
--  ``message["id"]`` (:py:obj:`str`) - A unique id for the message, used to ack, or nack the message
-
--  ``message["headers"]`` (:py:obj:`~collections.abc.Iterable` [:py:obj:`tuple` [:py:obj:`bytes`, :py:obj:`bytes`]]) -
-   Includes the headers of the message.
-
--  ``message["payload"]`` (:py:obj:`~typing.NotRequired` [ :py:obj:`~typing.Optional` [:py:obj:`bytes`]]) - Payload of
-   the message, which can be :py:obj:`None` or :py:obj:`bytes`. If missing, it defaults to :py:obj:`None`.
-
--  ``message["bindings"]`` (:py:obj:`~typing.NotRequired` [:py:obj:`dict` [:py:obj:`str`, :py:obj:`dict` [:py:obj:`str`,
-   :py:obj:`~typing.Any`]]]) - Protocol specific bindings, for example, when receiving a Kafka message the bindings
-   could include the key: ``{"kafka": {"key": b"key"}}``.
-
--  ``message["more_messages"]`` (:py:obj:`~typing.NotRequired` [:py:obj:`bool`]) - Indicates there are more messages to
-   process in the batch. The application should keep receiving until it receives :py:obj:`False`. If missing it defaults
-   to :py:obj:`False`.
+.. typeddict:: amgi_types.MessageReceiveEvent
 
 **********************************************
  Response message ack - :py:func:`send` event
@@ -56,8 +71,7 @@ Sent by the application to signify that it has successfully acknowledged a messa
 
 Keys:
 
--  ``message["type"]`` (:py:obj:`str`) – ``"message.ack"``
--  ``message["id"]`` (:py:obj:`str`) - The unique id of the message
+.. typeddict:: amgi_types.MessageAckEvent
 
 ***********************************************
  Response message nack - :py:func:`send` event
@@ -67,9 +81,7 @@ Sent by the application to signify that it could not process a message.
 
 Keys:
 
--  ``message["type"]`` (:py:obj:`str`) – ``"message.nack"``
--  ``message["id"]`` (:py:obj:`str`) - The unique id of the message
--  ``message["message"]`` (:py:obj:`str`) - A message indicating why the message could not be processed
+.. typeddict:: amgi_types.MessageNackEvent
 
 ***********************************************
  Response message send - :py:func:`send` event
@@ -80,21 +92,7 @@ server-specific subclass of :py:obj:`OSError`.
 
 Keys:
 
--  ``message["type"]`` (:py:obj:`str`) – ``"message.send"``
-
--  ``message["address"]`` (:py:obj:`str`) – Address to send the message to
-
--  ``message["address"]`` (:py:obj:`str`) – Address to send the message to
-
--  ``message["headers"]`` (:py:obj:`~collections.abc.Iterable` [:py:obj:`tuple` [:py:obj:`bytes`, :py:obj:`bytes`]]) -
-   Headers of the message
-
--  ``message["payload"]`` (:py:obj:`~typing.NotRequired` [ :py:obj:`~typing.Optional` [:py:obj:`bytes`]]) - Payload of
-   the message, which can be :py:obj:`None`, or :py:obj:`bytes`. If missing, it defaults to :py:obj:`None`.
-
--  ``message["bindings"]`` (:py:obj:`~typing.NotRequired` [:py:obj:`dict` [:py:obj:`str`, :py:obj:`dict` [:py:obj:`str`,
-   :py:obj:`~typing.Any`]]]) - Protocol specific bindings to send. This can be bindings for multiple protocols, allowing
-   the server to decide to handle them, or ignore them.
+.. typeddict:: amgi_types.MessageSendEvent
 
 *****************
  Bindings Object
