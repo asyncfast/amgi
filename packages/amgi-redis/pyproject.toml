@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "amgi-redis"
-version = "0.26.1"
+version = "0.27.0"
 description = "AMGI Redis Server"
 readme = "README.md"
 license = "MIT"
@@ -26,8 +26,8 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "amgi-common==0.26.1",
-  "amgi-types==0.26.1",
+  "amgi-common==0.27.0",
+  "amgi-types==0.27.0",
   "redis>=7.0.1",
 ]
 

@@ -1,3 +1,12 @@
+## 0.27.0 (2026-01-22)
+
+### Feat
+
+- **amgi-aiobotocore**: add the message.ack.out_of_order extension to message scope so messages can be handled out of order
+- **amgi-sqs-event-source-mapping**: add the message.ack.out_of_order extension to message scope so messages can be handled out of order
+- **asyncfast**: add support for the message.ack.out_of_order to allow for out of order handling
+- **amgi-types**: add support for extensions to the amgi message scope
+
 ## 0.26.1 (2025-12-18)
 
 ### Fix
