@@ -47,5 +47,10 @@ if current_project == "asyncfast":
     )
 
     extensions += ["async_fast_example"]
+if current_project == "amgi":
+    sys.path.append(str((Path(".") / "docs" / "_ext").resolve()))
+
+    extensions += ["typeddict"]
+
 
 html_theme = "furo"

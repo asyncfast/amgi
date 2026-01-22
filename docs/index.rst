@@ -8,7 +8,7 @@ the focus here is event-based applications.
 .. toctree::
    :hidden:
 
-   introduction
    specifications
+   extensions
 
 .. _asgi: https://asgi.readthedocs.io/en/latest/
