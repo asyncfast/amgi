@@ -3,6 +3,7 @@ import json
 import os
 import sys
 from importlib.metadata import entry_points
+from importlib.metadata import EntryPoints
 from typing import Annotated
 from typing import Any
 
@@ -61,7 +62,8 @@ def main() -> None:
     run_app = typer.Typer()
     app.add_typer(run_app, name="run")
 
-    for entry_point in entry_points().get("amgi_server", ()):
+    entry_points = _fetch_entry_points() or ()
+    for entry_point in entry_points:
         try:
             test_app = typer.Typer()
             function = entry_point.load()
@@ -77,3 +79,7 @@ def main() -> None:
         except RuntimeError:
             pass
     app()
+
+
+def _fetch_entry_points() -> EntryPoints | None:
+    return entry_points().get("amgi_server")
