@@ -43,8 +43,8 @@ async def app(bootstrap_server: str, topic: str) -> AsyncGenerator[MockApp, None
         yield app
 
 
+@pytest.mark.integration
 async def test_message(bootstrap_server: str, app: MockApp, topic: str) -> None:
-
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
 
@@ -77,6 +77,7 @@ async def test_message(bootstrap_server: str, app: MockApp, topic: str) -> None:
     await producer.stop()
 
 
+@pytest.mark.integration
 async def test_message_send(bootstrap_server: str, app: MockApp, topic: str) -> None:
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
@@ -105,6 +106,7 @@ async def test_message_send(bootstrap_server: str, app: MockApp, topic: str) -> 
     await producer.stop()
 
 
+@pytest.mark.integration
 async def test_message_send_kafka_key(
     bootstrap_server: str, app: MockApp, topic: str
 ) -> None:
@@ -134,6 +136,7 @@ async def test_message_send_kafka_key(
     await producer.stop()
 
 
+@pytest.mark.integration
 async def test_lifespan(bootstrap_server: str, topic: str) -> None:
     app = MockApp()
     server = Server(
@@ -161,9 +164,11 @@ async def test_lifespan(bootstrap_server: str, topic: str) -> None:
             }
 
 
+@pytest.mark.integration
 def test_run(bootstrap_server: str, topic: str) -> None:
     assert_run_can_terminate(run, topic, bootstrap_servers=bootstrap_server)
 
 
+@pytest.mark.integration
 def test_run_cli(bootstrap_server: str, topic: str) -> None:
     assert_run_can_terminate(_run_cli, [topic], bootstrap_servers=bootstrap_server)

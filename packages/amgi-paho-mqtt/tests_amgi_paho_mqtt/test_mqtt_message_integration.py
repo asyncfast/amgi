@@ -53,6 +53,7 @@ async def app(
         yield app
 
 
+@pytest.mark.integration
 async def test_message(
     app: MockApp, topic: str, mosquitto_container: MosquittoContainer
 ) -> None:
@@ -75,6 +76,7 @@ async def test_message(
         }
 
 
+@pytest.mark.integration
 async def test_message_send(
     app: MockApp, topic: str, mosquitto_container: MosquittoContainer
 ) -> None:
@@ -126,6 +128,7 @@ async def test_message_send(
     client.disconnect()
 
 
+@pytest.mark.integration
 async def test_lifespan(topic: str, mosquitto_container: MosquittoContainer) -> None:
     app = MockApp()
     server = Server(
@@ -150,6 +153,7 @@ async def test_lifespan(topic: str, mosquitto_container: MosquittoContainer) -> 
             }
 
 
+@pytest.mark.integration
 async def test_message_send_deny(
     app: MockApp, topic: str, mosquitto_container: MosquittoContainer
 ) -> None:
@@ -168,6 +172,7 @@ async def test_message_send_deny(
             )
 
 
+@pytest.mark.integration
 def test_run(topic: str, mosquitto_container: MosquittoContainer) -> None:
     assert_run_can_terminate(
         run,

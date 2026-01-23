@@ -37,6 +37,7 @@ async def app(
         yield app
 
 
+@pytest.mark.integration
 async def test_message(
     app: MockApp, channel: str, redis_container: AsyncRedisContainer
 ) -> None:
@@ -69,6 +70,7 @@ async def _get_message(pubsub: PubSub) -> Any:
             return message
 
 
+@pytest.mark.integration
 async def test_message_send(
     app: MockApp, channel: str, redis_container: AsyncRedisContainer
 ) -> None:
@@ -100,6 +102,7 @@ async def test_message_send(
         }
 
 
+@pytest.mark.integration
 async def test_lifespan(redis_container: AsyncRedisContainer, channel: str) -> None:
     client = await redis_container.get_async_client()
 
@@ -123,6 +126,7 @@ async def test_lifespan(redis_container: AsyncRedisContainer, channel: str) -> N
             }
 
 
+@pytest.mark.integration
 def test_run(redis_container: AsyncRedisContainer, channel: str) -> None:
     host = redis_container.get_container_host_ip()
     port = redis_container.get_exposed_port(redis_container.port)
@@ -130,6 +134,7 @@ def test_run(redis_container: AsyncRedisContainer, channel: str) -> None:
     assert_run_can_terminate(run, channel, url=f"redis://{host}:{port}")
 
 
+@pytest.mark.integration
 def test_run_cli(redis_container: AsyncRedisContainer, channel: str) -> None:
     host = redis_container.get_container_host_ip()
     port = redis_container.get_exposed_port(redis_container.port)

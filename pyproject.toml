@@ -46,6 +46,9 @@ filterwarnings = [
   "ignore:^The wait_for_logs function with string or callable predicates is deprecated:DeprecationWarning",
   "ignore:^The @wait_container_is_ready decorator is deprecated:DeprecationWarning",
 ]
+markers = [
+  "integration: tests that require external services (Docker/Testcontainers)",
+]
 
 [tool.mypy]
 warn_unused_configs = true

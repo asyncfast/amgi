@@ -17,6 +17,7 @@ async def localstack_container() -> AsyncGenerator[LocalStackContainer, None]:
         yield localstack_container
 
 
+@pytest.mark.integration
 async def test_sqs_handler_record_send(
     localstack_container: LocalStackContainer,
 ) -> None:
@@ -89,6 +90,7 @@ async def test_sqs_handler_record_send(
     await call_task
 
 
+@pytest.mark.integration
 async def test_sqs_handler_record_send_invalid_message(
     localstack_container: LocalStackContainer,
 ) -> None:
