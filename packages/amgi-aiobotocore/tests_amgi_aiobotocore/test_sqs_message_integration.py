@@ -72,6 +72,7 @@ async def app(
         yield app
 
 
+@pytest.mark.integration
 async def test_message(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
@@ -115,6 +116,7 @@ async def test_message(
     )
 
 
+@pytest.mark.integration
 async def test_message_nack(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
@@ -159,6 +161,7 @@ async def test_message_nack(
     assert len(messages_response["Messages"]) == 1
 
 
+@pytest.mark.integration
 async def test_message_send(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
@@ -191,6 +194,7 @@ async def test_message_send(
         }
 
 
+@pytest.mark.integration
 async def test_message_send_invalid_message(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
@@ -215,6 +219,7 @@ async def test_message_send_invalid_message(
             )
 
 
+@pytest.mark.integration
 async def test_message_send_does_not_cache_invalid_queue_url(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
@@ -258,6 +263,7 @@ async def test_message_send_does_not_cache_invalid_queue_url(
         assert message["MessageAttributes"] == {}
 
 
+@pytest.mark.integration
 async def test_lifespan(
     queue_url: str,
     queue_name: str,
@@ -296,6 +302,7 @@ async def test_lifespan(
             }
 
 
+@pytest.mark.integration
 def test_run(queue_name: str, localstack_container: LocalStackContainer) -> None:
     assert_run_can_terminate(
         run,
@@ -307,6 +314,7 @@ def test_run(queue_name: str, localstack_container: LocalStackContainer) -> None
     )
 
 
+@pytest.mark.integration
 def test_run_cli(queue_name: str, localstack_container: LocalStackContainer) -> None:
     assert_run_can_terminate(
         _run_cli,

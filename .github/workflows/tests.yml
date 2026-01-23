@@ -8,8 +8,18 @@ env:
   FORCE_COLOR: 1
 jobs:
   tests:
-    name: Run Tests
-    runs-on: ubuntu-latest
+    name: Run Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            pytest_args: -v --cov --cov-append --cov-report=xml
+          - os: macos-latest
+            pytest_args: -m "not integration" -v --cov --cov-append --cov-report=xml
+          - os: windows-latest
+            pytest_args: -m "not integration" -v --cov --cov-append --cov-report=xml
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,9 +32,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/pre-commit
-          key: pre-commit|${{ hashFiles('.pre-commit-config.yaml') }}
+          key: pre-commit|${{ matrix.os }}|${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Run tests
-        run: uv run tox
+        run: uv run tox -- ${{ matrix.pytest_args }}
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
