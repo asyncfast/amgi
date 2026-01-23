@@ -58,7 +58,7 @@ def callback() -> None:
 run_app = typer.Typer()
 app.add_typer(run_app, name="run")
 
-for entry_point in entry_points().get("amgi_server", ()):
+for entry_point in entry_points().select(group="amgi_server"):
     try:
         test_app = typer.Typer()
         function = entry_point.load()
