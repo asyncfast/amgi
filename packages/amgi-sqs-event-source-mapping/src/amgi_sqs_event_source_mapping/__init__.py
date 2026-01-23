@@ -226,7 +226,11 @@ class SqsHandler:
         self._lifespan_context: Lifespan | None = None
         self._state: dict[str, Any] = {}
         self._client_instantiated = False
-        self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
+        try:
+            self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
+        except NotImplementedError:
+            # Windows / non-main thread: no signal handlers via asyncio
+            pass
 
     @cached_property
     def _client(self) -> Any:
