@@ -391,17 +391,17 @@ class AsyncFast:
     ) -> Generator[tuple[int, JsonSchemaMode, CoreSchema], None, None]:
         for channel in self._channels:
             for field in channel._bindings.values():
-                yield hash(field), "serialization", field.type_adapter.core_schema
+                yield hash(field), "validation", field.type_adapter.core_schema
 
             headers_model = channel.headers_model
             if headers_model:
-                yield hash(headers_model), "serialization", TypeAdapter(
+                yield hash(headers_model), "validation", TypeAdapter(
                     headers_model
                 ).core_schema
             payload = channel.payload
             if payload:
                 _, field = payload
-                yield hash(field), "serialization", field.type_adapter.core_schema
+                yield hash(field), "validation", field.type_adapter.core_schema
 
             for message in channel.messages:
                 if message.__payload__:
@@ -545,7 +545,7 @@ class Channel:
         if self._headers:
             headers_name = f"{self.title}Headers"
             field_definitions: dict[str, Any] = {
-                name.replace("_", "-"): field.type
+                name.replace("_", "-"): get_args(field.type)
                 for name, field in self._headers.items()
             }
             headers_model = create_model(
@@ -697,13 +697,13 @@ def _generate_messages(
         headers_model = channel.headers_model
         if headers_model:
             message["headers"] = field_mapping[
-                hash(channel.headers_model), "serialization"
+                hash(channel.headers_model), "validation"
             ]
 
         payload = channel.payload
         if payload:
             _, field = payload
-            message["payload"] = field_mapping[hash(field), "serialization"]
+            message["payload"] = field_mapping[hash(field), "validation"]
 
         bindings: dict[str, dict[str, Any]]
         if channel._bindings:
@@ -714,7 +714,7 @@ def _generate_messages(
 
                 bindings.setdefault(binding_type.__protocol__, {})[
                     binding_type.__field_name__
-                ] = field_mapping[hash(field), "serialization"]
+                ] = field_mapping[hash(field), "validation"]
             message["bindings"] = bindings
 
         yield f"{channel.title}Message", message
