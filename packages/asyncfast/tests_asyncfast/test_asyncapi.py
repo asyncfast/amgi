@@ -867,3 +867,56 @@ def test_asyncapi_message_sender_multiple_pipe_union() -> None:
             "sendSendB": {"action": "send", "channel": {"$ref": "#/channels/SendB"}},
         },
     }
+
+
+def test_header_default() -> None:
+    app = AsyncFast()
+
+    @app.channel("notification_channel")
+    async def notification_channel_handler(
+        request_id: Annotated[int, Header()] = 0,
+    ) -> None:
+        pass  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "NotificationChannelHandler": {
+                "address": "notification_channel",
+                "messages": {
+                    "NotificationChannelHandlerMessage": {
+                        "$ref": "#/components/messages/NotificationChannelHandlerMessage"
+                    }
+                },
+            }
+        },
+        "components": {
+            "messages": {
+                "NotificationChannelHandlerMessage": {
+                    "headers": {
+                        "$ref": "#/components/schemas/NotificationChannelHandlerHeaders"
+                    }
+                }
+            },
+            "schemas": {
+                "NotificationChannelHandlerHeaders": {
+                    "properties": {
+                        "request-id": {
+                            "default": 0,
+                            "title": "Request-Id",
+                            "type": "integer",
+                        }
+                    },
+                    "title": "NotificationChannelHandlerHeaders",
+                    "type": "object",
+                }
+            },
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveNotificationChannelHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/NotificationChannelHandler"},
+            }
+        },
+    }
