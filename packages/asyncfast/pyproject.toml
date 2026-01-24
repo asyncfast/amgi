@@ -34,7 +34,7 @@ classifiers = [
 ]
 dependencies = [
   "amgi-types==0.27.0",
-  "pydantic==2.11.7",
+  "pydantic>=2.0.0",
 ]
 
 optional-dependencies.standard = [

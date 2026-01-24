@@ -575,7 +575,7 @@ dev = [
 requires-dist = [
     { name = "amgi-types", editable = "packages/amgi-types" },
     { name = "asyncfast-cli", marker = "extra == 'standard'", editable = "packages/asyncfast-cli" },
-    { name = "pydantic", specifier = "==2.11.7" },
+    { name = "pydantic", specifier = ">=2.0.0" },
 ]
 provides-extras = ["standard"]
 
