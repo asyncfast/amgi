@@ -1,0 +1,47 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [ "hatchling" ]
+
+[project]
+name = "amgi-aiopika-amqp"
+version = "0.21.0"
+description = "AMQP AMGI server implementation using aio-pika"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [ { name = "Jack Burridge", email = "jack.burridge@mail.com" } ]
+requires-python = ">=3.10"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "aio-pika>=9.0.0",
+  "amgi-common==0.21.0",
+  "amgi-types==0.21.0",
+]
+
+entry-points.amgi_server.amgi-aiopika-amqp = "amgi_aiopika_amqp:_run_cli"
+
+[tool.hatch.build.targets.wheel]
+packages = [ "src/amgi_aiopika_amqp" ]
+
+[tool.uv]
+dev-dependencies = [
+  "pytest>=8.3.4",
+  "pytest-asyncio>=0.24.0",
+  "testcontainers>=4.9.0",
+  "pika>=1.3.0",
+]
+
+[tool.uv.sources]
+amgi-common = { workspace = true }
+amgi-types = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = [ "tests_amgi_aiopika_amqp" ]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
