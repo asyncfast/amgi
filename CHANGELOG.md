@@ -1,3 +1,14 @@
+## 0.27.2 (2026-01-26)
+
+### Fix
+
+- **amgi-sqs-event-source-mapping**: guard against add_signal_handler not implemented error on windows
+- **asyncfast-cli**: use select to find entry points as get is deprecated
+
+### Refactor
+
+- **asyncfast-cli**: refactor cli so that it is testable
+
 ## 0.27.1 (2026-01-26)
 
 ### Fix
