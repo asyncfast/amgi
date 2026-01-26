@@ -38,6 +38,32 @@ def test_message_header() -> None:
     }
 
 
+def test_message_header_alias() -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        id: Annotated[int, Header(alias="Id")]
+
+    response = Response(id=100)
+
+    assert dict(response) == {
+        "address": "response_channel",
+        "headers": [(b"Id", b"100")],
+    }
+
+
+def test_message_header_underscore() -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        request_id: Annotated[str, Header()]
+
+    response = Response(request_id="46345148-fafe-11f0-af7a-975c1791ef56")
+
+    assert dict(response) == {
+        "address": "response_channel",
+        "headers": [(b"request-id", b"46345148-fafe-11f0-af7a-975c1791ef56")],
+    }
+
+
 def test_message_parameter() -> None:
     @dataclass
     class Response(Message, address="register.{user_id}"):

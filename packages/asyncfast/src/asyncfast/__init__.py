@@ -161,11 +161,14 @@ class Message(Mapping[str, Any]):
 
         return self.__address__.format(**parameters)
 
+    def _generate_headers(self) -> Iterable[tuple[str, bytes]]:
+        for name, field in self.__headers__.items():
+            _, annotation = get_args(field.type)
+            alias = annotation.alias if annotation.alias else name.replace("_", "-")
+            yield alias, self._get_value(name, field.type_adapter)
+
     def _get_headers(self) -> Iterable[tuple[bytes, bytes]]:
-        return [
-            (name.encode(), self._get_value(name, field.type_adapter))
-            for name, field in self.__headers__.items()
-        ]
+        return [(name.encode(), value) for name, value in self._generate_headers()]
 
     def _get_value(self, name: str, type_adapter: TypeAdapter[Any]) -> bytes:
         json_value = type_adapter.dump_json(getattr(self, name))
@@ -518,13 +521,21 @@ async def _receive_messages(
         more_messages = message.get("more_messages", False)
 
 
+def _generate_field_definitions(
+    headers: Mapping[str, _Field],
+) -> Iterator[tuple[str, Any]]:
+    for name, field in headers.items():
+        type_, annotation = get_args(field.type)
+        alias = annotation.alias if annotation.alias else name.replace("_", "-")
+        yield alias, (type_, annotation)
+
+
 def _create_headers_model(
     headers_name: str, headers: Mapping[str, _Field]
 ) -> type[BaseModel]:
-    field_definitions: dict[str, Any] = {
-        name.replace("_", "-"): get_args(field.type) for name, field in headers.items()
-    }
-    return create_model(headers_name, __base__=BaseModel, **field_definitions)
+    return create_model(
+        headers_name, __base__=BaseModel, **dict(_generate_field_definitions(headers))
+    )
 
 
 class _Channel:
@@ -847,7 +858,7 @@ class _Headers(Mapping[str, str]):
 
     def __getitem__(self, key: str, /) -> str:
         for header_key, header_value in self.raw_list:
-            if header_key.decode().lower() == key.lower():
+            if header_key.decode() == key:
                 return header_value.decode()
         raise KeyError(key)
 

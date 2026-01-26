@@ -58,6 +58,50 @@ def test_asyncapi_header() -> None:
     }
 
 
+def test_asyncapi_header_alias() -> None:
+    app = AsyncFast()
+
+    @app.channel("hello")
+    async def on_hello(request_id: Annotated[int, Header(alias="Request-Id")]) -> None:
+        pass  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "OnHello": {
+                "address": "hello",
+                "messages": {
+                    "OnHelloMessage": {"$ref": "#/components/messages/OnHelloMessage"}
+                },
+            }
+        },
+        "components": {
+            "messages": {
+                "OnHelloMessage": {
+                    "headers": {"$ref": "#/components/schemas/OnHelloHeaders"}
+                }
+            },
+            "schemas": {
+                "OnHelloHeaders": {
+                    "properties": {
+                        "Request-Id": {"title": "Request-Id", "type": "integer"}
+                    },
+                    "required": ["Request-Id"],
+                    "title": "OnHelloHeaders",
+                    "type": "object",
+                }
+            },
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveOnHello": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/OnHello"},
+            }
+        },
+    }
+
+
 def test_asyncapi_header_sync() -> None:
     app = AsyncFast()
 
@@ -970,6 +1014,120 @@ def test_asyncapi_send_header() -> None:
                 "SendHeaders": {
                     "properties": {"header": {"title": "Header", "type": "integer"}},
                     "required": ["header"],
+                    "title": "SendHeaders",
+                    "type": "object",
+                }
+            },
+        },
+    }
+
+
+def test_asyncapi_send_header_alias() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Send(Message, address="send"):
+        header: Annotated[int, Header(alias="Header")]
+        id: int
+
+    @app.channel("receive")
+    async def receive_handler(id: int) -> AsyncGenerator[Send, None]:
+        yield Send(id=id, header=1)  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "channels": {
+            "ReceiveHandler": {
+                "address": "receive",
+                "messages": {
+                    "ReceiveHandlerMessage": {
+                        "$ref": "#/components/messages/ReceiveHandlerMessage"
+                    }
+                },
+            },
+            "Send": {
+                "address": "send",
+                "messages": {"Send": {"$ref": "#/components/messages/Send"}},
+            },
+        },
+        "operations": {
+            "receiveReceiveHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/ReceiveHandler"},
+            },
+            "sendSend": {"action": "send", "channel": {"$ref": "#/channels/Send"}},
+        },
+        "components": {
+            "messages": {
+                "ReceiveHandlerMessage": {"payload": {"type": "integer"}},
+                "Send": {
+                    "payload": {"type": "integer"},
+                    "headers": {"$ref": "#/components/schemas/SendHeaders"},
+                },
+            },
+            "schemas": {
+                "SendHeaders": {
+                    "properties": {"Header": {"title": "Header", "type": "integer"}},
+                    "required": ["Header"],
+                    "title": "SendHeaders",
+                    "type": "object",
+                }
+            },
+        },
+    }
+
+
+def test_asyncapi_send_header_underscore() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Send(Message, address="send"):
+        request_id: Annotated[int, Header()]
+        id: int
+
+    @app.channel("receive")
+    async def receive_handler(id: int) -> AsyncGenerator[Send, None]:
+        yield Send(id=id, request_id=1)  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "channels": {
+            "ReceiveHandler": {
+                "address": "receive",
+                "messages": {
+                    "ReceiveHandlerMessage": {
+                        "$ref": "#/components/messages/ReceiveHandlerMessage"
+                    }
+                },
+            },
+            "Send": {
+                "address": "send",
+                "messages": {"Send": {"$ref": "#/components/messages/Send"}},
+            },
+        },
+        "operations": {
+            "receiveReceiveHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/ReceiveHandler"},
+            },
+            "sendSend": {"action": "send", "channel": {"$ref": "#/channels/Send"}},
+        },
+        "components": {
+            "messages": {
+                "ReceiveHandlerMessage": {"payload": {"type": "integer"}},
+                "Send": {
+                    "payload": {"type": "integer"},
+                    "headers": {"$ref": "#/components/schemas/SendHeaders"},
+                },
+            },
+            "schemas": {
+                "SendHeaders": {
+                    "properties": {
+                        "request-id": {"title": "Request-Id", "type": "integer"}
+                    },
+                    "required": ["request-id"],
                     "title": "SendHeaders",
                     "type": "object",
                 }

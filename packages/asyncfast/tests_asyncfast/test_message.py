@@ -100,7 +100,7 @@ async def test_message_header_string() -> None:
     test_mock = Mock()
 
     @app.channel("topic")
-    async def topic_handler(etag: Annotated[str, Header()]) -> None:
+    async def topic_handler(etag: Annotated[str, Header(alias="ETag")]) -> None:
         test_mock(etag)
 
     message_scope: MessageScope = {
@@ -139,7 +139,7 @@ async def test_message_header_integer() -> None:
     message_receive_event: MessageReceiveEvent = {
         "type": "message.receive",
         "id": "id-1",
-        "headers": [(b"Id", b"10")],
+        "headers": [(b"id", b"10")],
     }
     await app(
         message_scope,
@@ -157,7 +157,7 @@ async def test_message_header_underscore_to_hyphen() -> None:
 
     @app.channel("topic")
     async def topic_handler(
-        idempotency_key: Annotated[UUID, Header()],
+        idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
     ) -> None:
         test_mock(idempotency_key)
 
@@ -201,8 +201,8 @@ async def test_message_headers_multiple() -> None:
         "type": "message.receive",
         "id": "id-1",
         "headers": [
-            (b"Id", b"10"),
-            (b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4"),
+            (b"id", b"10"),
+            (b"etag", b"33a64df551425fcc55e4d42a148795d9f25f89d4"),
         ],
     }
     await app(
@@ -218,7 +218,7 @@ async def test_message_headers_multiple() -> None:
     ["headers", "expected_call"],
     [
         (
-            [(b"Id", b"33a64df551425fcc55e4d42a148795d9f25f89d4")],
+            [(b"id", b"33a64df551425fcc55e4d42a148795d9f25f89d4")],
             call("33a64df551425fcc55e4d42a148795d9f25f89d4"),
         ),
         ([], call(None)),
@@ -258,11 +258,11 @@ async def test_message_header_optional(
     ["headers", "expected_call"],
     [
         (
-            [(b"Id", b"1")],
+            [(b"id", b"1")],
             call(1, "default"),
         ),
         (
-            [(b"Id", b"1"), (b"Example", b"value")],
+            [(b"id", b"1"), (b"example", b"value")],
             call(1, "value"),
         ),
     ],
