@@ -1,3 +1,10 @@
+## 0.27.1 (2026-01-26)
+
+### Fix
+
+- **asyncfast**: use annotation args when creating the headers model so it worked across all versions of python and pydantic v2
+- **asyncfast**: stop using \_type from type adapter
+
 ## 0.27.0 (2026-01-22)
 
 ### Feat

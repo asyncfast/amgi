@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "asyncfast"
-version = "0.27.0"
+version = "0.27.1"
 description = "Add your description here"
 readme = "README.md"
 license = "MIT"
@@ -33,12 +33,12 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-  "amgi-types==0.27.0",
+  "amgi-types==0.27.1",
   "pydantic>=2.0.0",
 ]
 
 optional-dependencies.standard = [
-  "asyncfast-cli==0.27.0",
+  "asyncfast-cli==0.27.1",
 ]
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
 urls.Documentation = "https://asyncfast.readthedocs.io/en/latest/"
