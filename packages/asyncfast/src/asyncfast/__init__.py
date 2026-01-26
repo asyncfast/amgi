@@ -86,6 +86,7 @@ class Message(Mapping[str, Any]):
 
     __address__: ClassVar[str | None] = None
     __headers__: ClassVar[dict[str, _Field]]
+    __headers_model__: ClassVar[type[BaseModel] | None]
     __parameters__: ClassVar[dict[str, TypeAdapter[Any]]]
     __payload__: ClassVar[tuple[str, _Field] | None]
     __bindings__: ClassVar[dict[str, _Field]]
@@ -189,6 +190,17 @@ class Message(Mapping[str, Any]):
                 binding_type.__field_name__
             ] = self._get_value(name, field.type_adapter)
         return bindings
+
+    @classmethod
+    def _headers_model(cls) -> type[BaseModel] | None:
+        if not hasattr(cls, "__headers_model__"):
+            if cls.__headers__:
+                cls.__headers_model__ = _create_headers_model(
+                    f"{cls.__name__}Headers", cls.__headers__
+                )
+            else:
+                cls.__headers_model__ = None
+        return cls.__headers_model__
 
 
 def _generate_message_annotations(
@@ -414,6 +426,12 @@ class AsyncFast:
                         field.type
                     ), "serialization", field.type_adapter.core_schema
 
+                message_headers_model = message._headers_model()
+                if message_headers_model:
+                    yield hash(message_headers_model), "serialization", TypeAdapter(
+                        message_headers_model
+                    ).core_schema
+
 
 def _generate_annotations(
     address: str,
@@ -500,6 +518,15 @@ async def _receive_messages(
         more_messages = message.get("more_messages", False)
 
 
+def _create_headers_model(
+    headers_name: str, headers: Mapping[str, _Field]
+) -> type[BaseModel]:
+    field_definitions: dict[str, Any] = {
+        name.replace("_", "-"): get_args(field.type) for name, field in headers.items()
+    }
+    return create_model(headers_name, __base__=BaseModel, **field_definitions)
+
+
 class _Channel:
 
     def __init__(
@@ -543,15 +570,7 @@ class _Channel:
     @cached_property
     def headers_model(self) -> type[BaseModel] | None:
         if self._headers:
-            headers_name = f"{self.title}Headers"
-            field_definitions: dict[str, Any] = {
-                name.replace("_", "-"): get_args(field.type)
-                for name, field in self._headers.items()
-            }
-            headers_model = create_model(
-                headers_name, __base__=BaseModel, **field_definitions
-            )
-            return headers_model
+            return _create_headers_model(f"{self.title}Headers", self._headers)
         return None
 
     @property
@@ -725,6 +744,12 @@ def _generate_messages(
             if channel_message.__payload__:
                 _, field = channel_message.__payload__
                 message_message["payload"] = field_mapping[hash(field), "serialization"]
+
+            message_headers_model = channel_message._headers_model()
+            if message_headers_model:
+                message_message["headers"] = field_mapping[
+                    hash(message_headers_model), "serialization"
+                ]
 
             if channel_message.__bindings__:
                 bindings = {}
