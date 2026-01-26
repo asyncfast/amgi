@@ -920,3 +920,59 @@ def test_header_default() -> None:
             }
         },
     }
+
+
+def test_asyncapi_send_header() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Send(Message, address="send"):
+        header: Annotated[int, Header()]
+        id: int
+
+    @app.channel("receive")
+    async def receive_handler(id: int) -> AsyncGenerator[Send, None]:
+        yield Send(id=id, header=1)  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "channels": {
+            "ReceiveHandler": {
+                "address": "receive",
+                "messages": {
+                    "ReceiveHandlerMessage": {
+                        "$ref": "#/components/messages/ReceiveHandlerMessage"
+                    }
+                },
+            },
+            "Send": {
+                "address": "send",
+                "messages": {"Send": {"$ref": "#/components/messages/Send"}},
+            },
+        },
+        "operations": {
+            "receiveReceiveHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/ReceiveHandler"},
+            },
+            "sendSend": {"action": "send", "channel": {"$ref": "#/channels/Send"}},
+        },
+        "components": {
+            "messages": {
+                "ReceiveHandlerMessage": {"payload": {"type": "integer"}},
+                "Send": {
+                    "payload": {"type": "integer"},
+                    "headers": {"$ref": "#/components/schemas/SendHeaders"},
+                },
+            },
+            "schemas": {
+                "SendHeaders": {
+                    "properties": {"header": {"title": "Header", "type": "integer"}},
+                    "required": ["header"],
+                    "title": "SendHeaders",
+                    "type": "object",
+                }
+            },
+        },
+    }
