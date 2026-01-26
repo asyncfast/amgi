@@ -1,3 +1,18 @@
+## 0.28.0 (2026-01-26)
+
+### Feat
+
+- **asyncfast**: support header aliases and preserve header casing
+- **asyncfast**: include headers schema for outgoing messages in the asyncapi generation
+
+### Refactor
+
+- **asyncfast**: make channel and headers classes protected
+
+### Perf
+
+- **asyncfast**: avoid json.loads round-trip in header serialization
+
 ## 0.27.2 (2026-01-26)
 
 ### Fix
