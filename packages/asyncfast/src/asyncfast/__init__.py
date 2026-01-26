@@ -224,7 +224,7 @@ class AsyncFast:
         version: str = "0.1.0",
         lifespan: Lifespan | None = None,
     ) -> None:
-        self._channels: list[Channel] = []
+        self._channels: list[_Channel] = []
         self._title = title
         self._version = version
         self._lifespan_context = lifespan
@@ -319,7 +319,7 @@ class AsyncFast:
 
         address_pattern = _address_pattern(address)
 
-        channel = Channel(
+        channel = _Channel(
             address,
             address_pattern,
             function,
@@ -500,7 +500,7 @@ async def _receive_messages(
         more_messages = message.get("more_messages", False)
 
 
-class Channel:
+class _Channel:
 
     def __init__(
         self,
@@ -639,7 +639,7 @@ class Channel:
         self, message_receive_event: MessageReceiveEvent
     ) -> Generator[tuple[str, Any], None, None]:
         if self.headers:
-            headers = Headers(message_receive_event["headers"])
+            headers = _Headers(message_receive_event["headers"])
             for name, field in self.headers.items():
                 annotated_args = get_args(field.type)
                 header_alias = annotated_args[1].alias
@@ -688,7 +688,7 @@ class Channel:
 
 
 def _generate_messages(
-    channels: Iterable[Channel],
+    channels: Iterable[_Channel],
     field_mapping: dict[tuple[int, JsonSchemaMode], JsonSchemaValue],
 ) -> Generator[tuple[str, dict[str, Any]], None, None]:
     for channel in channels:
@@ -741,7 +741,7 @@ def _generate_messages(
 
 
 def _generate_channels(
-    channels: Iterable[Channel],
+    channels: Iterable[_Channel],
 ) -> Generator[tuple[str, dict[str, Any]], None, None]:
     for channel in channels:
         message_name = f"{channel.title}Message"
@@ -776,7 +776,7 @@ def _generate_channels(
 
 
 def _generate_operations(
-    channels: Iterable[Channel],
+    channels: Iterable[_Channel],
 ) -> Generator[tuple[str, dict[str, Any]], None, None]:
     for channel in channels:
         yield f"receive{channel.title}", {
@@ -815,7 +815,7 @@ def _get_address_parameters(address: str | None) -> set[str]:
     return set(parameters)
 
 
-class Headers(Mapping[str, str]):
+class _Headers(Mapping[str, str]):
 
     def __init__(self, raw_list: Iterable[tuple[bytes, bytes]]) -> None:
         self.raw_list = list(raw_list)
