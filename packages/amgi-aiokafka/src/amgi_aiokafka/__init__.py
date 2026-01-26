@@ -19,7 +19,6 @@ from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 
-
 logger = logging.getLogger("amgi-aiokafka.error")
 
 
