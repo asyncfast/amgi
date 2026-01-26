@@ -171,11 +171,13 @@ class Message(Mapping[str, Any]):
         return [(name.encode(), value) for name, value in self._generate_headers()]
 
     def _get_value(self, name: str, type_adapter: TypeAdapter[Any]) -> bytes:
-        json_value = type_adapter.dump_json(getattr(self, name))
-        value = json.loads(json_value)
-        if isinstance(value, str):
-            return value.encode()
-        return json_value
+        value = getattr(self, name)
+        python = type_adapter.dump_python(value, mode="json")
+        if isinstance(python, str):
+            return python.encode()
+        if isinstance(python, bytes):
+            return python
+        return type_adapter.dump_json(value)
 
     def _get_payload(self) -> bytes | None:
         if self.__payload__ is None:

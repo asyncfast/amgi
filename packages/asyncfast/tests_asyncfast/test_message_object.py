@@ -90,6 +90,19 @@ def test_message_header_string() -> None:
     }
 
 
+def test_message_header_bytes() -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        id: Annotated[bytes, Header()]
+
+    response = Response(id=b"1234")
+
+    assert dict(response) == {
+        "address": "response_channel",
+        "headers": [(b"id", b"1234")],
+    }
+
+
 def test_message_binding_kafka_key() -> None:
     @dataclass
     class Response(Message, address="response_channel"):
