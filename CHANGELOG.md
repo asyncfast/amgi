@@ -1,3 +1,9 @@
+## 0.29.0 (2026-01-27)
+
+### Feat
+
+- **asyncfast**: replace channel definition asserts with invalid channel definition error
+
 ## 0.28.1 (2026-01-27)
 
 ### Perf
