@@ -1,6 +1,5 @@
 import asyncio
 import inspect
-import json
 import re
 from collections import Counter
 from collections.abc import AsyncGenerator
@@ -689,11 +688,11 @@ class _Channel:
     ) -> Generator[tuple[str, Any], None, None]:
         if self.payload:
             name, field = self.payload
-            payload = message_receive_event.get("payload")
-            payload_obj = None if payload is None else json.loads(payload)
-            value = field.type_adapter.validate_python(
-                payload_obj, from_attributes=True
-            )
+            payload: bytes | None = message_receive_event.get("payload")
+            if payload is None:
+                value = field.type_adapter.validate_python(None)
+            else:
+                value = field.type_adapter.validate_json(payload)
             yield name, value
 
     def _generate_bindings(

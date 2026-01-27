@@ -62,6 +62,37 @@ async def test_message_payload() -> None:
     test_mock.assert_called_once_with(MessagePayload(id=1))
 
 
+async def test_message_payload_optional() -> None:
+    app = AsyncFast()
+
+    class MessagePayload(BaseModel):
+        id: int
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(payload: MessagePayload | None) -> None:
+        test_mock(payload)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+    }
+    await app(
+        message_scope,
+        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(None)
+
+
 async def test_message_payload_sync() -> None:
     app = AsyncFast()
 
