@@ -54,6 +54,12 @@ _FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_\-]+$")
 _PARAMETER_PATTERN = re.compile(r"{(.*)}")
 
 
+class InvalidChannelDefinitionError(ValueError):
+    """
+    Raised when a channel or message handler is defined with an invalid shape.
+    """
+
+
 async def _send_message(send: AMGISendCallable, message: Mapping[str, Any]) -> None:
     message_send_event: MessageSendEvent = {
         "type": "message.send",
@@ -323,13 +329,17 @@ class AsyncFast:
                 elif _is_message(message_sender_type):
                     messages = [message_sender_type]
 
-        assert len(payloads) <= 1, "Channel must have no more than 1 payload"
+        if len(payloads) > 1:
+            raise InvalidChannelDefinitionError(
+                "Channel must have no more than 1 payload"
+            )
 
         payload = payloads[0] if len(payloads) == 1 else None
 
-        assert (
-            len(message_senders) <= 1
-        ), "Channel must have no more than 1 message sender"
+        if len(message_senders) > 1:
+            raise InvalidChannelDefinitionError(
+                "Channel must have no more than 1 message sender"
+            )
 
         message_sender = message_senders[0] if len(message_senders) == 1 else None
 
