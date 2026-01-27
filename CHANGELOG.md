@@ -1,3 +1,9 @@
+## 0.28.1 (2026-01-27)
+
+### Perf
+
+- **asyncfast**: avoid json.loads when validating payloads
+
 ## 0.28.0 (2026-01-26)
 
 ### Feat
