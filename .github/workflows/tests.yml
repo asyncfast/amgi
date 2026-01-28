@@ -57,8 +57,17 @@ jobs:
       - name: debug coverage output
         shell: bash
         run: |
+          echo "pwd=$(pwd)"
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
           echo "COVERAGE_FILE=$COVERAGE_FILE"
-          find . -maxdepth 5 -name ".coverage*" -print
+          echo "ls in pwd:"
+          ls -la
+          echo "ls in workspace:"
+          ls -la "$GITHUB_WORKSPACE"
+          echo "find coverage under workspace:"
+          find "$GITHUB_WORKSPACE" -maxdepth 5 -name ".coverage*" -print
+          echo "find coverage under pwd:"
+          find "$(pwd)" -maxdepth 5 -name ".coverage*" -print
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
