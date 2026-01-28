@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.os }}
-          path: ${{ env.COVERAGE_FILE }}
+          path: ${{ github.workspace }}/${{ env.COVERAGE_FILE }}
           if-no-files-found: error
   coverage:
     name: Combine & Upload Coverage
