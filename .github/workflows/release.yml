@@ -36,3 +36,9 @@ jobs:
           uv run cz bump
           git push
           git push --tags
+          uv run cz changelog "${{ env.version }}" --dry-run > body.md
+      - name: Create Release
+        if: env.version != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: gh release create "${{ env.version }}" --notes-file body.md
