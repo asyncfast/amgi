@@ -54,6 +54,11 @@ jobs:
         run: uv sync --locked --all-extras --dev
       - name: Run tests
         run: uv run tox -- ${{ matrix.pytest_args }}
+      - name: debug coverage output
+        shell: bash
+        run: |
+          echo "COVERAGE_FILE=$COVERAGE_FILE"
+          find . -maxdepth 5 -name ".coverage*" -print
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
