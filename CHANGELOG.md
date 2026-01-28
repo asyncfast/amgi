@@ -1,3 +1,13 @@
+## 0.29.1 (2026-01-28)
+
+### Fix
+
+- **amgi-sqs-event-source-mapping**: create explicit event loop for python 3.14 compatibility
+
+### Perf
+
+- **amgi-aiokafka**: process partition records concurrently
+
 ## 0.29.0 (2026-01-27)
 
 ### Feat
