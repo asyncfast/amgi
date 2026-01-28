@@ -74,6 +74,7 @@ jobs:
           name: coverage-${{ matrix.os }}
           path: ${{ github.workspace }}/${{ env.COVERAGE_FILE }}
           if-no-files-found: error
+          include-hidden-files: true
   coverage:
     name: Combine & Upload Coverage
     runs-on: ubuntu-latest
