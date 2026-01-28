@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from asyncio import Lock
 from collections import deque
@@ -24,7 +25,7 @@ logger = logging.getLogger("amgi-aiokafka.error")
 
 def run(
     app: AMGIApplication,
-    *topics: Iterable[str],
+    *topics: str,
     bootstrap_servers: str | list[str] = "localhost",
     group_id: str | None = None,
 ) -> None:
@@ -96,7 +97,7 @@ class Server:
     def __init__(
         self,
         app: AMGIApplication,
-        *topics: Iterable[str],
+        *topics: str,
         bootstrap_servers: str | list[str],
         group_id: str | None,
     ) -> None:
@@ -127,35 +128,44 @@ class Server:
         async for messages in self._stoppable.call(
             self._consumer.getmany, timeout_ms=1000
         ):
-            for topic_partition, records in messages.items():
-                if records:
-                    scope: MessageScope = {
-                        "type": "message",
-                        "amgi": {"version": "1.0", "spec_version": "1.0"},
-                        "address": topic_partition.topic,
-                        "state": state.copy(),
-                    }
+            await asyncio.gather(
+                *[
+                    self._handle_partition_records(topic_partition, records, state)
+                    for topic_partition, records in messages.items()
+                ]
+            )
 
-                    message_receive_ids = {
-                        f"{record.topic}:{record.partition}:{record.offset}": {
-                            TopicPartition(
-                                record.topic, record.partition
-                            ): record.offset
-                            + 1
-                        }
-                        for record in records
-                    }
+    async def _handle_partition_records(
+        self,
+        topic_partition: TopicPartition,
+        records: list[ConsumerRecord],
+        state: dict[str, Any],
+    ) -> None:
+        if records:
+            scope: MessageScope = {
+                "type": "message",
+                "amgi": {"version": "1.0", "spec_version": "1.0"},
+                "address": topic_partition.topic,
+                "state": state.copy(),
+            }
 
-                    await self._app(
-                        scope,
-                        _Receive(records),
-                        _Send(
-                            self._consumer,
-                            message_receive_ids,
-                            self._message_send,
-                            self._ackable_consumer,
-                        ),
-                    )
+            message_receive_ids = {
+                f"{record.topic}:{record.partition}:{record.offset}": {
+                    TopicPartition(record.topic, record.partition): record.offset + 1
+                }
+                for record in records
+            }
+
+            await self._app(
+                scope,
+                _Receive(records),
+                _Send(
+                    self._consumer,
+                    message_receive_ids,
+                    self._message_send,
+                    self._ackable_consumer,
+                ),
+            )
 
     async def _get_producer(self) -> AIOKafkaProducer:
         async with self._producer_lock:
