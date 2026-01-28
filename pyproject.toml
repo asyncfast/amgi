@@ -41,7 +41,7 @@ members = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-timeout = 60
+timeout = 10
 timeout_func_only = true
 filterwarnings = [
   "ignore:^The wait_for_logs function with string or callable predicates is deprecated:DeprecationWarning",
