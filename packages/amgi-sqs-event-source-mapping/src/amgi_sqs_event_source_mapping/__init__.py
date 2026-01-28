@@ -221,7 +221,7 @@ class SqsHandler:
         self._endpoint_url = endpoint_url
         self._aws_access_key_id = aws_access_key_id
         self._aws_secret_access_key = aws_secret_access_key
-        self._loop = asyncio.get_event_loop()
+        self._loop = asyncio.new_event_loop()
         self._lifespan = lifespan
         self._lifespan_context: Lifespan | None = None
         self._state: dict[str, Any] = {}
