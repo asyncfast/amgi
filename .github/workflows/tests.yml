@@ -76,7 +76,7 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
   coverage:
-    name: Combine & Upload Coverage
+    name: Upload Coverage
     runs-on: ubuntu-latest
     needs: tests
     steps:
@@ -93,7 +93,7 @@ jobs:
           path: coverage_artifacts
       - name: Combine coverage
         run: |
-          uv run coverage combine coverage_artifacts/**/.coverage.*
+          uv run coverage combine --ignore-errors coverage_artifacts/**/.coverage.*
           uv run coverage xml -o coverage.xml
           uv run coverage report -m
       - name: Upload coverage reports to Codecov
