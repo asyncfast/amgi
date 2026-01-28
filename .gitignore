@@ -18,4 +18,5 @@ _build
 
 # coverage
 .coverage
+.coverage.*
 coverage.xml
