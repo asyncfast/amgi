@@ -40,14 +40,21 @@ multiproject_projects = {
 
 current_project = get_project(multiproject_projects)
 
+html_theme_options = {
+    "source_repository": "https://github.com/asyncfast/amgi",
+    "source_branch": "main",
+}
+
 
 if current_project == "asyncfast":
+    html_theme_options["source_directory"] = "packages/asyncfast/docs"
     sys.path.append(
         str((Path(".") / "packages" / "asyncfast" / "docs" / "_ext").resolve())
     )
 
     extensions += ["async_fast_example"]
 if current_project == "amgi":
+    html_theme_options["source_directory"] = "docs"
     sys.path.append(str((Path(".") / "docs" / "_ext").resolve()))
 
     extensions += ["typeddict"]
