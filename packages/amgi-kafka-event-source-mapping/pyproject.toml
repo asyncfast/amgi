@@ -1,0 +1,49 @@
+[build-system]
+build-backend = "uv_build"
+requires = [
+  "uv-build>=0.9.26,<0.10.0",
+]
+
+[project]
+name = "amgi-kafka-event-source-mapping"
+version = "0.32.0"
+description = "Kafka event source mapping adaptor for AMGI applications"
+readme = "README.md"
+license = "MIT"
+license-files = [
+  "LICENSE",
+]
+authors = [
+  { name = "jack.burridge", email = "jack.burridge@mail.com" },
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "amgi-aiokafka==0.32.0",
+  "typing-extensions>=4.15.0; python_full_version<'3.11'",
+
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4.1",
+  "pytest-asyncio>=1.3.0",
+  "pytest-cov>=7.0.0",
+  "pytest-timeout>=2.4.0",
+  "test-utils",
+  "testcontainers[kafka]>=4.13.0",
+
+]
+
+[tool.uv.sources.amgi-aiokafka]
+workspace = true
+
+[tool.uv.sources.test-utils]
+workspace = true
