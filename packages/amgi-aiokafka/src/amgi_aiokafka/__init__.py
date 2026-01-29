@@ -6,6 +6,7 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Iterable
 from typing import Any
+from typing import Literal
 
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
@@ -23,14 +24,22 @@ from amgi_types import MessageSendEvent
 logger = logging.getLogger("amgi-aiokafka.error")
 
 
+AutoOffsetReset = Literal["earliest", "latest", "none"]
+
+
 def run(
     app: AMGIApplication,
     *topics: str,
     bootstrap_servers: str | list[str] = "localhost",
     group_id: str | None = None,
+    auto_offset_reset: AutoOffsetReset = "latest",
 ) -> None:
     server = Server(
-        app, *topics, bootstrap_servers=bootstrap_servers, group_id=group_id
+        app,
+        *topics,
+        bootstrap_servers=bootstrap_servers,
+        group_id=group_id,
+        auto_offset_reset=auto_offset_reset,
     )
     server_serve(server)
 
@@ -40,12 +49,14 @@ def _run_cli(
     topics: list[str],
     bootstrap_servers: list[str] | None = None,
     group_id: str | None = None,
+    auto_offset_reset: AutoOffsetReset = "latest",
 ) -> None:
     run(
         app,
         *topics,
         bootstrap_servers=bootstrap_servers or ["localhost"],
         group_id=group_id,
+        auto_offset_reset=auto_offset_reset,
     )
 
 
@@ -100,11 +111,13 @@ class Server:
         *topics: str,
         bootstrap_servers: str | list[str],
         group_id: str | None,
+        auto_offset_reset: AutoOffsetReset = "latest",
     ) -> None:
         self._app = app
         self._topics = topics
         self._bootstrap_servers = bootstrap_servers
         self._group_id = group_id
+        self._auto_offset_reset = auto_offset_reset
         self._ackable_consumer = self._group_id is not None
         self._producer: AIOKafkaProducer | None = None
         self._producer_lock = Lock()
@@ -116,6 +129,7 @@ class Server:
             bootstrap_servers=self._bootstrap_servers,
             group_id=self._group_id,
             enable_auto_commit=False,
+            auto_offset_reset=self._auto_offset_reset,
         )
         async with self._consumer:
             async with Lifespan(self._app) as state:
