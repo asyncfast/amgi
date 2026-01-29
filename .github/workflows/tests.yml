@@ -26,6 +26,12 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit|${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: Check commit messages (Commitizen)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          range="${{ github.event.pull_request.base.sha }}..HEAD"
+          uv run cz check --rev-range "${range}"
       - name: Run pre-commit
         run: uv run pre-commit run --all-files
   tests:
