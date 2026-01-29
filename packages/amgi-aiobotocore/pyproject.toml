@@ -29,6 +29,7 @@ dependencies = [
   "aiobotocore>=2.25.0",
   "amgi-common==0.30.0",
   "amgi-types==0.30.0",
+  "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
 
 entry-points.amgi_server.amgi-aiobotocore-sqs = "amgi_aiobotocore.sqs:_run_cli"
