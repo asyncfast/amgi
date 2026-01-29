@@ -116,7 +116,7 @@ async def test_message_send(
     await producer.send_and_wait(receive_topic, b"")
 
     async with AIOKafkaConsumer(
-        send_topic, bootstrap_servers=bootstrap_server
+        send_topic, bootstrap_servers=bootstrap_server, auto_offset_reset="earliest"
     ) as consumer:
         async with app.call() as (scope, receive, send):
             await send(
@@ -146,7 +146,7 @@ async def test_message_send_kafka_key(
     await producer.send_and_wait(receive_topic, b"")
 
     async with AIOKafkaConsumer(
-        send_topic, bootstrap_servers=bootstrap_server
+        send_topic, bootstrap_servers=bootstrap_server, auto_offset_reset="earliest"
     ) as consumer:
         async with app.call() as (scope, receive, send):
             await send(
