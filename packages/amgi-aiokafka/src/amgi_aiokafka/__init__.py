@@ -1,11 +1,14 @@
 import asyncio
 import logging
+import sys
 from asyncio import Lock
 from collections import deque
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Iterable
+from types import TracebackType
 from typing import Any
+from typing import AsyncContextManager
 from typing import Literal
 
 from aiokafka import AIOKafkaConsumer
@@ -21,6 +24,15 @@ from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
+_MessageSendT = Callable[[MessageSendEvent], Awaitable[None]]
+_MessageSendManagerT = AsyncContextManager[_MessageSendT]
+
+
 logger = logging.getLogger("amgi-aiokafka.error")
 
 
@@ -33,6 +45,7 @@ def run(
     bootstrap_servers: str | list[str] = "localhost",
     group_id: str | None = None,
     auto_offset_reset: AutoOffsetReset = "latest",
+    message_send: _MessageSendManagerT | None = None,
 ) -> None:
     server = Server(
         app,
@@ -40,6 +53,7 @@ def run(
         bootstrap_servers=bootstrap_servers,
         group_id=group_id,
         auto_offset_reset=auto_offset_reset,
+        message_send=message_send,
     )
     server_serve(server)
 
@@ -86,8 +100,8 @@ class _Send:
         self,
         consumer: AIOKafkaConsumer,
         message_receive_ids: dict[str, dict[TopicPartition, int]],
-        message_send: Callable[[MessageSendEvent], Awaitable[None]],
         ackable_consumer: bool,
+        message_send: _MessageSendT,
     ) -> None:
         self._consumer = consumer
         self._message_send = message_send
@@ -102,6 +116,48 @@ class _Send:
             await self._message_send(event)
 
 
+class MessageSend:
+    def __init__(self, bootstrap_servers: str | list[str]) -> None:
+        self._bootstrap_servers = bootstrap_servers
+        self._producer = None
+        self._producer_lock = Lock()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __call__(self, event: MessageSendEvent) -> None:
+        producer = await self._get_producer()
+        encoded_headers = [(key.decode(), value) for key, value in event["headers"]]
+
+        key = event.get("bindings", {}).get("kafka", {}).get("key")
+        await producer.send(
+            event["address"],
+            headers=encoded_headers,
+            value=event.get("payload"),
+            key=key,
+        )
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if self._producer is not None:
+            await self._producer.stop()
+
+    async def _get_producer(self) -> AIOKafkaProducer:
+        if self._producer is None:
+            async with self._producer_lock:
+                if self._producer is None:
+                    producer = AIOKafkaProducer(
+                        bootstrap_servers=self._bootstrap_servers
+                    )
+                    await producer.start()
+                    self._producer = producer
+        return self._producer
+
+
 class Server:
     _consumer: AIOKafkaConsumer
 
@@ -112,15 +168,15 @@ class Server:
         bootstrap_servers: str | list[str],
         group_id: str | None,
         auto_offset_reset: AutoOffsetReset = "latest",
+        message_send: _MessageSendManagerT | None = None,
     ) -> None:
         self._app = app
         self._topics = topics
         self._bootstrap_servers = bootstrap_servers
         self._group_id = group_id
         self._auto_offset_reset = auto_offset_reset
+        self._message_send = message_send or MessageSend(bootstrap_servers)
         self._ackable_consumer = self._group_id is not None
-        self._producer: AIOKafkaProducer | None = None
-        self._producer_lock = Lock()
         self._stoppable = Stoppable()
 
     async def serve(self) -> None:
@@ -131,20 +187,21 @@ class Server:
             enable_auto_commit=False,
             auto_offset_reset=self._auto_offset_reset,
         )
-        async with self._consumer:
+        async with self._consumer, self._message_send as message_send:
             async with Lifespan(self._app) as state:
-                await self._main_loop(state)
+                await self._main_loop(state, message_send)
 
-        if self._producer is not None:
-            await self._producer.stop()
-
-    async def _main_loop(self, state: dict[str, Any]) -> None:
+    async def _main_loop(
+        self, state: dict[str, Any], message_send: _MessageSendT
+    ) -> None:
         async for messages in self._stoppable.call(
             self._consumer.getmany, timeout_ms=1000
         ):
             await asyncio.gather(
                 *[
-                    self._handle_partition_records(topic_partition, records, state)
+                    self._handle_partition_records(
+                        topic_partition, records, message_send, state
+                    )
                     for topic_partition, records in messages.items()
                 ]
             )
@@ -153,6 +210,7 @@ class Server:
         self,
         topic_partition: TopicPartition,
         records: list[ConsumerRecord],
+        message_send: _MessageSendT,
         state: dict[str, Any],
     ) -> None:
         if records:
@@ -176,30 +234,10 @@ class Server:
                 _Send(
                     self._consumer,
                     message_receive_ids,
-                    self._message_send,
                     self._ackable_consumer,
+                    message_send,
                 ),
             )
-
-    async def _get_producer(self) -> AIOKafkaProducer:
-        async with self._producer_lock:
-            if self._producer is None:
-                producer = AIOKafkaProducer(bootstrap_servers=self._bootstrap_servers)
-                await producer.start()
-                self._producer = producer
-        return self._producer
-
-    async def _message_send(self, event: MessageSendEvent) -> None:
-        producer = await self._get_producer()
-        encoded_headers = [(key.decode(), value) for key, value in event["headers"]]
-
-        key = event.get("bindings", {}).get("kafka", {}).get("key")
-        await producer.send(
-            event["address"],
-            headers=encoded_headers,
-            value=event.get("payload"),
-            key=key,
-        )
 
     def stop(self) -> None:
         self._stoppable.stop()
