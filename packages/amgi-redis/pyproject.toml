@@ -29,6 +29,7 @@ dependencies = [
   "amgi-common==0.30.0",
   "amgi-types==0.30.0",
   "redis>=7.0.1",
+  "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
 
 entry-points.amgi_server.amgi-redis = "amgi_redis:_run_cli"
