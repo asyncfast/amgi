@@ -4,6 +4,9 @@ from uuid import uuid4
 import pytest
 from aiokafka import AIOKafkaConsumer
 from aiokafka import AIOKafkaProducer
+from aiokafka.admin import AIOKafkaAdminClient
+from aiokafka.admin import NewTopic
+from aiokafka.errors import TopicAlreadyExistsError
 from amgi_aiokafka import _run_cli
 from amgi_aiokafka import run
 from amgi_aiokafka import Server
@@ -24,19 +27,43 @@ def bootstrap_server(kafka_container: KafkaContainer) -> str:
     return kafka_container.get_bootstrap_server()  # type: ignore
 
 
-@pytest.fixture
-def topic() -> str:
-    return f"receive-{uuid4()}"
+async def create_topic(bootstrap_server: str, topic: str) -> str:
+    admin = AIOKafkaAdminClient(bootstrap_servers=bootstrap_server)
+    await admin.start()
+
+    try:
+        await admin.create_topics(
+            [NewTopic(name=topic, num_partitions=1, replication_factor=1)]
+        )
+    except TopicAlreadyExistsError:  # pragma: no cover
+        pass
+    finally:
+        await admin.close()
+
+    return topic
 
 
 @pytest.fixture
-async def app(bootstrap_server: str, topic: str) -> AsyncGenerator[MockApp, None]:
+async def receive_topic(bootstrap_server: str) -> str:
+    return await create_topic(bootstrap_server, f"receive-{uuid4()}")
+
+
+@pytest.fixture
+async def send_topic(bootstrap_server: str) -> str:
+    return await create_topic(bootstrap_server, f"send-{uuid4()}")
+
+
+@pytest.fixture
+async def app(
+    bootstrap_server: str, receive_topic: str
+) -> AsyncGenerator[MockApp, None]:
     app = MockApp()
     server = Server(
         app,
-        topic,
+        receive_topic,
         bootstrap_servers=bootstrap_server,
         group_id=str(uuid4()),
+        auto_offset_reset="earliest",
     )
 
     async with app.lifespan(server=server):
@@ -44,14 +71,16 @@ async def app(bootstrap_server: str, topic: str) -> AsyncGenerator[MockApp, None
 
 
 @pytest.mark.integration
-async def test_message(bootstrap_server: str, app: MockApp, topic: str) -> None:
+async def test_message(bootstrap_server: str, app: MockApp, receive_topic: str) -> None:
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
 
-    await producer.send_and_wait(topic, b"value", b"key", headers=[("test", b"test")])
+    await producer.send_and_wait(
+        receive_topic, b"value", b"key", headers=[("test", b"test")]
+    )
     async with app.call() as (scope, receive, send):
         assert scope == {
-            "address": topic,
+            "address": receive_topic,
             "amgi": {"spec_version": "1.0", "version": "1.0"},
             "type": "message",
             "state": {},
@@ -61,7 +90,7 @@ async def test_message(bootstrap_server: str, app: MockApp, topic: str) -> None:
         assert message_receive["type"] == "message.receive"
         assert message_receive == {
             "headers": [(b"test", b"test")],
-            "id": f"{topic}:0:0",
+            "id": f"{receive_topic}:0:0",
             "more_messages": False,
             "payload": b"value",
             "bindings": {"kafka": {"key": b"key"}},
@@ -78,12 +107,13 @@ async def test_message(bootstrap_server: str, app: MockApp, topic: str) -> None:
 
 
 @pytest.mark.integration
-async def test_message_send(bootstrap_server: str, app: MockApp, topic: str) -> None:
+async def test_message_send(
+    bootstrap_server: str, app: MockApp, receive_topic: str, send_topic: str
+) -> None:
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
 
-    await producer.send_and_wait(topic, b"")
-    send_topic = f"send-{uuid4()}"
+    await producer.send_and_wait(receive_topic, b"")
 
     async with AIOKafkaConsumer(
         send_topic, bootstrap_servers=bootstrap_server
@@ -108,13 +138,12 @@ async def test_message_send(bootstrap_server: str, app: MockApp, topic: str) -> 
 
 @pytest.mark.integration
 async def test_message_send_kafka_key(
-    bootstrap_server: str, app: MockApp, topic: str
+    bootstrap_server: str, app: MockApp, receive_topic: str, send_topic: str
 ) -> None:
     producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
     await producer.start()
 
-    await producer.send_and_wait(topic, b"")
-    send_topic = f"send-{uuid4()}"
+    await producer.send_and_wait(receive_topic, b"")
 
     async with AIOKafkaConsumer(
         send_topic, bootstrap_servers=bootstrap_server
@@ -137,11 +166,11 @@ async def test_message_send_kafka_key(
 
 
 @pytest.mark.integration
-async def test_lifespan(bootstrap_server: str, topic: str) -> None:
+async def test_lifespan(bootstrap_server: str, receive_topic: str) -> None:
     app = MockApp()
     server = Server(
         app,
-        topic,
+        receive_topic,
         bootstrap_servers=bootstrap_server,
         group_id=None,
     )
@@ -152,12 +181,12 @@ async def test_lifespan(bootstrap_server: str, topic: str) -> None:
 
     async with app.lifespan({"item": state_item}, server):
         await producer.send_and_wait(
-            topic,
+            receive_topic,
             b"",
         )
         async with app.call() as (scope, receive, send):
             assert scope == {
-                "address": topic,
+                "address": receive_topic,
                 "amgi": {"spec_version": "1.0", "version": "1.0"},
                 "type": "message",
                 "state": {"item": state_item},
@@ -165,10 +194,12 @@ async def test_lifespan(bootstrap_server: str, topic: str) -> None:
 
 
 @pytest.mark.integration
-def test_run(bootstrap_server: str, topic: str) -> None:
-    assert_run_can_terminate(run, topic, bootstrap_servers=bootstrap_server)
+def test_run(bootstrap_server: str, receive_topic: str) -> None:
+    assert_run_can_terminate(run, receive_topic, bootstrap_servers=bootstrap_server)
 
 
 @pytest.mark.integration
-def test_run_cli(bootstrap_server: str, topic: str) -> None:
-    assert_run_can_terminate(_run_cli, [topic], bootstrap_servers=bootstrap_server)
+def test_run_cli(bootstrap_server: str, receive_topic: str) -> None:
+    assert_run_can_terminate(
+        _run_cli, [receive_topic], bootstrap_servers=bootstrap_server
+    )
