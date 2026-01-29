@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "amgi-common"
-version = "0.30.0"
+version = "0.31.0"
 description = "Add your description here"
 readme = "README.md"
 license = "MIT"
@@ -27,7 +27,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "amgi-types==0.30.0",
+  "amgi-types==0.31.0",
   "typing-extensions>=4.15.0; python_full_version<'3.13'",
 ]
 

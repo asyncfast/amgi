@@ -5,7 +5,7 @@ This package contains the types for [AMGI](https://amgi.readthedocs.io/en/latest
 ## Installation
 
 ```
-pip install amgi-types==0.30.0
+pip install amgi-types==0.31.0
 ```
 
 ## Contact

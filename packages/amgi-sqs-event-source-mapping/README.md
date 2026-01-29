@@ -6,7 +6,7 @@ SQS event source mapped Lambda.
 ## Installation
 
 ```
-pip install amgi-sqs-event-source-mapping==0.30.0
+pip install amgi-sqs-event-source-mapping==0.31.0
 ```
 
 ## Example

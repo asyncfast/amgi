@@ -1,3 +1,11 @@
+## 0.31.0 (2026-01-29)
+
+### Feat
+
+- **amgi-aiokafka**: add message send manager so it can be used by other servers, and send elsewhere
+- **amgi-aiobotocore**: add message send manager so it can be used by other servers, and send elsewhere
+- **amgi-redis**: add message send manager so it can be used by other servers, and send elsewhere
+
 ## 0.30.0 (2026-01-29)
 
 ### Feat
