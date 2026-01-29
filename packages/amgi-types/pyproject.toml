@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "amgi-types"
-version = "0.29.1"
+version = "0.30.0"
 description = "AMGI Types"
 readme = "README.md"
 license = "MIT"

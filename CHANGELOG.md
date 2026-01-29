@@ -1,3 +1,9 @@
+## 0.30.0 (2026-01-29)
+
+### Feat
+
+- **amgi-aiokafka**: add auto_offset_reset option to server and runners
+
 ## 0.29.1 (2026-01-28)
 
 ### Fix
