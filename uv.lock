@@ -348,6 +348,7 @@ dependencies = [
     { name = "aiokafka" },
     { name = "amgi-common" },
     { name = "amgi-types" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 
 [package.dev-dependencies]
@@ -365,6 +366,7 @@ requires-dist = [
     { name = "aiokafka", specifier = ">=0.12" },
     { name = "amgi-common", editable = "packages/amgi-common" },
     { name = "amgi-types", editable = "packages/amgi-types" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'", specifier = ">=4.15.0" },
 ]
 
 [package.metadata.requires-dev]
