@@ -29,7 +29,6 @@ jobs:
       - name: Check commit messages (Commitizen)
         if: github.event_name == 'pull_request'
         run: |
-          set -euo pipefail
           range="${{ github.event.pull_request.base.sha }}..HEAD"
           uv run cz check --rev-range "${range}"
       - name: Run pre-commit
