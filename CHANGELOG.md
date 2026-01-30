@@ -1,3 +1,10 @@
+## 0.32.0 (2026-01-30)
+
+### Feat
+
+- **amgi-sqs-event-source-mapping**: rename sqs handler and deprecate old name
+- **amgi-sqs-event-source-mapping**: add message send manager so it can be used by other servers, and send elsewhere
+
 ## 0.31.0 (2026-01-29)
 
 ### Feat
