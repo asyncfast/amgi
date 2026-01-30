@@ -16,7 +16,7 @@ This example uses [AsyncFast](https://pypi.org/project/asyncfast/):
 ```python
 from dataclasses import dataclass
 
-from amgi_sqs_event_source_mapping import SqsHandler
+from amgi_sqs_event_source_mapping import SqsEventSourceMappingHandler
 from asyncfast import AsyncFast
 
 app = AsyncFast()
@@ -33,7 +33,7 @@ async def order_queue(order: Order) -> None:
     ...
 
 
-handler = SqsHandler(app)
+handler = SqsEventSourceMappingHandler(app)
 ```
 
 ## Contact

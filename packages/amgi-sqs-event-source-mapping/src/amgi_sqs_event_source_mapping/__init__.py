@@ -5,6 +5,7 @@ import itertools
 import re
 import signal
 import sys
+import warnings
 from collections import defaultdict
 from collections import deque
 from collections.abc import Awaitable
@@ -261,7 +262,7 @@ class _Send:
             await self._message_send(event)
 
 
-class SqsHandler:
+class SqsEventSourceMappingHandler:
     def __init__(
         self,
         app: AMGIApplication,
@@ -359,3 +360,15 @@ class SqsHandler:
             await self._lifespan_context.__aexit__(None, None, None)
         if self._message_send is not None:
             await self._message_send_context.__aexit__(None, None, None)
+
+
+def __getattr__(name: str) -> object:
+    if name == "SqsHandler":
+        warnings.warn(
+            "SqsHandler is deprecated; use SqsEventSourceMappingHandler instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        globals()[name] = SqsEventSourceMappingHandler
+        return SqsEventSourceMappingHandler
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
