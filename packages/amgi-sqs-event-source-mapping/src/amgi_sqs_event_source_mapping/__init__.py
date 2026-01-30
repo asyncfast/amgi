@@ -7,11 +7,15 @@ import signal
 import sys
 from collections import defaultdict
 from collections import deque
+from collections.abc import Awaitable
+from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Iterable
 from collections.abc import Sequence
 from functools import cached_property
+from types import TracebackType
 from typing import Any
+from typing import AsyncContextManager
 from typing import Literal
 from typing import TypedDict
 
@@ -23,11 +27,18 @@ from amgi_types import AMGIApplication
 from amgi_types import AMGISendEvent
 from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
+from amgi_types import MessageSendEvent
 
 if sys.version_info >= (3, 11):
     from typing import NotRequired
+    from typing import Self
 else:
     from typing_extensions import NotRequired
+    from typing_extensions import Self
+
+
+_MessageSendT = Callable[[MessageSendEvent], Awaitable[None]]
+_MessageSendManagerT = AsyncContextManager[_MessageSendT]
 
 
 class _AttributeValue(TypedDict):
@@ -185,52 +196,37 @@ class _SendBatcher:
         await self._operation_batcher.enqueue((queue_url, payload, headers))
 
 
-class _Send:
+class MessageSend:
     def __init__(
         self,
-        queue_url_cache: _QueueUrlCache,
-        send_batcher: _SendBatcher,
-        message_ids: set[str],
-    ) -> None:
-        self.message_ids = message_ids
-        self._queue_url_cache = queue_url_cache
-        self._send_batcher = send_batcher
-
-    async def __call__(self, event: AMGISendEvent) -> None:
-        if event["type"] == "message.ack":
-            self.message_ids.discard(event["id"])
-        if event["type"] == "message.send":
-            queue_url = await self._queue_url_cache.get_queue_url(event["address"])
-            await self._send_batcher.send_message(
-                queue_url, event["payload"], event["headers"]
-            )
-
-
-class SqsHandler:
-    def __init__(
-        self,
-        app: AMGIApplication,
         region_name: str | None = None,
         endpoint_url: str | None = None,
         aws_access_key_id: str | None = None,
         aws_secret_access_key: str | None = None,
-        lifespan: bool = True,
     ) -> None:
-        self._app = app
         self._region_name = region_name
         self._endpoint_url = endpoint_url
         self._aws_access_key_id = aws_access_key_id
         self._aws_secret_access_key = aws_secret_access_key
-        self._loop = asyncio.new_event_loop()
-        self._lifespan = lifespan
-        self._lifespan_context: Lifespan | None = None
-        self._state: dict[str, Any] = {}
         self._client_instantiated = False
-        try:
-            self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
-        except NotImplementedError:
-            # Windows / non-main thread: no signal handlers via asyncio
-            pass
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __call__(self, event: MessageSendEvent) -> None:
+        queue_url = await self._queue_url_cache.get_queue_url(event["address"])
+        await self._send_batcher.send_message(
+            queue_url, event["payload"], event["headers"]
+        )
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if self._client_instantiated:
+            self._client.close()
 
     @cached_property
     def _client(self) -> Any:
@@ -252,6 +248,52 @@ class SqsHandler:
     def _send_batcher(self) -> _SendBatcher:
         return _SendBatcher(self._client)
 
+
+class _Send:
+    def __init__(self, message_ids: set[str], message_send: _MessageSendT) -> None:
+        self.message_ids = message_ids
+        self._message_send = message_send
+
+    async def __call__(self, event: AMGISendEvent) -> None:
+        if event["type"] == "message.ack":
+            self.message_ids.discard(event["id"])
+        if event["type"] == "message.send":
+            await self._message_send(event)
+
+
+class SqsHandler:
+    def __init__(
+        self,
+        app: AMGIApplication,
+        region_name: str | None = None,
+        endpoint_url: str | None = None,
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
+        lifespan: bool = True,
+        message_send: _MessageSendManagerT | None = None,
+    ) -> None:
+        self._app = app
+        self._region_name = region_name
+        self._endpoint_url = endpoint_url
+        self._aws_access_key_id = aws_access_key_id
+        self._aws_secret_access_key = aws_secret_access_key
+        self._message_send: _MessageSendT | None = None
+        self._message_send_context = message_send or MessageSend(
+            region_name=region_name,
+            endpoint_url=endpoint_url,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+        self._loop = asyncio.new_event_loop()
+        self._lifespan = lifespan
+        self._lifespan_context: Lifespan | None = None
+        self._state: dict[str, Any] = {}
+        try:
+            self._loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
+        except NotImplementedError:
+            # Windows / non-main thread: no signal handlers via asyncio
+            pass
+
     def __call__(
         self, event: _SqsEventSourceMapping, context: Any
     ) -> _BatchItemFailures:
@@ -261,6 +303,8 @@ class SqsHandler:
         if not self._lifespan_context and self._lifespan:
             self._lifespan_context = Lifespan(self._app, self._state)
             await self._lifespan_context.__aenter__()
+        if self._message_send is None:
+            self._message_send = await self._message_send_context.__aenter__()
         event_source_arn_records = defaultdict(list)
         corrupted_message_ids = []
         for record in event["Records"]:
@@ -271,7 +315,7 @@ class SqsHandler:
 
         unacked_message_ids = await asyncio.gather(
             *(
-                self._call_source_batch(event_source_arn, records)
+                self._call_source_batch(event_source_arn, records, self._message_send)
                 for event_source_arn, records in event_source_arn_records.items()
             )
         )
@@ -286,7 +330,10 @@ class SqsHandler:
         }
 
     async def _call_source_batch(
-        self, event_source_arn: str, records: Iterable[_Record]
+        self,
+        event_source_arn: str,
+        records: Iterable[_Record],
+        message_send: _MessageSendT,
     ) -> Iterable[str]:
         event_source_arn_match = EVENT_SOURCE_ARN_PATTERN.match(event_source_arn)
         message_ids = {record["messageId"] for record in records}
@@ -300,7 +347,7 @@ class SqsHandler:
             "extensions": {"message.ack.out_of_order": {}},
         }
 
-        records_send = _Send(self._queue_url_cache, self._send_batcher, message_ids)
+        records_send = _Send(message_ids, message_send)
         await self._app(scope, _Receive(records), records_send)
         return records_send.message_ids
 
@@ -308,7 +355,7 @@ class SqsHandler:
         self._loop.run_until_complete(self._shutdown())
 
     async def _shutdown(self) -> None:
-        if self._client_instantiated:
-            self._client.close()
         if self._lifespan_context:
             await self._lifespan_context.__aexit__(None, None, None)
+        if self._message_send is not None:
+            await self._message_send_context.__aexit__(None, None, None)
