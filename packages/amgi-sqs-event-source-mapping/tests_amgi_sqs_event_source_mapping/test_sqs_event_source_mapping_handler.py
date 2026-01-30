@@ -8,9 +8,10 @@ from unittest.mock import Mock
 from unittest.mock import patch
 from uuid import uuid4
 
+import amgi_sqs_event_source_mapping
 import boto3
 import pytest
-from amgi_sqs_event_source_mapping import SqsHandler
+from amgi_sqs_event_source_mapping import SqsEventSourceMappingHandler
 from amgi_types import AMGIReceiveCallable
 from amgi_types import AMGISendCallable
 from amgi_types import Scope
@@ -24,9 +25,11 @@ def mock_sqs_client() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-async def app_sqs_handler() -> AsyncGenerator[tuple[MockApp, SqsHandler], None]:
+async def app_sqs_handler() -> (
+    AsyncGenerator[tuple[MockApp, SqsEventSourceMappingHandler], None]
+):
     app = MockApp()
-    sqs_handler = SqsHandler(app)
+    sqs_handler = SqsEventSourceMappingHandler(app)
 
     loop = asyncio.get_event_loop()
 
@@ -44,18 +47,22 @@ async def app_sqs_handler() -> AsyncGenerator[tuple[MockApp, SqsHandler], None]:
 
 
 @pytest.fixture
-def app(app_sqs_handler: tuple[MockApp, SqsHandler]) -> MockApp:
+def app(app_sqs_handler: tuple[MockApp, SqsEventSourceMappingHandler]) -> MockApp:
     return app_sqs_handler[0]
 
 
 @pytest.fixture
-def sqs_handler(app_sqs_handler: tuple[MockApp, SqsHandler]) -> SqsHandler:
+def sqs_event_source_mapping_handler(
+    app_sqs_handler: tuple[MockApp, SqsEventSourceMappingHandler],
+) -> SqsEventSourceMappingHandler:
     return app_sqs_handler[1]
 
 
-async def test_sqs_handler_records(app: MockApp, sqs_handler: SqsHandler) -> None:
+async def test_sqs_handler_records(
+    app: MockApp, sqs_event_source_mapping_handler: SqsEventSourceMappingHandler
+) -> None:
     call_task = asyncio.get_running_loop().create_task(
-        sqs_handler._call(
+        sqs_event_source_mapping_handler._call(
             {
                 "Records": [
                     {
@@ -141,9 +148,11 @@ async def test_sqs_handler_records(app: MockApp, sqs_handler: SqsHandler) -> Non
     assert batch_item_failures == {"batchItemFailures": []}
 
 
-async def test_sqs_handler_record_nack(app: MockApp, sqs_handler: SqsHandler) -> None:
+async def test_sqs_handler_record_nack(
+    app: MockApp, sqs_event_source_mapping_handler: SqsEventSourceMappingHandler
+) -> None:
     call_task = asyncio.get_running_loop().create_task(
-        sqs_handler._call(
+        sqs_event_source_mapping_handler._call(
             {
                 "Records": [
                     {
@@ -206,10 +215,10 @@ async def test_sqs_handler_record_nack(app: MockApp, sqs_handler: SqsHandler) ->
 
 
 async def test_sqs_handler_record_unacked(
-    app: MockApp, sqs_handler: SqsHandler
+    app: MockApp, sqs_event_source_mapping_handler: SqsEventSourceMappingHandler
 ) -> None:
     call_task = asyncio.get_running_loop().create_task(
-        sqs_handler._call(
+        sqs_event_source_mapping_handler._call(
             {
                 "Records": [
                     {
@@ -266,10 +275,10 @@ async def test_sqs_handler_record_unacked(
 
 async def test_sqs_handler_record_message_attribute_binary_value(
     app: MockApp,
-    sqs_handler: SqsHandler,
+    sqs_event_source_mapping_handler: SqsEventSourceMappingHandler,
 ) -> None:
     call_task = asyncio.get_running_loop().create_task(
-        sqs_handler._call(
+        sqs_event_source_mapping_handler._call(
             {
                 "Records": [
                     {
@@ -325,10 +334,10 @@ async def test_sqs_handler_record_message_attribute_binary_value(
 
 
 async def test_sqs_handler_record_corrupted(
-    app: MockApp, sqs_handler: SqsHandler
+    app: MockApp, sqs_event_source_mapping_handler: SqsEventSourceMappingHandler
 ) -> None:
     call_task = asyncio.get_running_loop().create_task(
-        sqs_handler._call(
+        sqs_event_source_mapping_handler._call(
             {
                 "Records": [
                     {
@@ -369,7 +378,7 @@ async def test_sqs_handler_record_corrupted(
 
 async def test_lifespan() -> None:
     app = MockApp()
-    sqs_handler = SqsHandler(app)
+    sqs_handler = SqsEventSourceMappingHandler(app)
 
     loop = asyncio.get_event_loop()
     state_item = uuid4()
@@ -455,7 +464,7 @@ def test_lifespan_and_shutdown() -> None:
             queue.put(e)
             raise
 
-    sqs_handler = SqsHandler(_app)
+    sqs_handler = SqsEventSourceMappingHandler(_app)
 
     sqs_handler({"Records": []}, Mock())
 
@@ -467,7 +476,7 @@ def test_lifespan_and_shutdown() -> None:
 
 def test_sqs_handler_app_not_called_if_invalid_arn() -> None:
     mock_app = AsyncMock()
-    sqs_handler = SqsHandler(mock_app, lifespan=False)
+    sqs_handler = SqsEventSourceMappingHandler(mock_app, lifespan=False)
     sqs_handler(
         {
             "Records": [
@@ -500,3 +509,13 @@ def test_sqs_handler_app_not_called_if_invalid_arn() -> None:
     )
 
     mock_app.assert_not_awaited()
+
+
+def test_sqs_handler_attribute_is_deprecated() -> None:
+    with pytest.warns(DeprecationWarning, match="SqsEventSourceMappingHandler"):
+        amgi_sqs_event_source_mapping.SqsHandler
+
+
+def test_unknown_attribute_raises_attribute_error() -> None:
+    with pytest.raises(AttributeError):
+        amgi_sqs_event_source_mapping.unknown

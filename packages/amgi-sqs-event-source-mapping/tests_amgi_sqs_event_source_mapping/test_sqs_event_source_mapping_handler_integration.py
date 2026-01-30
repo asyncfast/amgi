@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from amgi_sqs_event_source_mapping import MessageSend
 from amgi_sqs_event_source_mapping import SqsBatchFailureError
-from amgi_sqs_event_source_mapping import SqsHandler
+from amgi_sqs_event_source_mapping import SqsEventSourceMappingHandler
 from test_utils import MockApp
 from testcontainers.localstack import LocalStackContainer
 
@@ -23,7 +23,7 @@ async def test_sqs_handler_record_send(
     localstack_container: LocalStackContainer,
 ) -> None:
     app = MockApp()
-    sqs_handler = SqsHandler(
+    sqs_event_source_mapping_handler = SqsEventSourceMappingHandler(
         app,
         region_name=localstack_container.region_name,
         endpoint_url=localstack_container.get_url(),
@@ -37,7 +37,7 @@ async def test_sqs_handler_record_send(
     send_queue_url = sqs_client.create_queue(QueueName=send_queue_name)["QueueUrl"]
 
     call_task = asyncio.get_running_loop().create_task(
-        sqs_handler._call(
+        sqs_event_source_mapping_handler._call(
             {
                 "Records": [
                     {
@@ -96,7 +96,7 @@ async def test_sqs_handler_record_send_invalid_message(
     localstack_container: LocalStackContainer,
 ) -> None:
     app = MockApp()
-    sqs_handler = SqsHandler(
+    sqs_event_source_mapping_handler = SqsEventSourceMappingHandler(
         app,
         region_name=localstack_container.region_name,
         endpoint_url=localstack_container.get_url(),
@@ -112,7 +112,7 @@ async def test_sqs_handler_record_send_invalid_message(
     )
 
     call_task = asyncio.get_running_loop().create_task(
-        sqs_handler._call(
+        sqs_event_source_mapping_handler._call(
             {
                 "Records": [
                     {
