@@ -25,7 +25,9 @@ def topic() -> str:
 
 @pytest.fixture(scope="module")
 async def mosquitto_container() -> AsyncGenerator[MosquittoContainer, None]:
-    mosquitto_container = MosquittoContainer().with_volume_mapping(
+    mosquitto_container = MosquittoContainer(
+        image="eclipse-mosquitto:2.0.22"
+    ).with_volume_mapping(
         Path(__file__).parent / "mqtt.acl",
         "/mosquitto/config/mqtt.acl",
     )
