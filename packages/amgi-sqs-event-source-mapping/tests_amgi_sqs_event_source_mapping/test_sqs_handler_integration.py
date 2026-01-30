@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 import pytest
+from amgi_sqs_event_source_mapping import MessageSend
 from amgi_sqs_event_source_mapping import SqsBatchFailureError
 from amgi_sqs_event_source_mapping import SqsHandler
 from test_utils import MockApp
@@ -153,3 +154,37 @@ async def test_sqs_handler_record_send_invalid_message(
             )
 
     await call_task
+
+
+@pytest.mark.integration
+async def test_message_send(localstack_container: LocalStackContainer) -> None:
+    sqs_client = localstack_container.get_client("sqs")
+
+    send_queue_name = f"send-{uuid4()}"
+    send_queue_url = sqs_client.create_queue(QueueName=send_queue_name)["QueueUrl"]
+
+    async with MessageSend(
+        region_name=localstack_container.region_name,
+        endpoint_url=localstack_container.get_url(),
+        aws_access_key_id="testcontainers-localstack",
+        aws_secret_access_key="testcontainers-localstack",
+    ) as message_send:
+        await message_send(
+            {
+                "type": "message.send",
+                "address": send_queue_name,
+                "payload": b"test",
+                "headers": [(b"test", b"test")],
+            }
+        )
+
+        messages_response = sqs_client.receive_message(
+            QueueUrl=send_queue_url, MessageAttributeNames=["All"]
+        )
+        assert "Messages" in messages_response
+        assert len(messages_response["Messages"]) == 1
+        message = messages_response["Messages"][0]
+        assert message["Body"] == "test"
+        assert message["MessageAttributes"] == {
+            "test": {"StringValue": "test", "DataType": "StringValue"}
+        }
