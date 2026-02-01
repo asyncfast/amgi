@@ -36,6 +36,38 @@ async def order_queue(order: Order) -> None:
 handler = SqsEventSourceMappingHandler(app)
 ```
 
+## What it does
+
+- Converts SQS batch events into AMGI `message.receive` events
+- Uses the SQS queue name as the AMGI message address
+- Supports partial batch failures so only failed messages are retried
+- Sends outbound messages back to SQS efficiently using batching
+- Optionally manages application startup and shutdown via AMGI lifespan
+- Verifies message integrity using the SQS-provided MD5 checksum and retries corrupted messages
+
+## Record handling
+
+- Record bodies are passed to your app as bytes
+- SQS record attributes become AMGI headers
+- Records are only acknowledged when your app emits `message.ack`
+- Records that are not acknowledged are treated as failures and will be retried
+- Corrupted messages are detected automatically and retried
+
+## Lifespan
+
+Lifespan support is enabled by default.
+
+- Startup runs once per Lambda execution environment
+- Shutdown is attempted when the environment is terminated
+
+Shutdown handling relies on `signal.SIGTERM`, which is supported by Python 3.12 and later Lambda runtimes.
+
+To use fully stateless, per-invocation behavior, disable lifespan:
+
+```python
+handler = SqsEventSourceMappingHandler(app, lifespan=False)
+```
+
 ## Contact
 
 For questions or suggestions, please contact [jack.burridge@mail.com](mailto:jack.burridge@mail.com).
