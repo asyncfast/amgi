@@ -1,3 +1,13 @@
+## 0.33.0 (2026-02-04)
+
+### Feat
+
+- add kafka event source mapping support
+
+### Refactor
+
+- **amgi-aiokafka**: eagerly start producer and await send completion
+
 ## 0.32.0 (2026-01-30)
 
 ### Feat
