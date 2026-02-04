@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import sys
-from asyncio import Lock
 from collections import deque
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -119,18 +118,17 @@ class _Send:
 class MessageSend:
     def __init__(self, bootstrap_servers: str | list[str]) -> None:
         self._bootstrap_servers = bootstrap_servers
-        self._producer = None
-        self._producer_lock = Lock()
 
     async def __aenter__(self) -> Self:
+        self._producer = AIOKafkaProducer(bootstrap_servers=self._bootstrap_servers)
+        await self._producer.start()
         return self
 
     async def __call__(self, event: MessageSendEvent) -> None:
-        producer = await self._get_producer()
         encoded_headers = [(key.decode(), value) for key, value in event["headers"]]
 
         key = event.get("bindings", {}).get("kafka", {}).get("key")
-        await producer.send(
+        await self._producer.send_and_wait(
             event["address"],
             headers=encoded_headers,
             value=event.get("payload"),
@@ -143,19 +141,7 @@ class MessageSend:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        if self._producer is not None:
-            await self._producer.stop()
-
-    async def _get_producer(self) -> AIOKafkaProducer:
-        if self._producer is None:
-            async with self._producer_lock:
-                if self._producer is None:
-                    producer = AIOKafkaProducer(
-                        bootstrap_servers=self._bootstrap_servers
-                    )
-                    await producer.start()
-                    self._producer = producer
-        return self._producer
+        await self._producer.stop()
 
 
 class Server:
