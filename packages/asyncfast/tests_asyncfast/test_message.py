@@ -1,11 +1,11 @@
 from asyncio import Event
 from collections.abc import AsyncGenerator
 from collections.abc import Generator
-from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Annotated
 from typing import Any
 from typing import Optional
+from typing import Sequence
 from unittest.mock import _Call
 from unittest.mock import AsyncMock
 from unittest.mock import call
@@ -256,7 +256,7 @@ async def test_message_headers_multiple() -> None:
     ],
 )
 async def test_message_header_optional(
-    headers: Iterable[tuple[bytes, bytes]], expected_call: _Call
+    headers: Sequence[tuple[bytes, bytes]], expected_call: _Call
 ) -> None:
     app = AsyncFast()
 
@@ -299,7 +299,7 @@ async def test_message_header_optional(
     ],
 )
 async def test_message_header_default(
-    headers: Iterable[tuple[bytes, bytes]], expected_call: _Call
+    headers: Sequence[tuple[bytes, bytes]], expected_call: _Call
 ) -> None:
     app = AsyncFast()
 
