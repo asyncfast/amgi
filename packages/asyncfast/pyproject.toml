@@ -51,6 +51,7 @@ scripts.asyncfast = "asyncfast.cli:main"
 dev = [
   "pytest>=8.4.1",
   "pytest-asyncio>=1.1",
+  "pytest-benchmark>=5.2.3",
   "pytest-cov>=7.0.0",
   "pytest-timeout>=2.4.0",
 ]
@@ -60,3 +61,11 @@ workspace = true
 
 [tool.uv.sources.asyncfast-cli]
 workspace = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+timeout = 10
+timeout_func_only = true
+addopts = [
+  "--benchmark-max-time=0.1",
+]
