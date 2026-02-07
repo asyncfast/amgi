@@ -187,9 +187,7 @@ async def test_message_header_underscore_to_hyphen() -> None:
     test_mock = Mock()
 
     @app.channel("topic")
-    async def topic_handler(
-        idempotency_key: Annotated[UUID, Header(alias="Idempotency-Key")],
-    ) -> None:
+    async def topic_handler(idempotency_key: Annotated[UUID, Header()]) -> None:
         test_mock(idempotency_key)
 
     message_scope: MessageScope = {
@@ -200,7 +198,7 @@ async def test_message_header_underscore_to_hyphen() -> None:
     message_receive_event: MessageReceiveEvent = {
         "type": "message.receive",
         "id": "id-1",
-        "headers": [(b"Idempotency-Key", b"8e03978e-40d5-43e8-bc93-6894a57f9324")],
+        "headers": [(b"idempotency-key", b"8e03978e-40d5-43e8-bc93-6894a57f9324")],
     }
     await app(
         message_scope,
