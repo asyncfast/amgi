@@ -20,3 +20,6 @@ _build
 .coverage
 .coverage.*
 coverage.xml
+
+# benchmarks
+.benchmarks
