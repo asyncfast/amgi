@@ -720,9 +720,13 @@ async def test_message_sending_dict_post_error() -> None:
 async def test_message_sending_dict_post_error_sync() -> None:
     app = AsyncFast()
 
+    send_exception = Exception("test")
+
     def send_mock(event: AMGISendEvent) -> None:
         if event["type"] == "message.send" and event["address"] == "error":
-            raise Exception("test")
+            raise send_exception
+
+    after_exception_mock = Mock()
 
     @app.channel("topic")
     def topic_handler() -> Generator[dict[str, Any], None, None]:
@@ -732,12 +736,8 @@ async def test_message_sending_dict_post_error_sync() -> None:
                 "payload": b"1",
                 "headers": [],
             }
-        except Exception:
-            yield {
-                "address": "not_error",
-                "payload": b"1",
-                "headers": [],
-            }
+        except Exception as e:
+            after_exception_mock(send_exception)
 
     message_scope: MessageScope = {
         "type": "message",
@@ -766,17 +766,10 @@ async def test_message_sending_dict_post_error_sync() -> None:
                     "payload": b"1",
                 }
             ),
-            call(
-                {
-                    "type": "message.send",
-                    "address": "not_error",
-                    "headers": [],
-                    "payload": b"1",
-                }
-            ),
             call({"type": "message.ack", "id": "id-1"}),
         ]
     )
+    after_exception_mock.assert_called_with(send_exception)
 
 
 async def test_message_invalid_payload_nack() -> None:

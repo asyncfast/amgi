@@ -1,7 +1,7 @@
 import re
 
 import pytest
-from asyncfast import _address_pattern
+from asyncfast._utils import _address_pattern
 
 
 @pytest.mark.parametrize(
