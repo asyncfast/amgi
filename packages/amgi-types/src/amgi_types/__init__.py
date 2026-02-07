@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Awaitable
 from collections.abc import Callable
-from collections.abc import Iterable
+from collections.abc import Sequence
 from typing import Any
 from typing import Literal
 from typing import TypedDict
@@ -96,7 +96,7 @@ class MessageReceiveEvent(TypedDict):
 
     type: Literal["message.receive"]
     id: str
-    headers: Iterable[tuple[bytes, bytes]]
+    headers: Sequence[tuple[bytes, bytes]]
     payload: NotRequired[bytes | None]
     bindings: NotRequired[dict[str, dict[str, Any]]]
     more_messages: NotRequired[bool]
@@ -136,7 +136,7 @@ class MessageSendEvent(TypedDict):
 
     type: Literal["message.send"]
     address: str
-    headers: Iterable[tuple[bytes, bytes]]
+    headers: Sequence[tuple[bytes, bytes]]
     payload: NotRequired[bytes | None]
     bindings: NotRequired[dict[str, dict[str, Any]]]
 
