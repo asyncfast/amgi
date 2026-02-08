@@ -17,6 +17,7 @@ from amgi_types import AMGISendEvent
 from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from asyncfast import AsyncFast
+from asyncfast import ChannelNotFoundError
 from asyncfast import Header
 from asyncfast import Message
 from asyncfast import MessageSender
@@ -946,3 +947,30 @@ async def test_message_ack_out_of_order() -> None:
         AsyncMock(side_effect=[message_receive_event1, message_receive_event2]),
         AsyncMock(),
     )
+
+
+async def test_message_non_existant_channel() -> None:
+    app = AsyncFast()
+
+    @app.channel("topic")
+    async def topic_handler(id: int) -> None:
+        pass  # pragma: no cover
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "address": "not_topic",
+    }
+    message_receive_event: MessageReceiveEvent = {
+        "type": "message.receive",
+        "id": "id-1",
+        "headers": [],
+    }
+    with pytest.raises(
+        ChannelNotFoundError, match="Couldn't resolve address: not_topic"
+    ):
+        await app(
+            message_scope,
+            AsyncMock(side_effect=[message_receive_event]),
+            AsyncMock(),
+        )
