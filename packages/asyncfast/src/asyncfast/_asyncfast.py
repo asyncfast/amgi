@@ -153,7 +153,7 @@ class AsyncFast:
 
                     yield hash(field), "serialization", field.type_adapter.core_schema
 
-                for field in message.__bindings__.values():
+                for _, _, field in message.__bindings__.values():
                     yield hash(
                         field.type
                     ), "serialization", field.type_adapter.core_schema
@@ -283,7 +283,7 @@ def _generate_messages(
 
             if channel_message.__bindings__:
                 bindings = {}
-                for field in channel_message.__bindings__.values():
+                for _, _, field in channel_message.__bindings__.values():
                     binding_type = get_args(field.type)[1]
                     assert isinstance(binding_type, Binding)
 
