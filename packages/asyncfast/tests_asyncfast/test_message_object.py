@@ -133,3 +133,41 @@ def test_message_binding_kafka_key(message_benchmark: MessageBenchmark) -> None:
         "bindings": {"kafka": {"key": b"ec5e9f87-c896-4fb1-b028-8352ef654e05"}},
         "headers": [],
     }
+
+
+def test_message_unsupported_key() -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        key: Annotated[UUID, KafkaKey()]
+
+    response = Response(key=UUID("ec5e9f87-c896-4fb1-b028-8352ef654e05"))
+
+    with pytest.raises(KeyError):
+        response["other_key"]
+
+
+def test_message_no_address(message_benchmark: MessageBenchmark) -> None:
+    class Data(BaseModel):
+        id: str
+
+    @dataclass
+    class Response(Message):
+        data: Data
+
+    response = Response(data=Data(id="test"))
+
+    assert message_benchmark(response) == {
+        "address": None,
+        "headers": [],
+        "payload": b'{"id":"test"}',
+    }
+
+
+def test_message_len() -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        key: Annotated[UUID, KafkaKey()]
+
+    response = Response(key=UUID("ec5e9f87-c896-4fb1-b028-8352ef654e05"))
+
+    assert len(response) == 3
