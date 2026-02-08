@@ -30,18 +30,25 @@ class _Field:
 class Message(Mapping[str, Any]):
 
     __address__: ClassVar[str | None] = None
-    __headers__: ClassVar[dict[str, _Field]]
+    __headers__: ClassVar[dict[str, tuple[str, _Field]]]
     __headers_model__: ClassVar[type[BaseModel] | None]
     __parameters__: ClassVar[dict[str, TypeAdapter[Any]]]
     __payload__: ClassVar[tuple[str, _Field] | None]
-    __bindings__: ClassVar[dict[str, _Field]]
+    __bindings__: ClassVar[dict[str, tuple[str, str, _Field]]]
 
     def __init_subclass__(cls, address: str | None = None, **kwargs: Any) -> None:
         cls.__address__ = address
         annotations = list(_generate_message_annotations(address, cls.__annotations__))
 
         headers = {
-            name: _Field(annotated)
+            name: (
+                (
+                    get_args(annotated)[1].alias
+                    if get_args(annotated)[1].alias
+                    else name.replace("_", "-")
+                ),
+                _Field(annotated),
+            )
             for name, annotated in annotations
             if isinstance(get_args(annotated)[1], Header)
         }
@@ -53,7 +60,11 @@ class Message(Mapping[str, Any]):
         }
 
         bindings = {
-            name: _Field(annotated)
+            name: (
+                get_args(annotated)[1].__protocol__,
+                get_args(annotated)[1].__field_name__,
+                _Field(annotated),
+            )
             for name, annotated in annotations
             if isinstance(get_args(annotated)[1], Binding)
         }
@@ -107,9 +118,7 @@ class Message(Mapping[str, Any]):
         return self.__address__.format(**parameters)
 
     def _generate_headers(self) -> Iterable[tuple[str, bytes]]:
-        for name, field in self.__headers__.items():
-            _, annotation = get_args(field.type)
-            alias = annotation.alias if annotation.alias else name.replace("_", "-")
+        for name, (alias, field) in self.__headers__.items():
             yield alias, self._get_value(name, field.type_adapter)
 
     def _get_headers(self) -> Iterable[tuple[bytes, bytes]]:
@@ -130,13 +139,10 @@ class Message(Mapping[str, Any]):
 
     def _get_bindings(self) -> dict[str, dict[str, Any]]:
         bindings: dict[str, dict[str, Any]] = {}
-        for name, field in self.__bindings__.items():
-            binding_type = get_args(field.type)[1]
-            assert isinstance(binding_type, Binding)
-
-            bindings.setdefault(binding_type.__protocol__, {})[
-                binding_type.__field_name__
-            ] = self._get_value(name, field.type_adapter)
+        for name, (protocol, field_name, field) in self.__bindings__.items():
+            bindings.setdefault(protocol, {})[field_name] = self._get_value(
+                name, field.type_adapter
+            )
         return bindings
 
     @classmethod
@@ -152,16 +158,15 @@ class Message(Mapping[str, Any]):
 
 
 def _generate_field_definitions(
-    headers: Mapping[str, _Field],
+    headers: Mapping[str, tuple[str, _Field]],
 ) -> Iterator[tuple[str, Any]]:
-    for name, field in headers.items():
+    for name, (alias, field) in headers.items():
         type_, annotation = get_args(field.type)
-        alias = annotation.alias if annotation.alias else name.replace("_", "-")
         yield alias, (type_, annotation)
 
 
 def _create_headers_model(
-    headers_name: str, headers: Mapping[str, _Field]
+    headers_name: str, headers: Mapping[str, tuple[str, _Field]]
 ) -> type[BaseModel]:
     return create_model(
         headers_name, __base__=BaseModel, **dict(_generate_field_definitions(headers))
