@@ -90,7 +90,8 @@ class Message(Mapping[str, Any]):
         elif key == "headers":
             return self._get_headers()
         elif key == "payload" and self.__payload__:
-            return self._get_payload()
+            name, field = self.__payload__
+            return field.type_adapter.dump_json(getattr(self, name))
         elif key == "bindings" and self.__bindings__:
             return self._get_bindings()
         raise KeyError(key)
@@ -130,12 +131,6 @@ class Message(Mapping[str, Any]):
         if isinstance(python, str):
             return python.encode()
         return type_adapter.dump_json(value)
-
-    def _get_payload(self) -> bytes | None:
-        if self.__payload__ is None:
-            return None
-        name, field = self.__payload__
-        return field.type_adapter.dump_json(getattr(self, name))
 
     def _get_bindings(self) -> dict[str, dict[str, Any]]:
         bindings: dict[str, dict[str, Any]] = {}
