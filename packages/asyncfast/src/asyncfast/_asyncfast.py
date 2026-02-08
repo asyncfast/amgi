@@ -39,6 +39,12 @@ M = TypeVar("M", bound=Mapping[str, Any])
 Lifespan = Callable[["AsyncFast"], AbstractAsyncContextManager[None]]
 
 
+class ChannelNotFoundError(LookupError):
+    def __init__(self, address: str) -> None:
+        super().__init__(f"Couldn't resolve address: {address}")
+        self.address = address
+
+
 class AsyncFast:
     def __init__(
         self,
@@ -105,7 +111,8 @@ class AsyncFast:
                 parameters = channel.match(address)
                 if parameters is not None:
                     await channel(scope, receive, send, parameters)
-                    break
+                    return
+            raise ChannelNotFoundError(address)
 
     def asyncapi(self) -> dict[str, Any]:
         schema_generator = GenerateJsonSchema(
