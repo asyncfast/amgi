@@ -1,18 +1,29 @@
+from __future__ import annotations
+
 import asyncio
 import inspect
 import re
 from abc import ABC
 from abc import abstractmethod
+from asyncio import AbstractEventLoop
+from asyncio import Task
+from collections.abc import AsyncGenerator
 from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Mapping
+from contextlib import AbstractAsyncContextManager
+from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from dataclasses import KW_ONLY
 from functools import cached_property
+from functools import wraps
 from typing import Annotated
 from typing import Any
 from typing import Generic
 from typing import get_args
 from typing import get_origin
+from typing import ParamSpec
 from typing import TypeVar
 
 from amgi_types import AMGISendCallable
@@ -25,9 +36,54 @@ from pydantic.fields import FieldInfo
 _FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_\-]+$")
 _PARAMETER_PATTERN = re.compile(r"{(.*)}")
 
-
+P = ParamSpec("P")
 T = TypeVar("T")
 M = TypeVar("M", bound=Mapping[str, Any])
+
+
+def _next_or_stop(generator: Generator[T, None, Any]) -> T | StopIteration:
+    try:
+        return next(generator)
+    except StopIteration as e:
+        return e
+
+
+def _throw_or_stop(
+    generator: Generator[T, None, Any], exc: BaseException
+) -> T | StopIteration:
+    try:
+        return generator.throw(exc)
+    except StopIteration as e:
+        return e
+
+
+def asyncify_generator(
+    func: Callable[P, Generator[T, None, Any]],
+) -> Callable[P, AsyncGenerator[T]]:
+    @wraps(func)
+    async def wrapped_generator(*args: P.args, **kwargs: P.kwargs) -> AsyncGenerator[T]:
+        generator = func(*args, **kwargs)
+        try:
+            result: T | StopIteration = await asyncio.to_thread(
+                _next_or_stop, generator
+            )
+
+            while True:
+                if isinstance(result, StopIteration):
+                    return
+
+                try:
+                    yield result
+                except BaseException as exc:
+                    if isinstance(exc, (SystemExit, KeyboardInterrupt)):
+                        raise
+                    result = await asyncio.to_thread(_throw_or_stop, generator, exc)
+                else:
+                    result = await asyncio.to_thread(_next_or_stop, generator)
+        finally:
+            generator.close()
+
+    return wrapped_generator
 
 
 class InvalidChannelDefinitionError(ValueError):
@@ -46,6 +102,13 @@ class Payload(FieldInfo):
 
 class Parameter(FieldInfo):
     pass
+
+
+@dataclass(frozen=True)
+class Depends:
+    func: Callable[..., Any]
+    _: KW_ONLY
+    use_cache: bool = True
 
 
 @dataclass(frozen=True)
@@ -146,95 +209,267 @@ class MessageSenderResolver(Resolver[MessageSender[M]]):
 
 
 @dataclass(frozen=True)
-class Channel(ABC):
+class CallableResolver(ABC):
     func: Callable[..., Any]
-    parameters: set[str]
     resolvers: dict[str, Resolver[Any]]
+    dependencies: dict[str, DependencyResolver]
 
-    def resolve(
-        self, message_receive: MessageReceive, send: AMGISendCallable
+    async def resolve(
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
     ) -> dict[str, Any]:
-        return {
+        resolver_result = {
             name: resolver.resolve(message_receive, send)
             for name, resolver in self.resolvers.items()
         }
 
+        dependency_result = dict(
+            zip(
+                self.dependencies.keys(),
+                await asyncio.gather(
+                    *(
+                        dependency_cache.resolve(
+                            dependency, message_receive, send, async_exit_stack
+                        )
+                        for dependency in self.dependencies.values()
+                    )
+                ),
+            )
+        )
+
+        return {**resolver_result, **dependency_result}
+
     @abstractmethod
     async def call(
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
+    ) -> Any: ...
+
+
+@dataclass(frozen=True)
+class DependencyResolver(CallableResolver, ABC):
+    use_cache: bool
+
+
+@dataclass(frozen=True)
+class SyncDependencyResolver(DependencyResolver):
+    async def call(
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
+    ) -> Any:
+        return await asyncio.to_thread(
+            self.func,
+            **await self.resolve(
+                message_receive, send, dependency_cache, async_exit_stack
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class AsyncDependencyResolver(DependencyResolver):
+    async def call(
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
+    ) -> Any:
+        return await self.func(
+            **await self.resolve(
+                message_receive, send, dependency_cache, async_exit_stack
+            )
+        )
+
+
+class AsyncYieldingDependencyResolver(DependencyResolver):
+    @cached_property
+    def async_context_manager(self) -> Callable[..., AbstractAsyncContextManager[Any]]:
+        return asynccontextmanager(self.func)
+
+    async def call(
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
+    ) -> Any:
+        return await async_exit_stack.enter_async_context(
+            self.async_context_manager(
+                **await self.resolve(
+                    message_receive, send, dependency_cache, async_exit_stack
+                )
+            )
+        )
+
+
+class SyncYieldingDependencyResolver(DependencyResolver):
+    @cached_property
+    def async_generator_func(self) -> Callable[..., AsyncGenerator[Any]]:
+        return asyncify_generator(self.func)
+
+    @cached_property
+    def async_context_manager(self) -> Callable[..., AbstractAsyncContextManager[Any]]:
+        return asynccontextmanager(self.async_generator_func)
+
+    async def call(
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
+    ) -> Any:
+        return await async_exit_stack.enter_async_context(
+            self.async_context_manager(
+                **await self.resolve(
+                    message_receive, send, dependency_cache, async_exit_stack
+                )
+            )
+        )
+
+
+class DependencyCache:
+    def __init__(self, loop: AbstractEventLoop) -> None:
+        self.loop = loop
+        self.cache: dict[Callable[..., Any], Task[Any]] = {}
+
+    def resolve(
+        self,
+        dependency: DependencyResolver,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        async_exit_stack: AsyncExitStack,
+    ) -> Task[Any]:
+        if dependency.use_cache:
+            if dependency.func not in self.cache:
+                self.cache[dependency.func] = self.loop.create_task(
+                    dependency.call(message_receive, send, self, async_exit_stack)
+                )
+            return self.cache[dependency.func]
+        return self.loop.create_task(
+            dependency.call(message_receive, send, self, async_exit_stack)
+        )
+
+
+@dataclass(frozen=True)
+class Channel(CallableResolver, ABC):
+    parameters: set[str]
+
+    async def invoke(
         self, message_receive: MessageReceive, send: AMGISendCallable
-    ) -> None: ...
+    ) -> None:
+        dependency_cache = DependencyCache(asyncio.get_event_loop())
+        async with AsyncExitStack() as async_exit_stack:
+            await self.call(message_receive, send, dependency_cache, async_exit_stack)
 
 
 @dataclass(frozen=True)
 class SyncChannel(Channel):
     async def call(
-        self, message_receive: MessageReceive, send: AMGISendCallable
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
     ) -> None:
-        await asyncio.to_thread(self.func, **self.resolve(message_receive, send))
+        await asyncio.to_thread(
+            self.func,
+            **await self.resolve(
+                message_receive, send, dependency_cache, async_exit_stack
+            ),
+        )
 
 
 @dataclass(frozen=True)
 class AsyncChannel(Channel):
     async def call(
-        self, message_receive: MessageReceive, send: AMGISendCallable
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
     ) -> None:
-        await self.func(**self.resolve(message_receive, send))
+        await self.func(
+            **await self.resolve(
+                message_receive, send, dependency_cache, async_exit_stack
+            )
+        )
+
+
+async def handle_async_generator(
+    agen: AsyncGenerator[Any], send: AMGISendCallable
+) -> None:
+    try:
+        while True:
+            try:
+                message = await agen.__anext__()
+            except StopAsyncIteration:
+                return
+
+            while True:
+                try:
+                    await send_message(send, message)
+                except Exception as exc:
+                    try:
+                        message = await agen.athrow(exc)
+                    except StopAsyncIteration:
+                        return
+                else:
+                    break
+    finally:
+        await agen.aclose()
 
 
 class AsyncGeneratorChannel(Channel):
     async def call(
-        self, message_receive: MessageReceive, send: AMGISendCallable
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
     ) -> None:
-        agen = self.func(**self.resolve(message_receive, send))
-        exception: Exception | None = None
-        while True:
-            try:
-                if exception is None:
-                    message = await agen.__anext__()
-                else:
-                    message = await agen.athrow(exception)
-                try:
-                    await send_message(send, message)
-                except Exception as e:
-                    exception = e
-                else:
-                    exception = None
-            except StopAsyncIteration:
-                break
+        agen = self.func(
+            **await self.resolve(
+                message_receive, send, dependency_cache, async_exit_stack
+            )
+        )
 
-
-def _throw_or_none(gen: Generator[Any, None, None], exception: Exception) -> Any:
-    try:
-        return gen.throw(exception)
-    except StopIteration:
-        return None
+        await handle_async_generator(agen, send)
 
 
 class SyncGeneratorChannel(Channel):
+    @cached_property
+    def async_generator_func(self) -> Callable[..., AsyncGenerator[Any]]:
+        return asyncify_generator(self.func)
+
     async def call(
-        self, message_receive: MessageReceive, send: AMGISendCallable
+        self,
+        message_receive: MessageReceive,
+        send: AMGISendCallable,
+        dependency_cache: DependencyCache,
+        async_exit_stack: AsyncExitStack,
     ) -> None:
 
-        gen = self.func(**self.resolve(message_receive, send))
-        exception: Exception | None = None
-        while True:
-            if exception is None:
-                message = await asyncio.to_thread(next, gen, None)
-            else:
-                message = await asyncio.to_thread(_throw_or_none, gen, exception)
-            if message is None:
-                break
-            try:
-                await send_message(send, message)
-            except Exception as e:
-                exception = e
-            else:
-                exception = None
+        agen = self.async_generator_func(
+            **await self.resolve(
+                message_receive, send, dependency_cache, async_exit_stack
+            )
+        )
+
+        await handle_async_generator(agen, send)
 
 
 def parameter_resolver(
     name: str, parameter: inspect.Parameter, address_parameters: set[str]
-) -> Resolver[Any]:
+) -> Resolver[Any] | DependencyResolver:
     if name in address_parameters:
         return AddressParameterResolver(name)
     if get_origin(parameter.annotation) is Annotated:
@@ -257,18 +492,50 @@ def parameter_resolver(
                 annotation.__field_name__,
                 parameter.default,
             )
+        if isinstance(annotation, Depends):
+            resolvers, dependencies = resolvers_dependencies(
+                annotation.func, address_parameters
+            )
+
+            if inspect.iscoroutinefunction(annotation.func):
+                return AsyncDependencyResolver(
+                    annotation.func, resolvers, dependencies, annotation.use_cache
+                )
+            if inspect.isasyncgenfunction(annotation.func):
+                return AsyncYieldingDependencyResolver(
+                    annotation.func, resolvers, dependencies, annotation.use_cache
+                )
+            if inspect.isgeneratorfunction(annotation.func):
+                return SyncYieldingDependencyResolver(
+                    annotation.func, resolvers, dependencies, annotation.use_cache
+                )
+            return SyncDependencyResolver(
+                annotation.func, resolvers, dependencies, annotation.use_cache
+            )
+
     if get_origin(parameter.annotation) is MessageSender:
         return MessageSenderResolver(parameter.annotation)
 
     return PayloadResolver(parameter.annotation)
 
 
-def channel(func: Callable[..., Any], address_parameters: set[str]) -> Channel:
+def resolvers_dependencies(
+    func: Callable[..., Any], address_parameters: set[str]
+) -> tuple[dict[str, Resolver[Any]], dict[str, DependencyResolver]]:
     signature = inspect.signature(func)
-    resolvers = {
-        name: parameter_resolver(name, parameter, address_parameters)
-        for name, parameter in signature.parameters.items()
-    }
+    resolvers = {}
+    dependencies = {}
+    for name, parameter in signature.parameters.items():
+        resolver = parameter_resolver(name, parameter, address_parameters)
+        if isinstance(resolver, Resolver):
+            resolvers[name] = resolver
+        else:
+            dependencies[name] = resolver
+    return resolvers, dependencies
+
+
+def channel(func: Callable[..., Any], address_parameters: set[str]) -> Channel:
+    resolvers, dependencies = resolvers_dependencies(func, address_parameters)
 
     payloads = sum(
         isinstance(resolver, PayloadResolver) for resolver in resolvers.values()
@@ -285,9 +552,9 @@ def channel(func: Callable[..., Any], address_parameters: set[str]) -> Channel:
         )
 
     if inspect.iscoroutinefunction(func):
-        return AsyncChannel(func, address_parameters, resolvers)
+        return AsyncChannel(func, resolvers, dependencies, address_parameters)
     if inspect.isasyncgenfunction(func):
-        return AsyncGeneratorChannel(func, address_parameters, resolvers)
+        return AsyncGeneratorChannel(func, resolvers, dependencies, address_parameters)
     if inspect.isgeneratorfunction(func):
-        return SyncGeneratorChannel(func, address_parameters, resolvers)
-    return SyncChannel(func, address_parameters, resolvers)
+        return SyncGeneratorChannel(func, resolvers, dependencies, address_parameters)
+    return SyncChannel(func, resolvers, dependencies, address_parameters)

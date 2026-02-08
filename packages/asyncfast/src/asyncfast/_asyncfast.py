@@ -232,7 +232,9 @@ class _Channel:
     ) -> None:
         try:
 
-            await self._channel_invoker.call(MessageReceive(message, parameters), send)
+            await self._channel_invoker.invoke(
+                MessageReceive(message, parameters), send
+            )
 
             message_ack_event: MessageAckEvent = {
                 "type": "message.ack",
