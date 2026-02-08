@@ -6,6 +6,7 @@ from typing import Union
 from uuid import UUID
 
 from asyncfast import AsyncFast
+from asyncfast import Depends
 from asyncfast import Header
 from asyncfast import Message
 from asyncfast import MessageSender
@@ -1132,5 +1133,58 @@ def test_asyncapi_send_header_underscore() -> None:
                     "type": "object",
                 }
             },
+        },
+    }
+
+
+def test_dependencies() -> None:
+    app = AsyncFast()
+
+    def dependency(
+        header1: Annotated[int, Header()], header2: Annotated[int, Header()]
+    ) -> dict[str, int]:  # pragma: no cover
+        return {
+            "header1": header1,
+            "header2": header2,
+        }
+
+    @app.channel("hello")
+    async def on_hello(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
+        pass  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "OnHello": {
+                "address": "hello",
+                "messages": {
+                    "OnHelloMessage": {"$ref": "#/components/messages/OnHelloMessage"}
+                },
+            }
+        },
+        "components": {
+            "messages": {
+                "OnHelloMessage": {
+                    "headers": {"$ref": "#/components/schemas/OnHelloHeaders"}
+                }
+            },
+            "schemas": {
+                "OnHelloHeaders": {
+                    "properties": {
+                        "header1": {"title": "Header1", "type": "integer"},
+                        "header2": {"title": "Header2", "type": "integer"},
+                    },
+                    "required": ["header1", "header2"],
+                    "title": "OnHelloHeaders",
+                    "type": "object",
+                }
+            },
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveOnHello": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/OnHello"},
+            }
         },
     }

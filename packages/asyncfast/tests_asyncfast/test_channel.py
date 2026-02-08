@@ -4,9 +4,11 @@ from typing import AsyncGenerator
 from typing import Generator
 from typing import Mapping
 from unittest.mock import AsyncMock
+from unittest.mock import call
 from unittest.mock import Mock
 
 from asyncfast._channel import channel
+from asyncfast._channel import Depends
 from asyncfast._channel import Header
 from asyncfast._channel import MessageReceive
 from asyncfast._channel import MessageSender
@@ -19,7 +21,7 @@ async def test_payload_basic() -> None:
     def func(i: int) -> None:
         mock(i)
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -41,7 +43,7 @@ async def test_header_basic() -> None:
     def func(header: Annotated[str, Header()]) -> None:
         mock(header)
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -62,7 +64,7 @@ async def test_header_default() -> None:
     def func(header: Annotated[str, Header()] = "value") -> None:
         mock(header)
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -83,7 +85,7 @@ async def test_header_underscore_to_hyphen() -> None:
     def func(header_name: Annotated[str, Header()]) -> None:
         mock(header_name)
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -104,7 +106,7 @@ async def test_header_alias() -> None:
     def func(etag: Annotated[str, Header(alias="ETag")]) -> None:
         mock(etag)
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -125,7 +127,7 @@ async def test_address_parameter() -> None:
     def func(user: str) -> None:
         mock(user)
 
-    await channel(func, {"user"}).call(
+    await channel(func, {"user"}).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -146,7 +148,7 @@ async def test_binding() -> None:
     def func(key: Annotated[int, KafkaKey()]) -> None:
         mock(key)
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -168,7 +170,7 @@ async def test_binding_default() -> None:
     def func(key: Annotated[int, KafkaKey()] = 123) -> None:
         mock(key)
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -189,7 +191,7 @@ async def test_async_func() -> None:
     async def func(i: int) -> None:
         await mock(i)
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -215,7 +217,7 @@ async def test_async_generator_func() -> None:
             "headers": [(b"Id", b"10")],
         }
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -248,7 +250,7 @@ async def test_sync_generator_func() -> None:
             "headers": [(b"Id", b"10")],
         }
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -283,7 +285,7 @@ async def test_message_sender() -> None:
             }
         )
 
-    await channel(func, set()).call(
+    await channel(func, set()).invoke(
         MessageReceive(
             {
                 "type": "message.receive",
@@ -304,3 +306,201 @@ async def test_message_sender() -> None:
             "payload": b'{"key": "KEY-001"}',
         }
     )
+
+
+async def test_async_depends() -> None:
+    mock = Mock()
+
+    async def dependency(
+        header1: Annotated[int, Header()], header2: Annotated[int, Header()]
+    ) -> dict[str, int]:
+        return {
+            "header1": header1,
+            "header2": header2,
+        }
+
+    def func(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
+        mock(headers)
+
+    await channel(func, set()).invoke(
+        MessageReceive(
+            {
+                "type": "message.receive",
+                "id": "id",
+                "headers": [(b"header1", b"1"), (b"header2", b"2")],
+            },
+            {},
+        ),
+        Mock(),
+    )
+
+    mock.assert_called_with({"header1": 1, "header2": 2})
+
+
+async def test_sync_depends() -> None:
+    mock = Mock()
+
+    def dependency(
+        header1: Annotated[int, Header()], header2: Annotated[int, Header()]
+    ) -> dict[str, int]:
+        return {
+            "header1": header1,
+            "header2": header2,
+        }
+
+    def func(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
+        mock(headers)
+
+    await channel(func, set()).invoke(
+        MessageReceive(
+            {
+                "type": "message.receive",
+                "id": "id",
+                "headers": [(b"header1", b"1"), (b"header2", b"2")],
+            },
+            {},
+        ),
+        Mock(),
+    )
+
+    mock.assert_called_with({"header1": 1, "header2": 2})
+
+
+async def test_async_depends_use_cache() -> None:
+    mock_func = Mock()
+    mock_dependency = Mock()
+
+    async def dependency() -> Any:
+        return mock_dependency()
+
+    def func(
+        dependency1: Annotated[Any, Depends(dependency)],
+        dependency2: Annotated[Any, Depends(dependency)],
+    ) -> None:
+        mock_func(dependency1, dependency2)
+
+    await channel(func, set()).invoke(
+        MessageReceive(
+            {
+                "type": "message.receive",
+                "id": "id",
+                "headers": [],
+            },
+            {},
+        ),
+        Mock(),
+    )
+
+    mock_func.assert_called_with(
+        mock_dependency.return_value, mock_dependency.return_value
+    )
+    mock_dependency.assert_called_once()
+
+
+async def test_async_depends_use_cache_false() -> None:
+    mock_func = Mock()
+    mock_dependency = Mock()
+
+    async def dependency() -> Any:
+        return mock_dependency()
+
+    def func(
+        dependency1: Annotated[Any, Depends(dependency, use_cache=False)],
+        dependency2: Annotated[Any, Depends(dependency, use_cache=False)],
+    ) -> None:
+        mock_func(dependency1, dependency2)
+
+    await channel(func, set()).invoke(
+        MessageReceive(
+            {
+                "type": "message.receive",
+                "id": "id",
+                "headers": [],
+            },
+            {},
+        ),
+        Mock(),
+    )
+
+    mock_func.assert_called_with(
+        mock_dependency.return_value, mock_dependency.return_value
+    )
+    assert mock_dependency.call_count == 2
+
+
+async def test_async_yielding_depends() -> None:
+    parent = Mock()
+
+    mock = Mock()
+    mock_close = Mock()
+
+    parent.attach_mock(mock, "func")
+    parent.attach_mock(mock_close, "close")
+
+    async def dependency(
+        header1: Annotated[int, Header()], header2: Annotated[int, Header()]
+    ) -> AsyncGenerator[dict[str, int], None]:
+        yield {
+            "header1": header1,
+            "header2": header2,
+        }
+        mock_close()
+
+    def func(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
+        mock(headers)
+
+    await channel(func, set()).invoke(
+        MessageReceive(
+            {
+                "type": "message.receive",
+                "id": "id",
+                "headers": [(b"header1", b"1"), (b"header2", b"2")],
+            },
+            {},
+        ),
+        Mock(),
+    )
+
+    assert parent.mock_calls == [
+        call.func({"header1": 1, "header2": 2}),
+        call.close(),
+    ]
+
+
+async def test_sync_yielding_depends() -> None:
+    parent = Mock()
+
+    mock = Mock()
+    mock_close = Mock()
+
+    parent.attach_mock(mock, "func")
+    parent.attach_mock(mock_close, "close")
+
+    def dependency(
+        header1: Annotated[int, Header()], header2: Annotated[int, Header()]
+    ) -> Generator[dict[str, int], None, None]:
+        yield {
+            "header1": header1,
+            "header2": header2,
+        }
+        mock_close()
+
+    def func(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
+        mock(headers)
+
+    await channel(func, set()).invoke(
+        MessageReceive(
+            {
+                "type": "message.receive",
+                "id": "id",
+                "headers": [(b"header1", b"1"), (b"header2", b"2")],
+            },
+            {},
+        ),
+        Mock(),
+    )
+
+    assert parent.mock_calls == [
+        call.func({"header1": 1, "header2": 2}),
+        call.close(),
+    ]

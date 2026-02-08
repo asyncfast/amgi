@@ -12,14 +12,24 @@ from typing import get_origin
 from typing import Union
 
 from asyncfast._channel import BindingResolver
+from asyncfast._channel import CallableResolver
 from asyncfast._channel import Channel
 from asyncfast._channel import HeaderResolver
 from asyncfast._channel import MessageSenderResolver
 from asyncfast._channel import PayloadResolver
+from asyncfast._channel import Resolver
 from asyncfast._message import Message
 from pydantic import BaseModel
 from pydantic import create_model
 from pydantic.fields import FieldInfo
+
+
+def generate_resolvers(
+    callable_resolver: CallableResolver,
+) -> Generator[Resolver[Any], None, None]:
+    yield from callable_resolver.resolvers.values()
+    for dependency in callable_resolver.dependencies.values():
+        yield from generate_resolvers(dependency)
 
 
 @dataclass(frozen=True)
@@ -47,12 +57,16 @@ class ChannelDefinition:
         return "".join(part.title() for part in self.name.split("_"))
 
     @cached_property
+    def resolvers(self) -> Sequence[Resolver[Any]]:
+        return tuple(generate_resolvers(self.channel))
+
+    @cached_property
     def headers_model(
         self,
     ) -> type[BaseModel] | None:
         headers = [
             resolver
-            for resolver in self.channel.resolvers.values()
+            for resolver in self.resolvers
             if isinstance(resolver, HeaderResolver)
         ]
         if not headers:
@@ -74,7 +88,7 @@ class ChannelDefinition:
     def payload(self) -> PayloadResolver[Any] | None:
         payloads = [
             resolver
-            for resolver in self.channel.resolvers.values()
+            for resolver in self.resolvers
             if isinstance(resolver, PayloadResolver)
         ]
         if payloads:
@@ -97,7 +111,7 @@ class ChannelDefinition:
             elif _is_message(generator_type):
                 yield generator_type
 
-        for resolver in self.channel.resolvers.values():
+        for resolver in self.resolvers:
             if isinstance(resolver, MessageSenderResolver):
                 message_sender_type = get_args(resolver.type)[0]
                 if _is_union(message_sender_type):
