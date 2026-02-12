@@ -1,3 +1,23 @@
+## 0.34.0 (2026-02-12)
+
+### Feat
+
+- **asyncfast**: add dependency injection for channel parameters
+
+### Fix
+
+- **asyncfast**: raise channel not found error for unknown channels
+- **amgi-types**: use sequence for message headers
+
+### Refactor
+
+- **asyncfast**: remove unreachable when getting message payload
+
+### Perf
+
+- **asyncfast**: cache header and binding metadata to reduce lookups
+- **asyncfast**: refactor core channel/message pipeline for greater speed
+
 ## 0.33.0 (2026-02-04)
 
 ### Feat

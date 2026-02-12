@@ -5,7 +5,7 @@ AsyncFast is a modern, event framework for building APIs with Python based on st
 ## Installation
 
 ```
-pip install asyncfast==0.33.0
+pip install asyncfast==0.34.0
 ```
 
 ## Example

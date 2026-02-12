@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "amgi-aiokafka"
-version = "0.33.0"
+version = "0.34.0"
 description = "AMGI Kafka Server"
 readme = "README.md"
 license = "MIT"
@@ -29,8 +29,8 @@ classifiers = [
 ]
 dependencies = [
   "aiokafka>=0.12",
-  "amgi-common==0.33.0",
-  "amgi-types==0.33.0",
+  "amgi-common==0.34.0",
+  "amgi-types==0.34.0",
   "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
 
