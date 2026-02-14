@@ -14,7 +14,7 @@ from testcontainers.redis import AsyncRedisContainer
 
 @pytest.fixture(scope="module")
 async def redis_container() -> AsyncGenerator[AsyncRedisContainer, None]:
-    with AsyncRedisContainer(image="redis:8.2.2") as redis_container:
+    with AsyncRedisContainer(image="ghcr.io/asyncfast/redis:8.2.2") as redis_container:
         yield redis_container
 
 
