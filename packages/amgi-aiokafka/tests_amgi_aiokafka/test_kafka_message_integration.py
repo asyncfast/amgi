@@ -18,7 +18,7 @@ from testcontainers.kafka import KafkaContainer
 
 @pytest.fixture(scope="module")
 async def kafka_container() -> AsyncGenerator[KafkaContainer, None]:
-    with KafkaContainer() as kafka_container:
+    with KafkaContainer(image="ghcr.io/asyncfast/cp-kafka:7.6.0") as kafka_container:
         yield kafka_container
 
 
