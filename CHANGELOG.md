@@ -1,3 +1,9 @@
+## 0.35.0 (2026-02-18)
+
+### Feat
+
+- **amgi**: switch message protocol to per-message scope
+
 ## 0.34.0 (2026-02-12)
 
 ### Feat
