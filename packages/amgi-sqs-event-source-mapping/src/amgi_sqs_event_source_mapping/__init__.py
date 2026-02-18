@@ -7,7 +7,6 @@ import signal
 import sys
 import warnings
 from collections import defaultdict
-from collections import deque
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Generator
@@ -25,8 +24,8 @@ from amgi_common import Lifespan
 from amgi_common import OperationBatcher
 from amgi_common import OperationCacher
 from amgi_types import AMGIApplication
+from amgi_types import AMGIReceiveEvent
 from amgi_types import AMGISendEvent
-from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 
@@ -91,22 +90,8 @@ def _encode_message_attributes(
         yield name.encode(), encoded_value
 
 
-class _Receive:
-    def __init__(self, records: Iterable[_Record]) -> None:
-        self._deque = deque(records)
-
-    async def __call__(self) -> MessageReceiveEvent:
-        message = self._deque.popleft()
-        encoded_headers = list(
-            _encode_message_attributes(message.get("messageAttributes", {}))
-        )
-        return {
-            "type": "message.receive",
-            "id": message["messageId"],
-            "headers": encoded_headers,
-            "payload": message["body"].encode(),
-            "more_messages": len(self._deque) != 0,
-        }
+async def _receive() -> AMGIReceiveEvent:
+    raise RuntimeError("Receive should not be called")
 
 
 class _QueueUrlCache:
@@ -251,13 +236,13 @@ class MessageSend:
 
 
 class _Send:
-    def __init__(self, message_ids: set[str], message_send: _MessageSendT) -> None:
-        self.message_ids = message_ids
+    def __init__(self, message_id: str, message_send: _MessageSendT) -> None:
+        self.message_id: str | None = message_id
         self._message_send = message_send
 
     async def __call__(self, event: AMGISendEvent) -> None:
         if event["type"] == "message.ack":
-            self.message_ids.discard(event["id"])
+            self.message_id = None
         if event["type"] == "message.send":
             await self._message_send(event)
 
@@ -337,20 +322,35 @@ class SqsEventSourceMappingHandler:
         message_send: _MessageSendT,
     ) -> Iterable[str]:
         event_source_arn_match = EVENT_SOURCE_ARN_PATTERN.match(event_source_arn)
-        message_ids = {record["messageId"] for record in records}
         if event_source_arn_match is None:
-            return message_ids
+            return {record["messageId"] for record in records}
+
+        failures = await asyncio.gather(
+            *(
+                self._call_record(event_source_arn_match["queue"], record, message_send)
+                for record in records
+            )
+        )
+        return {failure for failure in failures if failure is not None}
+
+    async def _call_record(
+        self, queue: str, record: _Record, message_send: _MessageSendT
+    ) -> str | None:
+        encoded_headers = list(
+            _encode_message_attributes(record.get("messageAttributes", {}))
+        )
         scope: MessageScope = {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
-            "address": event_source_arn_match["queue"],
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": queue,
+            "headers": encoded_headers,
+            "payload": record["body"].encode(),
             "state": self._state.copy(),
-            "extensions": {"message.ack.out_of_order": {}},
         }
 
-        records_send = _Send(message_ids, message_send)
-        await self._app(scope, _Receive(records), records_send)
-        return records_send.message_ids
+        records_send = _Send(record["messageId"], message_send)
+        await self._app(scope, _receive, records_send)
+        return records_send.message_id
 
     def _sigterm_handler(self) -> None:
         self._loop.run_until_complete(self._shutdown())

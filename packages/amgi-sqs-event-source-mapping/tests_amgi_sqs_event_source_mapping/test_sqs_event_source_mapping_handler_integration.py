@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncGenerator
+from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -11,7 +11,7 @@ from testcontainers.localstack import LocalStackContainer
 
 
 @pytest.fixture(scope="module")
-async def localstack_container() -> AsyncGenerator[LocalStackContainer, None]:
+def localstack_container() -> Generator[LocalStackContainer, None, None]:
     with LocalStackContainer(image="ghcr.io/asyncfast/localstack:4.9.2").with_services(
         "sqs"
     ) as localstack_container:

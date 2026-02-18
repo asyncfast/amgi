@@ -27,7 +27,7 @@ from typing import ParamSpec
 from typing import TypeVar
 
 from amgi_types import AMGISendCallable
-from amgi_types import MessageReceiveEvent
+from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 from asyncfast.bindings import Binding
 from pydantic import TypeAdapter
@@ -113,7 +113,7 @@ class Depends:
 
 @dataclass(frozen=True)
 class MessageReceive:
-    message: MessageReceiveEvent
+    message: MessageScope
     address_parameters: dict[str, str]
 
     @cached_property

@@ -62,24 +62,17 @@ async def test_kafka_event_source_mapping_handler_records() -> None:
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": "mytopic",
-            "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
-        }
-
-        assert await receive() == {
             "bindings": {"kafka": {"key": b"key"}},
             "headers": [(b"headerKey", b"headerValue")],
-            "id": "mytopic:0:15",
-            "more_messages": False,
             "payload": b"Hello, this is a test.",
-            "type": "message.receive",
+            "state": {},
         }
+
         await send(
             {
                 "type": "message.ack",
-                "id": "mytopic:0:15",
             }
         )
 
@@ -134,24 +127,17 @@ async def test_kafka_event_source_mapping_handler_error_nack() -> None:
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": "mytopic",
-            "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
-        }
-
-        assert await receive() == {
             "bindings": {"kafka": {"key": b"key"}},
             "headers": [(b"headerKey", b"headerValue")],
-            "id": "mytopic:0:15",
-            "more_messages": False,
             "payload": b"Hello, this is a test.",
-            "type": "message.receive",
+            "state": {},
         }
+
         await send(
             {
                 "type": "message.nack",
-                "id": "mytopic:0:15",
                 "message": "Failed to process record",
             }
         )
@@ -211,24 +197,17 @@ async def test_kafka_event_source_mapping_handler_log_nack(
         async with app.call() as (scope, receive, send):
             assert scope == {
                 "type": "message",
-                "amgi": {"version": "1.0", "spec_version": "1.0"},
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "address": "mytopic",
-                "state": {},
-                "extensions": {"message.ack.out_of_order": {}},
-            }
-
-            assert await receive() == {
                 "bindings": {"kafka": {"key": b"key"}},
                 "headers": [(b"headerKey", b"headerValue")],
-                "id": "mytopic:0:15",
-                "more_messages": False,
                 "payload": b"Hello, this is a test.",
-                "type": "message.receive",
+                "state": {},
             }
+
             await send(
                 {
                     "type": "message.nack",
-                    "id": "mytopic:0:15",
                     "message": "Failed to process record",
                 }
             )
@@ -303,10 +282,12 @@ async def test_lifespan() -> None:
         async with app.call() as (scope, receive, send):
             assert scope == {
                 "type": "message",
-                "amgi": {"version": "1.0", "spec_version": "1.0"},
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "address": "mytopic",
+                "bindings": {"kafka": {"key": b"key"}},
+                "headers": [(b"headerKey", b"headerValue")],
+                "payload": b"Hello, this is a test.",
                 "state": {"item": state_item},
-                "extensions": {"message.ack.out_of_order": {}},
             }
 
         await call_task
@@ -409,10 +390,12 @@ async def test_kafka_event_source_mapping_handler_message_send() -> None:
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": "mytopic",
+            "bindings": {"kafka": {"key": b"key"}},
+            "headers": [(b"headerKey", b"headerValue")],
+            "payload": b"Hello, this is a test.",
             "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
         }
 
         await send(
@@ -434,3 +417,55 @@ async def test_kafka_event_source_mapping_handler_message_send() -> None:
             "payload": b"test",
         }
     )
+
+
+async def test_kafka_event_source_mapping_receive_not_callable() -> None:
+    app = MockApp()
+    kafka_event_source_mapping_handler = KafkaEventSourceMappingHandler(
+        app, lifespan=False, message_send=AsyncMock()
+    )
+
+    call_task = asyncio.get_running_loop().create_task(
+        kafka_event_source_mapping_handler._call(
+            {
+                "eventSource": "aws:kafka",
+                "eventSourceArn": "arn:aws:kafka:us-east-1:123456789012:cluster/vpc-2priv-2pub/751d2973-a626-431c-9d4e-d7975eb44dd7-2",
+                "bootstrapServers": "b-2.demo-cluster-1.a1bcde.c1.kafka.us-east-1.amazonaws.com:9092,b-1.demo-cluster-1.a1bcde.c1.kafka.us-east-1.amazonaws.com:9092",
+                "records": {
+                    "mytopic-0": [
+                        {
+                            "topic": "mytopic",
+                            "partition": 0,
+                            "offset": 15,
+                            "timestamp": 1545084650987,
+                            "timestampType": "CREATE_TIME",
+                            "key": "a2V5",
+                            "value": "SGVsbG8sIHRoaXMgaXMgYSB0ZXN0Lg==",
+                            "headers": [
+                                {
+                                    "headerKey": [
+                                        104,
+                                        101,
+                                        97,
+                                        100,
+                                        101,
+                                        114,
+                                        86,
+                                        97,
+                                        108,
+                                        117,
+                                        101,
+                                    ]
+                                }
+                            ],
+                        },
+                    ]
+                },
+            },
+        )
+    )
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(RuntimeError, match="Receive should not be called"):
+            await receive()
+
+    await call_task

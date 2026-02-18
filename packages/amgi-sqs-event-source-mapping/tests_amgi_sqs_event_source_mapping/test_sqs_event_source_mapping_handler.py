@@ -87,23 +87,7 @@ async def test_sqs_handler_records(
                         "eventSource": "aws:sqs",
                         "eventSourceARN": "arn:aws:sqs:us-east-2:123456789012:my-queue",
                         "awsRegion": "us-east-2",
-                    },
-                    {
-                        "messageId": "2e1424d4-f796-459a-8184-9c92662be6da",
-                        "receiptHandle": "AQEBzWwaftRI0KuVm4tP+/7q1rGgNqicHq...",
-                        "body": "Test message.",
-                        "attributes": {
-                            "ApproximateReceiveCount": "1",
-                            "SentTimestamp": "1545082650636",
-                            "SenderId": "AIDAIENQZJOLO23YVJ4VO",
-                            "ApproximateFirstReceiveTimestamp": "1545082650649",
-                        },
-                        "messageAttributes": {},
-                        "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
-                        "eventSource": "aws:sqs",
-                        "eventSourceARN": "arn:aws:sqs:us-east-2:123456789012:my-queue",
-                        "awsRegion": "us-east-2",
-                    },
+                    }
                 ]
             },
         )
@@ -111,36 +95,15 @@ async def test_sqs_handler_records(
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": "my-queue",
-            "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
-        }
-
-        assert await receive() == {
-            "type": "message.receive",
-            "id": "059f36b4-87a3-44ab-83d2-661975830a7d",
             "headers": [(b"myAttribute", b"myValue")],
             "payload": b"Test message.",
-            "more_messages": True,
+            "state": {},
         }
         await send(
             {
                 "type": "message.ack",
-                "id": "059f36b4-87a3-44ab-83d2-661975830a7d",
-            }
-        )
-        assert await receive() == {
-            "type": "message.receive",
-            "id": "2e1424d4-f796-459a-8184-9c92662be6da",
-            "headers": [],
-            "payload": b"Test message.",
-            "more_messages": False,
-        }
-        await send(
-            {
-                "type": "message.ack",
-                "id": "2e1424d4-f796-459a-8184-9c92662be6da",
             }
         )
 
@@ -185,23 +148,16 @@ async def test_sqs_handler_record_nack(
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": "my-queue",
-            "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
-        }
-
-        assert await receive() == {
-            "type": "message.receive",
-            "id": "059f36b4-87a3-44ab-83d2-661975830a7d",
             "headers": [(b"myAttribute", b"myValue")],
             "payload": b"Test message.",
-            "more_messages": False,
+            "state": {},
         }
+
         await send(
             {
                 "type": "message.nack",
-                "id": "059f36b4-87a3-44ab-83d2-661975830a7d",
                 "message": "failed to process",
             }
         )
@@ -251,18 +207,11 @@ async def test_sqs_handler_record_unacked(
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": "my-queue",
-            "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
-        }
-
-        assert await receive() == {
-            "type": "message.receive",
-            "id": "059f36b4-87a3-44ab-83d2-661975830a7d",
             "headers": [(b"myAttribute", b"myValue")],
             "payload": b"Test message.",
-            "more_messages": False,
+            "state": {},
         }
 
     batch_item_failures = await call_task
@@ -309,23 +258,16 @@ async def test_sqs_handler_record_message_attribute_binary_value(
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": "my-queue",
-            "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
-        }
-
-        assert await receive() == {
-            "type": "message.receive",
-            "id": "059f36b4-87a3-44ab-83d2-661975830a7d",
             "headers": [(b"myAttribute", b"myValue")],
             "payload": b"Test message.",
-            "more_messages": False,
+            "state": {},
         }
+
         await send(
             {
                 "type": "message.ack",
-                "id": "059f36b4-87a3-44ab-83d2-661975830a7d",
             }
         )
 
@@ -425,10 +367,11 @@ async def test_lifespan() -> None:
         async with app.call() as (scope, receive, send):
             assert scope == {
                 "type": "message",
-                "amgi": {"version": "1.0", "spec_version": "1.0"},
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "address": "my-queue",
+                "headers": [(b"myAttribute", b"myValue")],
+                "payload": b"Test message.",
                 "state": {"item": state_item},
-                "extensions": {"message.ack.out_of_order": {}},
             }
 
         await call_task
@@ -519,3 +462,44 @@ def test_sqs_handler_attribute_is_deprecated() -> None:
 def test_unknown_attribute_raises_attribute_error() -> None:
     with pytest.raises(AttributeError):
         amgi_sqs_event_source_mapping.unknown
+
+
+async def test_sqs_handler_records_receive_not_callable(
+    app: MockApp, sqs_event_source_mapping_handler: SqsEventSourceMappingHandler
+) -> None:
+    call_task = asyncio.get_running_loop().create_task(
+        sqs_event_source_mapping_handler._call(
+            {
+                "Records": [
+                    {
+                        "messageId": "059f36b4-87a3-44ab-83d2-661975830a7d",
+                        "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                        "body": "Test message.",
+                        "attributes": {
+                            "ApproximateReceiveCount": "1",
+                            "SentTimestamp": "1545082649183",
+                            "SenderId": "AIDAIENQZJOLO23YVJ4VO",
+                            "ApproximateFirstReceiveTimestamp": "1545082649185",
+                        },
+                        "messageAttributes": {
+                            "myAttribute": {
+                                "stringValue": "myValue",
+                                "stringListValues": [],
+                                "binaryListValues": [],
+                                "dataType": "String",
+                            }
+                        },
+                        "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
+                        "eventSource": "aws:sqs",
+                        "eventSourceARN": "arn:aws:sqs:us-east-2:123456789012:my-queue",
+                        "awsRegion": "us-east-2",
+                    }
+                ]
+            },
+        )
+    )
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(RuntimeError, match="Receive should not be called"):
+            await receive()
+
+    await call_task

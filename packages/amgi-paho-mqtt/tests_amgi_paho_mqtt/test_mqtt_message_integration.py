@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 from threading import Event
 from typing import Any
+from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -24,7 +25,7 @@ def topic() -> str:
 
 
 @pytest.fixture(scope="module")
-async def mosquitto_container() -> AsyncGenerator[MosquittoContainer, None]:
+def mosquitto_container() -> Generator[MosquittoContainer, None, None]:
     mosquitto_container = MosquittoContainer(
         image="ghcr.io/asyncfast/eclipse-mosquitto:2.0.22"
     ).with_volume_mapping(
@@ -64,17 +65,11 @@ async def test_message(
     async with app.call() as (scope, receive, send):
         assert scope == {
             "address": topic,
-            "amgi": {"spec_version": "1.0", "version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "type": "message",
-            "state": {},
-        }
-
-        message_receive = await receive()
-        assert message_receive == {
             "headers": [],
-            "id": "0",
             "payload": b"test",
-            "type": "message.receive",
+            "state": {},
         }
 
 
@@ -149,7 +144,9 @@ async def test_lifespan(topic: str, mosquitto_container: MosquittoContainer) -> 
         async with app.call() as (scope, receive, send):
             assert scope == {
                 "address": topic,
-                "amgi": {"spec_version": "1.0", "version": "1.0"},
+                "headers": [],
+                "payload": b"",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "type": "message",
                 "state": {"item": state_item},
             }
@@ -182,3 +179,14 @@ def test_run(topic: str, mosquitto_container: MosquittoContainer) -> None:
         host=mosquitto_container.get_container_host_ip(),
         port=mosquitto_container.get_exposed_port(mosquitto_container.MQTT_PORT),
     )
+
+
+@pytest.mark.integration
+async def test_message_receive_not_callable(
+    app: MockApp, topic: str, mosquitto_container: MosquittoContainer
+) -> None:
+    mosquitto_container.publish_message(topic, "test")
+
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(RuntimeError, match="Receive should not be called"):
+            await receive()

@@ -9,22 +9,9 @@ coordinate resource allocation, background tasks, and graceful shutdown.
 
 A simple implementation would be:
 
-.. code:: python
 
-    async def app(scope, receive, send):
-        if scope["type"] == "lifespan":
-            while True:
-                message = await receive()
-                if message["type"] == "lifespan.startup":
-                    ...  # Do some startup here!
-                    await send({"type": "lifespan.startup.complete"})
-                elif message["type"] == "lifespan.shutdown":
-                    ...  # Do some shutdown here!
-                    await send({"type": "lifespan.shutdown.complete"})
-                    return
-        else:
-            pass  # Handle other types
-
+.. literalinclude:: lifespan.py
+   :lines: 4-
 
 **********
  Lifespan

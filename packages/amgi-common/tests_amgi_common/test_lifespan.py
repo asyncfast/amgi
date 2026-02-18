@@ -25,7 +25,7 @@ async def test_lifespan() -> None:
 
     async with app.call() as (scope, receive, send):
         assert scope == {
-            "amgi": {"spec_version": "1.0", "version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "state": {},
             "type": "lifespan",
         }
@@ -57,7 +57,7 @@ async def test_lifespan_should_use_supplied_state() -> None:
 
     async with app.call() as (scope, receive, send):
         assert scope == {
-            "amgi": {"spec_version": "1.0", "version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "state": {},
             "type": "lifespan",
         }

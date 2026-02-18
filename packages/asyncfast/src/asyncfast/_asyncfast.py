@@ -1,5 +1,3 @@
-import asyncio
-from collections.abc import AsyncGenerator
 from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Iterable
@@ -17,7 +15,6 @@ from amgi_types import LifespanShutdownCompleteEvent
 from amgi_types import LifespanStartupCompleteEvent
 from amgi_types import MessageAckEvent
 from amgi_types import MessageNackEvent
-from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import Scope
 from asyncfast._asyncapi import ChannelDefinition
@@ -110,7 +107,7 @@ class AsyncFast:
             for channel in self._channels:
                 parameters = channel.match(address)
                 if parameters is not None:
-                    await channel(scope, receive, send, parameters)
+                    await channel(scope, send, parameters)
                     return
             raise ChannelNotFoundError(address)
 
@@ -172,17 +169,6 @@ class AsyncFast:
                     ).core_schema
 
 
-async def _receive_messages(
-    receive: AMGIReceiveCallable,
-) -> AsyncGenerator[MessageReceiveEvent, None]:
-    more_messages = True
-    while more_messages:
-        message = await receive()
-        assert message["type"] == "message.receive"
-        yield message
-        more_messages = message.get("more_messages", False)
-
-
 class _Channel:
     def __init__(
         self,
@@ -208,43 +194,19 @@ class _Channel:
     async def __call__(
         self,
         scope: MessageScope,
-        receive: AMGIReceiveCallable,
         send: AMGISendCallable,
         parameters: dict[str, str],
-    ) -> None:
-        ack_out_of_order = "message.ack.out_of_order" in scope.get("extensions", {})
-        if ack_out_of_order:
-            await asyncio.gather(
-                *[
-                    self._handle_message(message, parameters, send)
-                    async for message in _receive_messages(receive)
-                ]
-            )
-        else:
-            async for message in _receive_messages(receive):
-                await self._handle_message(message, parameters, send)
-
-    async def _handle_message(
-        self,
-        message: MessageReceiveEvent,
-        parameters: dict[str, str],
-        send: AMGISendCallable,
     ) -> None:
         try:
-
-            await self._channel_invoker.invoke(
-                MessageReceive(message, parameters), send
-            )
+            await self._channel_invoker.invoke(MessageReceive(scope, parameters), send)
 
             message_ack_event: MessageAckEvent = {
                 "type": "message.ack",
-                "id": message["id"],
             }
             await send(message_ack_event)
         except Exception as e:
             message_nack_event: MessageNackEvent = {
                 "type": "message.nack",
-                "id": message["id"],
                 "message": str(e),
             }
             await send(message_nack_event)

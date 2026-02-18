@@ -1,4 +1,3 @@
-from asyncio import Event
 from collections.abc import AsyncGenerator
 from collections.abc import Generator
 from dataclasses import dataclass
@@ -14,7 +13,6 @@ from uuid import UUID
 
 import pytest
 from amgi_types import AMGISendEvent
-from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from asyncfast import AsyncFast
 from asyncfast import ChannelNotFoundError
@@ -45,18 +43,14 @@ async def test_message_payload() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
         "payload": b'{"id":1}',
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -77,17 +71,13 @@ async def test_message_payload_optional() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -108,18 +98,14 @@ async def test_message_payload_sync() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
         "payload": b'{"id":1}',
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -137,17 +123,13 @@ async def test_message_header_string() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [(b"ETag", b"33a64df551425fcc55e4d42a148795d9f25f89d4")],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -165,17 +147,13 @@ async def test_message_header_integer() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [(b"id", b"10")],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -193,17 +171,13 @@ async def test_message_header_underscore_to_hyphen() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [(b"idempotency-key", b"8e03978e-40d5-43e8-bc93-6894a57f9324")],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -224,12 +198,8 @@ async def test_message_headers_multiple() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [
             (b"id", b"10"),
             (b"etag", b"33a64df551425fcc55e4d42a148795d9f25f89d4"),
@@ -237,7 +207,7 @@ async def test_message_headers_multiple() -> None:
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -267,17 +237,13 @@ async def test_message_header_optional(
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": headers,
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -312,17 +278,13 @@ async def test_message_header_default(
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": headers,
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -344,17 +306,13 @@ async def test_message_sending_dict() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
@@ -387,18 +345,14 @@ async def test_message_payload_dataclass() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
         "payload": b'{"id":1}',
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -416,18 +370,14 @@ async def test_message_payload_simple() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
         "payload": b"123",
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -445,17 +395,13 @@ async def test_message_payload_address_parameter() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "order.1234",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -478,17 +424,13 @@ async def test_message_sending_message() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
@@ -525,17 +467,13 @@ async def test_message_address_parameter() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
@@ -564,23 +502,19 @@ async def test_message_ack() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     send_mock = AsyncMock()
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
     test_mock.assert_called_once()
-    send_mock.assert_awaited_once_with({"type": "message.ack", "id": "id-1"})
+    send_mock.assert_awaited_once_with({"type": "message.ack"})
 
 
 async def test_message_nack() -> None:
@@ -592,24 +526,18 @@ async def test_message_nack() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     send_mock = AsyncMock()
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
-    send_mock.assert_awaited_once_with(
-        {"type": "message.nack", "id": "id-1", "message": "test"}
-    )
+    send_mock.assert_awaited_once_with({"type": "message.nack", "message": "test"})
 
 
 async def test_message_sending_dict_error() -> None:
@@ -636,18 +564,14 @@ async def test_message_sending_dict_error() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     send_mock = AsyncMock(side_effect=send_mock)
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
@@ -680,18 +604,14 @@ async def test_message_sending_dict_post_error() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     send_mock = AsyncMock(side_effect=send_mock)
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
@@ -713,7 +633,7 @@ async def test_message_sending_dict_post_error() -> None:
                     "payload": b"1",
                 }
             ),
-            call({"type": "message.ack", "id": "id-1"}),
+            call({"type": "message.ack"}),
         ]
     )
 
@@ -742,18 +662,14 @@ async def test_message_sending_dict_post_error_sync() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     send_mock = AsyncMock(side_effect=send_mock)
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
@@ -767,7 +683,7 @@ async def test_message_sending_dict_post_error_sync() -> None:
                     "payload": b"1",
                 }
             ),
-            call({"type": "message.ack", "id": "id-1"}),
+            call({"type": "message.ack"}),
         ]
     )
     after_exception_mock.assert_called_with(send_exception)
@@ -782,24 +698,20 @@ async def test_message_invalid_payload_nack() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
         "payload": b"not_an_int",
     }
     send_mock = AsyncMock()
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
     send_mock.assert_awaited_once_with(
-        {"type": "message.nack", "id": "id-1", "message": IsStrMatcher()}
+        {"type": "message.nack", "message": IsStrMatcher()}
     )
 
 
@@ -814,18 +726,14 @@ async def test_message_binding_kafka_key() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
         "bindings": {"kafka": {"key": b"1234"}},
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -848,18 +756,14 @@ async def test_message_binding_default_kafka_key(
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
         "bindings": bindings,
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         AsyncMock(),
     )
 
@@ -882,17 +786,13 @@ async def test_message_sender() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     await app(
         message_scope,
-        AsyncMock(side_effect=[message_receive_event]),
+        AsyncMock(),
         send_mock,
     )
 
@@ -910,45 +810,6 @@ async def test_message_sender() -> None:
     )
 
 
-async def test_message_ack_out_of_order() -> None:
-    app = AsyncFast()
-
-    received = set()
-    block_event = Event()
-
-    @app.channel("topic")
-    async def topic_handler(i: int) -> None:
-        received.add(i)
-        if received == {1, 2}:
-            block_event.set()
-        await block_event.wait()
-
-    message_scope: MessageScope = {
-        "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
-        "address": "topic",
-        "extensions": {"message.ack.out_of_order": {}},
-    }
-    message_receive_event1: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
-        "headers": [],
-        "payload": b"1",
-        "more_messages": True,
-    }
-    message_receive_event2: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-2",
-        "payload": b"2",
-        "headers": [],
-    }
-    await app(
-        message_scope,
-        AsyncMock(side_effect=[message_receive_event1, message_receive_event2]),
-        AsyncMock(),
-    )
-
-
 async def test_message_non_existant_channel() -> None:
     app = AsyncFast()
 
@@ -958,12 +819,8 @@ async def test_message_non_existant_channel() -> None:
 
     message_scope: MessageScope = {
         "type": "message",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
         "address": "not_topic",
-    }
-    message_receive_event: MessageReceiveEvent = {
-        "type": "message.receive",
-        "id": "id-1",
         "headers": [],
     }
     with pytest.raises(
@@ -971,6 +828,6 @@ async def test_message_non_existant_channel() -> None:
     ):
         await app(
             message_scope,
-            AsyncMock(side_effect=[message_receive_event]),
+            AsyncMock(),
             AsyncMock(),
         )

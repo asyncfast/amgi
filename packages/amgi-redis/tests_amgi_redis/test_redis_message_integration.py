@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from typing import Any
+from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -13,7 +14,7 @@ from testcontainers.redis import AsyncRedisContainer
 
 
 @pytest.fixture(scope="module")
-async def redis_container() -> AsyncGenerator[AsyncRedisContainer, None]:
+def redis_container() -> Generator[AsyncRedisContainer, None, None]:
     with AsyncRedisContainer(image="ghcr.io/asyncfast/redis:8.2.2") as redis_container:
         yield redis_container
 
@@ -48,18 +49,11 @@ async def test_message(
     async with app.call() as (scope, receive, send):
         assert scope == {
             "address": channel,
-            "amgi": {"spec_version": "1.0", "version": "1.0"},
-            "type": "message",
-            "state": {},
-        }
-
-        message_receive = await receive()
-        assert message_receive == {
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "headers": [],
-            "id": "",
-            "more_messages": False,
             "payload": b"value",
-            "type": "message.receive",
+            "state": {},
+            "type": "message",
         }
 
 
@@ -120,9 +114,11 @@ async def test_lifespan(redis_container: AsyncRedisContainer, channel: str) -> N
         async with app.call() as (scope, receive, send):
             assert scope == {
                 "address": channel,
-                "amgi": {"spec_version": "1.0", "version": "1.0"},
-                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "headers": [],
+                "payload": b"",
                 "state": {"item": state_item},
+                "type": "message",
             }
 
 
@@ -140,3 +136,16 @@ def test_run_cli(redis_container: AsyncRedisContainer, channel: str) -> None:
     port = redis_container.get_exposed_port(redis_container.port)
 
     assert_run_can_terminate(_run_cli, [channel], url=f"redis://{host}:{port}")
+
+
+@pytest.mark.integration
+async def test_message_receive_not_callable(
+    app: MockApp, channel: str, redis_container: AsyncRedisContainer
+) -> None:
+    client = await redis_container.get_async_client()
+
+    await client.publish(channel, "")
+
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(RuntimeError, match="Receive should not be called"):
+            await receive()

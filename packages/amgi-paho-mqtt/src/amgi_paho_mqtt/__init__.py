@@ -13,8 +13,8 @@ from weakref import WeakValueDictionary
 from amgi_common import Lifespan
 from amgi_common import server_serve
 from amgi_types import AMGIApplication
+from amgi_types import AMGIReceiveEvent
 from amgi_types import AMGISendEvent
-from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from paho.mqtt.client import Client
 from paho.mqtt.client import ConnectFlags
@@ -46,17 +46,8 @@ class PublishError(OSError):
     """Raised when publishing fails."""
 
 
-class _Receive:
-    def __init__(self, message: MQTTMessage) -> None:
-        self._message = message
-
-    async def __call__(self) -> MessageReceiveEvent:
-        return {
-            "type": "message.receive",
-            "id": str(self._message.mid),
-            "headers": [],
-            "payload": self._message.payload,
-        }
+async def _receive() -> AMGIReceiveEvent:
+    raise RuntimeError("Receive should not be called")
 
 
 class Server:
@@ -116,11 +107,13 @@ class Server:
     async def _handle_message(self, message: MQTTMessage) -> None:
         scope: MessageScope = {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": message.topic,
+            "headers": [],
+            "payload": message.payload,
             "state": self._state.copy(),
         }
-        await self._app(scope, _Receive(message), self._send)
+        await self._app(scope, _receive, self._send)
 
     def _on_disconnect(
         self,

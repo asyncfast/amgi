@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import Any
 from typing import cast
+from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -21,7 +22,7 @@ class _StrMatcher:
 
 
 @pytest.fixture(scope="module")
-async def localstack_container() -> AsyncGenerator[LocalStackContainer, None]:
+def localstack_container() -> Generator[LocalStackContainer, None, None]:
     with LocalStackContainer(image="ghcr.io/asyncfast/localstack:4.9.2").with_services(
         "sqs"
     ) as localstack_container:
@@ -87,25 +88,15 @@ async def test_message(
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": queue_name,
-            "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
-        }
-        message_receive = await receive()
-
-        assert message_receive["type"] == "message.receive"
-        assert message_receive == {
-            "type": "message.receive",
-            "id": _StrMatcher(),
             "headers": [(b"string-value", b"string"), (b"bytes-value", b"bytes")],
             "payload": b"value",
-            "more_messages": False,
+            "state": {},
         }
 
         message_ack_event: MessageAckEvent = {
             "type": "message.ack",
-            "id": message_receive["id"],
         }
         await send(message_ack_event)
 
@@ -131,25 +122,15 @@ async def test_message_nack(
     async with app.call() as (scope, receive, send):
         assert scope == {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": queue_name,
-            "state": {},
-            "extensions": {"message.ack.out_of_order": {}},
-        }
-        message_receive = await receive()
-
-        assert message_receive["type"] == "message.receive"
-        assert message_receive == {
-            "type": "message.receive",
-            "id": _StrMatcher(),
             "headers": [(b"string-value", b"string"), (b"bytes-value", b"bytes")],
             "payload": b"value",
-            "more_messages": False,
+            "state": {},
         }
 
         message_ack_event: MessageNackEvent = {
             "type": "message.nack",
-            "id": message_receive["id"],
             "message": "",
         }
         await send(message_ack_event)
@@ -295,10 +276,11 @@ async def test_lifespan(
         async with app.call() as (scope, receive, send):
             assert scope == {
                 "address": queue_name,
-                "amgi": {"spec_version": "1.0", "version": "1.0"},
+                "headers": [(b"string-value", b"string"), (b"bytes-value", b"bytes")],
+                "payload": b"value",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "type": "message",
                 "state": {"item": state_item},
-                "extensions": {"message.ack.out_of_order": {}},
             }
 
 
@@ -324,3 +306,20 @@ def test_run_cli(queue_name: str, localstack_container: LocalStackContainer) -> 
         aws_access_key_id="testcontainers-localstack",
         aws_secret_access_key="testcontainers-localstack",
     )
+
+
+@pytest.mark.integration
+async def test_message_receive_not_callable(
+    app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
+) -> None:
+    sqs_client.send_message(
+        QueueUrl=queue_url,
+        MessageBody="value",
+        MessageAttributes={
+            "string-value": {"StringValue": "string", "DataType": "StringValue"},
+            "bytes-value": {"BinaryValue": b"bytes", "DataType": "BinaryValue"},
+        },
+    )
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(RuntimeError, match="Receive should not be called"):
+            await receive()

@@ -24,8 +24,9 @@ async def test_payload_basic() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
                 "payload": b"1",
             },
@@ -46,8 +47,9 @@ async def test_header_basic() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [(b"header", b"value")],
             },
             {},
@@ -67,8 +69,9 @@ async def test_header_default() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
             },
             {},
@@ -88,8 +91,9 @@ async def test_header_underscore_to_hyphen() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [(b"header-name", b"value")],
             },
             {},
@@ -109,8 +113,9 @@ async def test_header_alias() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [(b"ETag", b"9e30981e-02d5-11f1-9648-e323315723e1")],
             },
             {},
@@ -130,8 +135,9 @@ async def test_address_parameter() -> None:
     await channel(func, {"user"}).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel.54a08cc6-02db-11f1-afbf-f3f4688d5de4",
                 "headers": [],
             },
             {"user": "54a08cc6-02db-11f1-afbf-f3f4688d5de4"},
@@ -151,8 +157,9 @@ async def test_binding() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
                 "bindings": {"kafka": {"key": b"123"}},
             },
@@ -173,8 +180,9 @@ async def test_binding_default() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
             },
             {},
@@ -194,8 +202,9 @@ async def test_async_func() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
                 "payload": b"1",
             },
@@ -220,8 +229,9 @@ async def test_async_generator_func() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
                 "payload": b"1",
             },
@@ -253,8 +263,9 @@ async def test_sync_generator_func() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
                 "payload": b"1",
             },
@@ -288,8 +299,9 @@ async def test_message_sender() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
                 "payload": b"1",
             },
@@ -325,8 +337,9 @@ async def test_async_depends() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [(b"header1", b"1"), (b"header2", b"2")],
             },
             {},
@@ -354,8 +367,9 @@ async def test_sync_depends() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [(b"header1", b"1"), (b"header2", b"2")],
             },
             {},
@@ -382,8 +396,9 @@ async def test_async_depends_use_cache() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
             },
             {},
@@ -413,8 +428,9 @@ async def test_async_depends_use_cache_false() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [],
             },
             {},
@@ -452,8 +468,9 @@ async def test_async_yielding_depends() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [(b"header1", b"1"), (b"header2", b"2")],
             },
             {},
@@ -491,8 +508,9 @@ async def test_sync_yielding_depends() -> None:
     await channel(func, set()).invoke(
         MessageReceive(
             {
-                "type": "message.receive",
-                "id": "id",
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": "channel",
                 "headers": [(b"header1", b"1"), (b"header2", b"2")],
             },
             {},

@@ -1,6 +1,5 @@
 import asyncio
 import sys
-from collections import deque
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Generator
@@ -17,8 +16,8 @@ from amgi_common import OperationCacher
 from amgi_common import server_serve
 from amgi_common import Stoppable
 from amgi_types import AMGIApplication
+from amgi_types import AMGIReceiveEvent
 from amgi_types import AMGISendEvent
-from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 
@@ -82,22 +81,8 @@ def _encode_message_attributes(
         yield name.encode(), encoded_value
 
 
-class _Receive:
-    def __init__(self, messages: Iterable[Any]) -> None:
-        self._deque = deque(messages)
-
-    async def __call__(self) -> MessageReceiveEvent:
-        message = self._deque.popleft()
-        encoded_headers = list(
-            _encode_message_attributes(message.get("MessageAttributes", {}))
-        )
-        return {
-            "type": "message.receive",
-            "id": message["ReceiptHandle"],
-            "headers": encoded_headers,
-            "payload": message["Body"].encode(),
-            "more_messages": len(self._deque) != 0,
-        }
+async def _receive() -> AMGIReceiveEvent:
+    raise RuntimeError("Receive should not be called")
 
 
 async def _get_queue_url(client: Any, queue_name: str) -> str:
@@ -264,10 +249,12 @@ class MessageSend:
 class _Send:
     def __init__(
         self,
+        receipt_handle: str,
         delete_batcher: _DeleteBatcher,
         queue_url: str,
         message_send: _MessageSendT,
     ) -> None:
+        self._receipt_handle = receipt_handle
         self._queue_url = queue_url
         self._delete_batcher = delete_batcher
         self._message_send = message_send
@@ -276,7 +263,7 @@ class _Send:
         if event["type"] == "message.ack":
             await self._delete_batcher.delete_message(
                 self._queue_url,
-                event["id"],
+                self._receipt_handle,
             )
         if event["type"] == "message.send":
             await self._message_send(event)
@@ -357,19 +344,46 @@ class Server:
             MessageAttributeNames=["All"],
         ):
             messages = messages_response.get("Messages", ())
-            if messages:
-                scope: MessageScope = {
-                    "type": "message",
-                    "amgi": {"version": "1.0", "spec_version": "1.0"},
-                    "address": queue_name,
-                    "state": state.copy(),
-                    "extensions": {"message.ack.out_of_order": {}},
-                }
-                await self._app(
-                    scope,
-                    _Receive(messages),
-                    _Send(delete_batcher, queue_url, message_send),
+            await asyncio.gather(
+                *(
+                    self._call_message(
+                        message,
+                        queue_url,
+                        queue_name,
+                        delete_batcher,
+                        message_send,
+                        state,
+                    )
+                    for message in messages
                 )
+            )
+
+    async def _call_message(
+        self,
+        message: Any,
+        queue_url: str,
+        queue_name: str,
+        delete_batcher: _DeleteBatcher,
+        message_send: _MessageSendT,
+        state: dict[str, Any],
+    ) -> None:
+        encoded_headers = list(
+            _encode_message_attributes(message.get("MessageAttributes", {}))
+        )
+
+        scope: MessageScope = {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": queue_name,
+            "headers": encoded_headers,
+            "payload": message["Body"].encode(),
+            "state": state.copy(),
+        }
+        await self._app(
+            scope,
+            _receive,
+            _Send(message["ReceiptHandle"], delete_batcher, queue_url, message_send),
+        )
 
     def stop(self) -> None:
         self._stoppable.stop()

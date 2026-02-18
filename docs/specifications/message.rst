@@ -9,59 +9,19 @@ agnosticism.
 
 A simple implementation would be:
 
-.. code:: python
-
-    async def app(scope, receive, send):
-        if scope["type"] == "message":
-            more_messages = True
-            while more_messages:
-                message = await receive()
-                message_id = message["id"]
-                try:
-                    headers = message["headers"]
-                    payload = message.get("payload")
-                    bindings = message.get("bindings", {})
-                    ...  # Do some message handling here!
-                    await send(
-                        {
-                            "type": "message.ack",
-                            "id": message_id,
-                        }
-                    )
-                except Exception as e:
-                    await send(
-                        {
-                            "type": "message.nack",
-                            "id": message_id,
-                            "message": str(e),
-                        }
-                    )
-                more_messages = message.get("more_messages")
-        else:
-            pass  # Handle other types
-
+.. literalinclude:: message.py
+   :lines: 4-
 
 *********
  Message
 *********
 
-A message batch has a single message scope. Your application will be called once per batch. For protocols that do not
-support batched consumption a batch of one message should be sent to the application.
+A message has a single message scope. Your application will be called once per message.
 
 The message scope information passed in scope contains:
 
 .. typeddict:: amgi_types.MessageScope
    :type: scope
-
-********************************************
- Receive message - :py:func:`receive` event
-********************************************
-
-Sent to the application to indicate an incoming message in the batch.
-
-Keys:
-
-.. typeddict:: amgi_types.MessageReceiveEvent
 
 **********************************************
  Response message ack - :py:func:`send` event
