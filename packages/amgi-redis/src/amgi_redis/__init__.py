@@ -11,8 +11,8 @@ from amgi_common import Lifespan
 from amgi_common import server_serve
 from amgi_common import Stoppable
 from amgi_types import AMGIApplication
+from amgi_types import AMGIReceiveEvent
 from amgi_types import AMGISendEvent
-from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 from redis.asyncio import from_url
@@ -44,18 +44,8 @@ def _run_cli(
     run(app, *channels, url=url)
 
 
-class _Receive:
-    def __init__(self, message: dict[str, Any]) -> None:
-        self._message = message
-
-    async def __call__(self) -> MessageReceiveEvent:
-        return {
-            "type": "message.receive",
-            "id": "",
-            "headers": [],
-            "payload": self._message["data"],
-            "more_messages": False,
-        }
+async def _receive() -> AMGIReceiveEvent:
+    raise RuntimeError("Receive should not be called")
 
 
 class _Send:
@@ -131,11 +121,13 @@ class Server:
     ) -> None:
         scope: MessageScope = {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": message["channel"].decode(),
+            "headers": [],
+            "payload": message["data"],
             "state": state.copy(),
         }
-        await self._app(scope, _Receive(message), _Send(message_send))
+        await self._app(scope, _receive, _Send(message_send))
 
     def stop(self) -> None:
         self._stoppable.stop()

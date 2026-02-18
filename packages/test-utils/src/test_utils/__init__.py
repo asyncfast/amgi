@@ -48,7 +48,7 @@ class MockApp:
 
         async with self.call() as (scope, receive, send):
             assert scope == {
-                "amgi": {"spec_version": "1.0", "version": "1.0"},
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "type": "lifespan",
                 "state": {},
             }

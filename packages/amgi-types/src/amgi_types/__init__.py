@@ -20,12 +20,19 @@ class AMGIVersions(TypedDict):
     """
 
     spec_version: str
-    version: Literal["1.0"]
+    version: Literal["2.0"]
 
 
 class MessageScope(TypedDict):
     """
     :var address: The address of the batch of messages, for example, in Kafka this would be the topic
+    :var headers: Includes the headers of the message
+    :var payload:
+        Payload of the message, which can be :py:obj:`None` or :py:obj:`bytes`. If missing, it defaults to
+        :py:obj:`None`
+    :var bindings:
+        Protocol specific bindings, for example, when receiving a Kafka message the bindings could include the key:
+        ``{"kafka": {"key": b"key"}}``
     :var state:
         A copy of the namespace passed into the lifespan corresponding to this batch. Optional; if missing the server
         does not support this feature.
@@ -37,6 +44,9 @@ class MessageScope(TypedDict):
     type: Literal["message"]
     amgi: AMGIVersions
     address: str
+    headers: Sequence[tuple[bytes, bytes]]
+    payload: NotRequired[bytes | None]
+    bindings: NotRequired[dict[str, dict[str, Any]]]
     state: NotRequired[dict[str, Any]]
     extensions: NotRequired[dict[str, dict[str, Any]]]
 
@@ -79,46 +89,12 @@ class LifespanShutdownFailedEvent(TypedDict):
     message: str
 
 
-class MessageReceiveEvent(TypedDict):
-    """
-    :var id: A unique id for the message, used to ack, or nack the message
-    :var headers: Includes the headers of the message
-    :var payload:
-        Payload of the message, which can be :py:obj:`None` or :py:obj:`bytes`. If missing, it defaults to
-        :py:obj:`None`
-    :var bindings:
-        Protocol specific bindings, for example, when receiving a Kafka message the bindings could include the key:
-        ``{"kafka": {"key": b"key"}}``
-    :var more_messages:
-        Indicates there are more messages to process in the batch. The application should keep receiving until it
-        receives :py:obj:`False`. If missing it defaults to :py:obj:`False`
-    """
-
-    type: Literal["message.receive"]
-    id: str
-    headers: Sequence[tuple[bytes, bytes]]
-    payload: NotRequired[bytes | None]
-    bindings: NotRequired[dict[str, dict[str, Any]]]
-    more_messages: NotRequired[bool]
-
-
 class MessageAckEvent(TypedDict):
-    """
-    :var id: The unique id of the message
-    """
-
     type: Literal["message.ack"]
-    id: str
 
 
 class MessageNackEvent(TypedDict):
-    """
-    :var id: The unique id of the message
-    :var message: A message indicating why the message could not be processed
-    """
-
     type: Literal["message.nack"]
-    id: str
     message: str
 
 
@@ -143,9 +119,7 @@ class MessageSendEvent(TypedDict):
 
 Scope = Union[MessageScope, LifespanScope]
 
-AMGIReceiveEvent = Union[
-    LifespanStartupEvent, LifespanShutdownEvent, MessageReceiveEvent
-]
+AMGIReceiveEvent = Union[LifespanStartupEvent, LifespanShutdownEvent]
 AMGISendEvent = Union[
     LifespanStartupCompleteEvent,
     LifespanStartupFailedEvent,

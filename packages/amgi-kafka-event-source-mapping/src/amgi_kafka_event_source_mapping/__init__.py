@@ -5,7 +5,6 @@ import logging
 import signal
 import sys
 from asyncio import Task
-from collections import deque
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Iterable
@@ -20,8 +19,8 @@ from typing import Literal
 from amgi_aiokafka import MessageSend as AioKafkaMessageSend
 from amgi_common import Lifespan
 from amgi_types import AMGIApplication
+from amgi_types import AMGIReceiveEvent
 from amgi_types import AMGISendEvent
-from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 from typing_extensions import NotRequired
@@ -73,17 +72,16 @@ class _KafkaEventSourceMapping(TypedDict):
 
 
 class _Send:
-    def __init__(
-        self, record_nacks: dict[str, _RecordNack], message_send: _MessageSendT
-    ) -> None:
+    def __init__(self, record_nack: _RecordNack, message_send: _MessageSendT) -> None:
         self._message_send = message_send
-        self.record_nacks = record_nacks
+        self.record_nack: _RecordNack | None = record_nack
 
     async def __call__(self, event: AMGISendEvent) -> None:
         if event["type"] == "message.ack":
-            self.record_nacks.pop(event["id"])
+            self.record_nack = None
         if event["type"] == "message.nack":
-            self.record_nacks[event["id"]].message = event["message"]
+            assert self.record_nack is not None
+            self.record_nack.message = event["message"]
         if event["type"] == "message.send":
             await self._message_send(event)
 
@@ -104,30 +102,8 @@ def _record_id(message: _KafkaRecord) -> str:
     return f"{topic}:{partition}:{offset}"
 
 
-class _Receive:
-    def __init__(self, records: Iterable[_KafkaRecord]) -> None:
-        self._deque = deque(records)
-
-    async def __call__(self) -> MessageReceiveEvent:
-        message = self._deque.popleft()
-        headers = message.get("headers", [])
-        encoded_headers = list(_encode_record_headers(headers))
-
-        value = message.get("value")
-        key = message.get("key")
-
-        record_id = _record_id(message)
-
-        return {
-            "type": "message.receive",
-            "id": record_id,
-            "headers": encoded_headers,
-            "payload": None if value is None else base64.b64decode(value),
-            "bindings": {
-                "kafka": {"key": None if key is None else base64.b64decode(key)}
-            },
-            "more_messages": len(self._deque) != 0,
-        }
+async def _receive() -> AMGIReceiveEvent:
+    raise RuntimeError("Receive should not be called")
 
 
 class _MessageSender:
@@ -266,27 +242,54 @@ class KafkaEventSourceMappingHandler:
         records: Iterable[_KafkaRecord],
         message_sender: _MessageSender | _MessageSendWrapper,
     ) -> Iterable[_RecordNack]:
+        record_nacks = await asyncio.gather(
+            *(
+                self._call_record(record, bootstrap_servers, topic, message_sender)
+                for record in records
+            )
+        )
+
+        return [record_nack for record_nack in record_nacks if record_nack is not None]
+
+    async def _call_record(
+        self,
+        record: _KafkaRecord,
+        bootstrap_servers: str,
+        topic: str,
+        message_sender: _MessageSender | _MessageSendWrapper,
+    ) -> _RecordNack | None:
+
+        headers = record.get("headers", [])
+        encoded_headers = list(_encode_record_headers(headers))
+
+        value = record.get("value")
+        key = record.get("key")
+
         scope: MessageScope = {
             "type": "message",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "address": topic,
+            "headers": encoded_headers,
+            "payload": None if value is None else base64.b64decode(value),
+            "bindings": {
+                "kafka": {"key": None if key is None else base64.b64decode(key)}
+            },
             "state": self._state.copy(),
-            "extensions": {"message.ack.out_of_order": {}},
         }
         message_send = await message_sender.get_message_send(bootstrap_servers)
-        record_nacks = {
-            _record_id(record): _RecordNack(
+
+        send = _Send(
+            _RecordNack(
                 record["topic"],
                 record["partition"],
                 record["offset"],
                 "Ack not received",
-            )
-            for record in records
-        }
-        send = _Send(record_nacks, message_send)
-        await self._app(scope, _Receive(records), send)
+            ),
+            message_send,
+        )
+        await self._app(scope, _receive, send)
 
-        return send.record_nacks.values()
+        return send.record_nack
 
     def _sigterm_handler(self) -> None:
         self._loop.run_until_complete(self._shutdown())

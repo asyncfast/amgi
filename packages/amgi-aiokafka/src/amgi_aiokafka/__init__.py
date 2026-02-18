@@ -1,10 +1,8 @@
 import asyncio
 import logging
 import sys
-from collections import deque
 from collections.abc import Awaitable
 from collections.abc import Callable
-from collections.abc import Iterable
 from types import TracebackType
 from typing import Any
 from typing import AsyncContextManager
@@ -18,8 +16,8 @@ from amgi_common import Lifespan
 from amgi_common import server_serve
 from amgi_common import Stoppable
 from amgi_types import AMGIApplication
+from amgi_types import AMGIReceiveEvent
 from amgi_types import AMGISendEvent
-from amgi_types import MessageReceiveEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 
@@ -73,44 +71,33 @@ def _run_cli(
     )
 
 
-class _Receive:
-    def __init__(
-        self,
-        records: Iterable[ConsumerRecord],
-    ) -> None:
-        self._deque = deque(records)
-
-    async def __call__(self) -> MessageReceiveEvent:
-        record = self._deque.popleft()
-        encoded_headers = [(key.encode(), value) for key, value in record.headers]
-
-        return {
-            "type": "message.receive",
-            "id": f"{record.topic}:{record.partition}:{record.offset}",
-            "headers": encoded_headers,
-            "payload": record.value,
-            "bindings": {"kafka": {"key": record.key}},
-            "more_messages": len(self._deque) != 0,
-        }
+async def _receive() -> AMGIReceiveEvent:
+    raise RuntimeError("Receive should not be called")
 
 
 class _Send:
     def __init__(
         self,
         consumer: AIOKafkaConsumer,
-        message_receive_ids: dict[str, dict[TopicPartition, int]],
+        record: ConsumerRecord,
         ackable_consumer: bool,
         message_send: _MessageSendT,
     ) -> None:
         self._consumer = consumer
         self._message_send = message_send
-        self._message_receive_ids = message_receive_ids
+        self._record = record
         self._ackable_consumer = ackable_consumer
+        self.acked = False
 
     async def __call__(self, event: AMGISendEvent) -> None:
-        if event["type"] == "message.ack" and self._ackable_consumer:
-            offsets = self._message_receive_ids.pop(event["id"])
-            await self._consumer.commit(offsets)
+        if event["type"] == "message.ack":
+            self.acked = True
+            if self._ackable_consumer:
+                topic_partition = TopicPartition(
+                    self._record.topic, self._record.partition
+                )
+                offset = self._record.offset + 1
+                await self._consumer.commit({topic_partition: offset})
         if event["type"] == "message.send":
             await self._message_send(event)
 
@@ -199,31 +186,40 @@ class Server:
         message_send: _MessageSendT,
         state: dict[str, Any],
     ) -> None:
-        if records:
-            scope: MessageScope = {
-                "type": "message",
-                "amgi": {"version": "1.0", "spec_version": "1.0"},
-                "address": topic_partition.topic,
-                "state": state.copy(),
-            }
+        for record in records:
+            if not await self._handle_record(record, message_send, state):
+                break
 
-            message_receive_ids = {
-                f"{record.topic}:{record.partition}:{record.offset}": {
-                    TopicPartition(record.topic, record.partition): record.offset + 1
-                }
-                for record in records
-            }
+    async def _handle_record(
+        self,
+        record: ConsumerRecord,
+        message_send: _MessageSendT,
+        state: dict[str, Any],
+    ) -> bool:
+        encoded_headers = [(key.encode(), value) for key, value in record.headers]
 
-            await self._app(
-                scope,
-                _Receive(records),
-                _Send(
-                    self._consumer,
-                    message_receive_ids,
-                    self._ackable_consumer,
-                    message_send,
-                ),
-            )
+        scope: MessageScope = {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": record.topic,
+            "headers": encoded_headers,
+            "payload": record.value,
+            "bindings": {"kafka": {"key": record.key}},
+            "state": state.copy(),
+        }
+
+        send = _Send(
+            self._consumer,
+            record,
+            self._ackable_consumer,
+            message_send,
+        )
+        await self._app(
+            scope,
+            _receive,
+            send,
+        )
+        return send.acked
 
     def stop(self) -> None:
         self._stoppable.stop()

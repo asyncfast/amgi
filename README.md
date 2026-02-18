@@ -115,21 +115,21 @@ At its core, AMGI defines a minimal, low-level callable interface, similar in sp
 
 ```python
 async def app(scope, receive, send):
-    message = await receive()
-
-    await send(
-        {
-            "type": "message.ack",
-            "id": message["id"],
-        }
-    )
+    try:
+        # Do some message handling here!
+        await send(
+            {
+                "type": "message.ack",
+            }
+        )
+    except Exception as e:
+        await send({"type": "message.nack", "message": str(e)})
 ```
 
 AMGI provides:
 
 - A standard application callable
 - A structured message scope
-- A receive mechanism
 - A send mechanism
 
 Frameworks like AsyncFast can be built on top of this interface.

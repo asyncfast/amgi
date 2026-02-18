@@ -19,7 +19,7 @@ async def test_lifespan() -> None:
 
     lifespan_scope: LifespanScope = {
         "type": "lifespan",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
     }
     await app(
         lifespan_scope,
@@ -54,7 +54,7 @@ async def test_lifespan_context_manager() -> None:
 
     lifespan_scope: LifespanScope = {
         "type": "lifespan",
-        "amgi": {"version": "1.0", "spec_version": "1.0"},
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
     }
     await app(
         lifespan_scope,

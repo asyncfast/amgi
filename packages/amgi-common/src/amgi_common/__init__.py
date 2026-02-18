@@ -82,7 +82,7 @@ class Lifespan:
     async def _main(self) -> None:
         scope: LifespanScope = {
             "type": "lifespan",
-            "amgi": {"version": "1.0", "spec_version": "1.0"},
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "state": self._state,
         }
         try:

@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -17,7 +18,7 @@ from testcontainers.kafka import KafkaContainer
 
 
 @pytest.fixture(scope="module")
-async def kafka_container() -> AsyncGenerator[KafkaContainer, None]:
+def kafka_container() -> Generator[KafkaContainer, None, None]:
     with KafkaContainer(image="ghcr.io/asyncfast/cp-kafka:7.6.0") as kafka_container:
         yield kafka_container
 
@@ -81,25 +82,16 @@ async def test_message(bootstrap_server: str, app: MockApp, receive_topic: str) 
     async with app.call() as (scope, receive, send):
         assert scope == {
             "address": receive_topic,
-            "amgi": {"spec_version": "1.0", "version": "1.0"},
+            "bindings": {"kafka": {"key": b"key"}},
+            "headers": [(b"test", b"test")],
+            "payload": b"value",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
             "type": "message",
             "state": {},
         }
 
-        message_receive = await receive()
-        assert message_receive["type"] == "message.receive"
-        assert message_receive == {
-            "headers": [(b"test", b"test")],
-            "id": f"{receive_topic}:0:0",
-            "more_messages": False,
-            "payload": b"value",
-            "bindings": {"kafka": {"key": b"key"}},
-            "type": "message.receive",
-        }
-
         message_ack_event: MessageAckEvent = {
             "type": "message.ack",
-            "id": message_receive["id"],
         }
         await send(message_ack_event)
 
@@ -187,7 +179,10 @@ async def test_lifespan(bootstrap_server: str, receive_topic: str) -> None:
         async with app.call() as (scope, receive, send):
             assert scope == {
                 "address": receive_topic,
-                "amgi": {"spec_version": "1.0", "version": "1.0"},
+                "bindings": {"kafka": {"key": None}},
+                "headers": [],
+                "payload": b"",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "type": "message",
                 "state": {"item": state_item},
             }
@@ -203,3 +198,16 @@ def test_run_cli(bootstrap_server: str, receive_topic: str) -> None:
     assert_run_can_terminate(
         _run_cli, [receive_topic], bootstrap_servers=bootstrap_server
     )
+
+
+@pytest.mark.integration
+async def test_message_receive_not_callable(
+    bootstrap_server: str, app: MockApp, receive_topic: str, send_topic: str
+) -> None:
+    producer = AIOKafkaProducer(bootstrap_servers=bootstrap_server)
+    await producer.start()
+
+    await producer.send_and_wait(receive_topic, b"")
+    async with app.call() as (scope, receive, send):
+        with pytest.raises(RuntimeError, match="Receive should not be called"):
+            await receive()

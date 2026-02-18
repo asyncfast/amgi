@@ -1,5 +1,5 @@
 import asyncio
-from typing import AsyncGenerator
+from typing import Generator
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -15,7 +15,7 @@ from testcontainers.kafka import KafkaContainer
 
 
 @pytest.fixture(scope="module")
-async def kafka_container() -> AsyncGenerator[KafkaContainer, None]:
+def kafka_container() -> Generator[KafkaContainer, None, None]:
     with KafkaContainer(image="ghcr.io/asyncfast/cp-kafka:7.6.0") as kafka_container:
         yield kafka_container
 
@@ -84,10 +84,12 @@ async def test_kafka_event_source_mapping_handler_message_send(
         async with app.call() as (scope, receive, send):
             assert scope == {
                 "type": "message",
-                "amgi": {"version": "1.0", "spec_version": "1.0"},
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "address": "mytopic",
+                "bindings": {"kafka": {"key": None}},
+                "headers": [],
+                "payload": b"Hello, this is a test.",
                 "state": {},
-                "extensions": {"message.ack.out_of_order": {}},
             }
 
             await send(
