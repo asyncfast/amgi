@@ -1,12 +1,8 @@
 from collections.abc import Callable
-from collections.abc import Generator
-from collections.abc import Iterable
-from collections.abc import Mapping
 from contextlib import AbstractAsyncContextManager
 from functools import partial
 from re import Pattern
 from typing import Any
-from typing import get_args
 from typing import TypeVar
 
 from amgi_types import AMGIReceiveCallable
@@ -18,21 +14,13 @@ from amgi_types import MessageNackEvent
 from amgi_types import MessageScope
 from amgi_types import Scope
 from asyncfast._asyncapi import ChannelDefinition
-from asyncfast._asyncapi import MessageDefinition
+from asyncfast._asyncapi import get_asyncapi
 from asyncfast._channel import Channel
 from asyncfast._channel import channel as make_channel
 from asyncfast._channel import MessageReceive
-from asyncfast._utils import _address_pattern
-from asyncfast._utils import _get_address_parameters
-from asyncfast.bindings import Binding
-from pydantic import TypeAdapter
-from pydantic.json_schema import GenerateJsonSchema
-from pydantic.json_schema import JsonSchemaMode
-from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import CoreSchema
+from asyncfast._utils import get_address_pattern
 
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
-M = TypeVar("M", bound=Mapping[str, Any])
 Lifespan = Callable[["AsyncFast"], AbstractAsyncContextManager[None]]
 
 
@@ -54,6 +42,7 @@ class AsyncFast:
         self._version = version
         self._lifespan_context = lifespan
         self._lifespan: AbstractAsyncContextManager[None] | None = None
+        self._asyncapi_schema: dict[str, Any] | None = None
 
     @property
     def title(self) -> str:
@@ -69,12 +58,12 @@ class AsyncFast:
     def _add_channel(
         self, address: str, function: DecoratedCallable
     ) -> DecoratedCallable:
-        address_pattern = _address_pattern(address)
+        address_pattern = get_address_pattern(address)
 
         channel = _Channel(
             address,
             address_pattern,
-            make_channel(function, _get_address_parameters(address)),
+            make_channel(function, address),
         )
 
         self._channels.append(channel)
@@ -112,61 +101,18 @@ class AsyncFast:
             raise ChannelNotFoundError(address)
 
     def asyncapi(self) -> dict[str, Any]:
-        schema_generator = GenerateJsonSchema(
-            ref_template="#/components/schemas/{model}"
-        )
+        if not self._asyncapi_schema:
+            channel_definitions = tuple(
+                ChannelDefinition(channel._channel_invoker)
+                for channel in self._channels
+            )
+            self._asyncapi_schema = get_asyncapi(
+                title=self.title,
+                version=self.version,
+                channel_definitions=channel_definitions,
+            )
 
-        field_mapping, definitions = schema_generator.generate_definitions(
-            inputs=list(self._generate_inputs())
-        )
-        return {
-            "asyncapi": "3.0.0",
-            "info": {
-                "title": self.title,
-                "version": self.version,
-            },
-            "channels": dict(_generate_channels(self._channels)),
-            "operations": dict(_generate_operations(self._channels)),
-            "components": {
-                "messages": dict(_generate_messages(self._channels, field_mapping)),
-                **({"schemas": definitions} if definitions else {}),
-            },
-        }
-
-    def _generate_inputs(
-        self,
-    ) -> Generator[tuple[int, JsonSchemaMode, CoreSchema], None, None]:
-        for channel in self._channels:
-            for binding_resolver in channel._channel_definition.bindings:
-                yield hash(
-                    binding_resolver.type
-                ), "validation", binding_resolver.type_adapter.core_schema
-
-            headers_model = channel._channel_definition.headers_model
-            if headers_model:
-                yield hash(headers_model), "validation", TypeAdapter(
-                    headers_model
-                ).core_schema
-            payload = channel._channel_definition.payload
-            if payload:
-                yield hash(payload.type), "validation", payload.type_adapter.core_schema
-
-            for message in channel._channel_definition.messages:
-                if message.__payload__:
-                    _, field = message.__payload__
-
-                    yield hash(field), "serialization", field.type_adapter.core_schema
-
-                for _, _, field in message.__bindings__.values():
-                    yield hash(
-                        field.type
-                    ), "serialization", field.type_adapter.core_schema
-
-                message_headers_model = message._headers_model()
-                if message_headers_model:
-                    yield hash(message_headers_model), "serialization", TypeAdapter(
-                        message_headers_model
-                    ).core_schema
+        return self._asyncapi_schema
 
 
 class _Channel:
@@ -179,11 +125,6 @@ class _Channel:
         self._address = address
         self._address_pattern = address_pattern
         self._channel_invoker = channel_invoker
-        self._channel_definition = ChannelDefinition(channel_invoker)
-
-    @property
-    def address(self) -> str:
-        return self._address
 
     def match(self, address: str) -> dict[str, str] | None:
         match = self._address_pattern.match(address)
@@ -210,91 +151,3 @@ class _Channel:
                 "message": str(e),
             }
             await send(message_nack_event)
-
-
-def _generate_messages(
-    channels: Iterable[_Channel],
-    field_mapping: dict[tuple[int, JsonSchemaMode], JsonSchemaValue],
-) -> Generator[tuple[str, dict[str, Any]], None, None]:
-    for channel in channels:
-        message = {}
-
-        headers_model = channel._channel_definition.headers_model
-        if headers_model:
-            message["headers"] = field_mapping[hash(headers_model), "validation"]
-
-        payload = channel._channel_definition.payload
-        if payload:
-            message["payload"] = field_mapping[hash(payload.type), "validation"]
-
-        bindings: dict[str, dict[str, Any]]
-        if channel._channel_definition.bindings:
-            bindings = {}
-            for binding_resolver in channel._channel_definition.bindings:
-
-                bindings.setdefault(binding_resolver.protocol, {})[
-                    binding_resolver.field_name
-                ] = field_mapping[hash(binding_resolver.type), "validation"]
-            message["bindings"] = bindings
-
-        yield f"{channel._channel_definition.title}Message", message
-
-        for channel_message in channel._channel_definition.messages:
-            message_message = {}
-
-            if channel_message.__payload__:
-                _, field = channel_message.__payload__
-                message_message["payload"] = field_mapping[hash(field), "serialization"]
-
-            message_headers_model = channel_message._headers_model()
-            if message_headers_model:
-                message_message["headers"] = field_mapping[
-                    hash(message_headers_model), "serialization"
-                ]
-
-            if channel_message.__bindings__:
-                bindings = {}
-                for _, _, field in channel_message.__bindings__.values():
-                    binding_type = get_args(field.type)[1]
-                    assert isinstance(binding_type, Binding)
-
-                    bindings.setdefault(binding_type.__protocol__, {})[
-                        binding_type.__field_name__
-                    ] = field_mapping[hash(field), "serialization"]
-                message_message["bindings"] = bindings
-
-            yield channel_message.__name__, message_message
-
-
-def _generate_channels(
-    channels: Iterable[_Channel],
-) -> Generator[tuple[str, dict[str, Any]], None, None]:
-    for channel in channels:
-        yield channel._channel_definition.title, MessageDefinition(
-            channel.address,
-            f"{channel._channel_definition.title}Message",
-            channel._channel_definition.parameters,
-        ).definition
-
-        for message in channel._channel_definition.messages:
-            yield message.__name__, MessageDefinition(
-                message.__address__,
-                message.__name__,
-                {name for name in message.__parameters__},
-            ).definition
-
-
-def _generate_operations(
-    channels: Iterable[_Channel],
-) -> Generator[tuple[str, dict[str, Any]], None, None]:
-    for channel in channels:
-        yield f"receive{channel._channel_definition.title}", {
-            "action": "receive",
-            "channel": {"$ref": f"#/channels/{channel._channel_definition.title}"},
-        }
-
-        for message in channel._channel_definition.messages:
-            yield f"send{message.__name__}", {
-                "action": "send",
-                "channel": {"$ref": f"#/channels/{message.__name__}"},
-            }

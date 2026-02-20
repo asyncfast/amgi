@@ -11,10 +11,8 @@ from typing import get_origin
 from asyncfast._channel import Header
 from asyncfast._channel import Parameter
 from asyncfast._channel import Payload
-from asyncfast._utils import _get_address_parameters
+from asyncfast._utils import get_address_parameters
 from asyncfast.bindings import Binding
-from pydantic import BaseModel
-from pydantic import create_model
 from pydantic import TypeAdapter
 
 
@@ -31,7 +29,6 @@ class Message(Mapping[str, Any]):
 
     __address__: ClassVar[str | None] = None
     __headers__: ClassVar[dict[str, tuple[str, _Field]]]
-    __headers_model__: ClassVar[type[BaseModel] | None]
     __parameters__: ClassVar[dict[str, TypeAdapter[Any]]]
     __payload__: ClassVar[tuple[str, _Field] | None]
     __bindings__: ClassVar[dict[str, tuple[str, str, _Field]]]
@@ -140,39 +137,12 @@ class Message(Mapping[str, Any]):
             )
         return bindings
 
-    @classmethod
-    def _headers_model(cls) -> type[BaseModel] | None:
-        if not hasattr(cls, "__headers_model__"):
-            if cls.__headers__:
-                cls.__headers_model__ = _create_headers_model(
-                    f"{cls.__name__}Headers", cls.__headers__
-                )
-            else:
-                cls.__headers_model__ = None
-        return cls.__headers_model__
-
-
-def _generate_field_definitions(
-    headers: Mapping[str, tuple[str, _Field]],
-) -> Iterator[tuple[str, Any]]:
-    for name, (alias, field) in headers.items():
-        type_, annotation = get_args(field.type)
-        yield alias, (type_, annotation)
-
-
-def _create_headers_model(
-    headers_name: str, headers: Mapping[str, tuple[str, _Field]]
-) -> type[BaseModel]:
-    return create_model(
-        headers_name, __base__=BaseModel, **dict(_generate_field_definitions(headers))
-    )
-
 
 def _generate_message_annotations(
     address: str | None,
     fields: dict[str, Any],
 ) -> Generator[tuple[str, type[Annotated[Any, Any]]], None, None]:
-    address_parameters = _get_address_parameters(address)
+    address_parameters = get_address_parameters(address)
     for name, field in fields.items():
         if get_origin(field) is Annotated:
             yield name, field

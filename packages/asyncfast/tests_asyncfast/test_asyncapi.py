@@ -35,16 +35,16 @@ def test_asyncapi_header() -> None:
         "components": {
             "messages": {
                 "OnHelloMessage": {
-                    "headers": {"$ref": "#/components/schemas/OnHelloHeaders"}
+                    "headers": {"$ref": "#/components/schemas/OnHelloMessageHeaders"}
                 }
             },
             "schemas": {
-                "OnHelloHeaders": {
+                "OnHelloMessageHeaders": {
                     "properties": {
                         "request-id": {"title": "Request-Id", "type": "integer"}
                     },
                     "required": ["request-id"],
-                    "title": "OnHelloHeaders",
+                    "title": "OnHelloMessageHeaders",
                     "type": "object",
                 }
             },
@@ -79,16 +79,16 @@ def test_asyncapi_header_alias() -> None:
         "components": {
             "messages": {
                 "OnHelloMessage": {
-                    "headers": {"$ref": "#/components/schemas/OnHelloHeaders"}
+                    "headers": {"$ref": "#/components/schemas/OnHelloMessageHeaders"}
                 }
             },
             "schemas": {
-                "OnHelloHeaders": {
+                "OnHelloMessageHeaders": {
                     "properties": {
                         "Request-Id": {"title": "Request-Id", "type": "integer"}
                     },
                     "required": ["Request-Id"],
-                    "title": "OnHelloHeaders",
+                    "title": "OnHelloMessageHeaders",
                     "type": "object",
                 }
             },
@@ -123,16 +123,16 @@ def test_asyncapi_header_sync() -> None:
         "components": {
             "messages": {
                 "OnHelloMessage": {
-                    "headers": {"$ref": "#/components/schemas/OnHelloHeaders"}
+                    "headers": {"$ref": "#/components/schemas/OnHelloMessageHeaders"}
                 }
             },
             "schemas": {
-                "OnHelloHeaders": {
+                "OnHelloMessageHeaders": {
                     "properties": {
                         "request-id": {"title": "Request-Id", "type": "integer"}
                     },
                     "required": ["request-id"],
-                    "title": "OnHelloHeaders",
+                    "title": "OnHelloMessageHeaders",
                     "type": "object",
                 }
             },
@@ -169,11 +169,11 @@ def test_asyncapi_header_description() -> None:
         "components": {
             "messages": {
                 "OnHelloMessage": {
-                    "headers": {"$ref": "#/components/schemas/OnHelloHeaders"}
+                    "headers": {"$ref": "#/components/schemas/OnHelloMessageHeaders"}
                 }
             },
             "schemas": {
-                "OnHelloHeaders": {
+                "OnHelloMessageHeaders": {
                     "properties": {
                         "request-id": {
                             "description": "Id to correlate the request",
@@ -182,7 +182,7 @@ def test_asyncapi_header_description() -> None:
                         }
                     },
                     "required": ["request-id"],
-                    "title": "OnHelloHeaders",
+                    "title": "OnHelloMessageHeaders",
                     "type": "object",
                 }
             },
@@ -939,12 +939,12 @@ def test_header_default() -> None:
             "messages": {
                 "NotificationChannelHandlerMessage": {
                     "headers": {
-                        "$ref": "#/components/schemas/NotificationChannelHandlerHeaders"
+                        "$ref": "#/components/schemas/NotificationChannelHandlerMessageHeaders"
                     }
                 }
             },
             "schemas": {
-                "NotificationChannelHandlerHeaders": {
+                "NotificationChannelHandlerMessageHeaders": {
                     "properties": {
                         "request-id": {
                             "default": 0,
@@ -952,7 +952,7 @@ def test_header_default() -> None:
                             "type": "integer",
                         }
                     },
-                    "title": "NotificationChannelHandlerHeaders",
+                    "title": "NotificationChannelHandlerMessageHeaders",
                     "type": "object",
                 }
             },
@@ -1165,17 +1165,17 @@ def test_dependencies() -> None:
         "components": {
             "messages": {
                 "OnHelloMessage": {
-                    "headers": {"$ref": "#/components/schemas/OnHelloHeaders"}
+                    "headers": {"$ref": "#/components/schemas/OnHelloMessageHeaders"}
                 }
             },
             "schemas": {
-                "OnHelloHeaders": {
+                "OnHelloMessageHeaders": {
                     "properties": {
                         "header1": {"title": "Header1", "type": "integer"},
                         "header2": {"title": "Header2", "type": "integer"},
                     },
                     "required": ["header1", "header2"],
-                    "title": "OnHelloHeaders",
+                    "title": "OnHelloMessageHeaders",
                     "type": "object",
                 }
             },
