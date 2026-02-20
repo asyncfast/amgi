@@ -19,6 +19,7 @@ from asyncfast._channel import HeaderResolver
 from asyncfast._channel import MessageSenderResolver
 from asyncfast._channel import PayloadResolver
 from asyncfast._channel import Resolver
+from asyncfast._channel import Router
 from asyncfast._message import Message
 from pydantic import BaseModel
 from pydantic import create_model
@@ -320,8 +321,11 @@ def get_asyncapi(
     *,
     title: str,
     version: str,
-    channel_definitions: Sequence[ChannelDefinition],
+    router: Router,
 ) -> dict[str, Any]:
+    channel_definitions = tuple(
+        ChannelDefinition(channel) for channel in router.channels
+    )
     schema_generator = GenerateJsonSchema(ref_template="#/components/schemas/{model}")
 
     field_mapping, definitions = schema_generator.generate_definitions(
