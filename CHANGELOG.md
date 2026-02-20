@@ -1,3 +1,19 @@
+## 0.36.0 (2026-02-20)
+
+### Feat
+
+- **asyncfast**: add middleware support
+- **asyncfast**: add router-based dispatch
+- **asyncfast**: add router-based dispatch
+
+### Fix
+
+- **asyncfast**: handle untyped handler parameters safely
+
+### Refactor
+
+- **asyncfast**: move asyncapi generation into its own module
+
 ## 0.35.0 (2026-02-18)
 
 ### Feat
