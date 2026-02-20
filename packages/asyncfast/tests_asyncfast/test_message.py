@@ -831,3 +831,52 @@ async def test_message_non_existant_channel() -> None:
             AsyncMock(),
             AsyncMock(),
         )
+
+
+async def test_message_payload_untyped() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(payload):  # type: ignore[no-untyped-def]
+        test_mock(payload)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
+        "address": "topic",
+        "headers": [],
+        "payload": b'{"id":1}',
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with({"id": 1})
+
+
+async def test_message_address_parameter_untyped() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic.{name}")
+    async def topic_handler(name):  # type: ignore[no-untyped-def]
+        test_mock(name)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
+        "address": "topic.name",
+        "headers": [],
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with("name")
