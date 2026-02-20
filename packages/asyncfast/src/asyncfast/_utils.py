@@ -6,7 +6,7 @@ _FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_\-]+$")
 _PARAMETER_PATTERN = re.compile(r"{(.*)}")
 
 
-def _get_address_parameters(address: str | None) -> set[str]:
+def get_address_parameters(address: str | None) -> set[str]:
     if address is None:
         return set()
     parameters = _PARAMETER_PATTERN.findall(address)
@@ -18,7 +18,7 @@ def _get_address_parameters(address: str | None) -> set[str]:
     return set(parameters)
 
 
-def _address_pattern(address: str) -> Pattern[str]:
+def get_address_pattern(address: str) -> Pattern[str]:
     index = 0
     address_regex = "^"
     for match in _PARAMETER_PATTERN.finditer(address):

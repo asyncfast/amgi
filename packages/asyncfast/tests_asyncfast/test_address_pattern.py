@@ -1,7 +1,7 @@
 import re
 
 import pytest
-from asyncfast._utils import _address_pattern
+from asyncfast._utils import get_address_pattern
 
 
 @pytest.mark.parametrize(
@@ -13,4 +13,4 @@ from asyncfast._utils import _address_pattern
     ],
 )
 def test_address_pattern(address: str, pattern: str) -> None:
-    assert _address_pattern(address) == re.compile(pattern)
+    assert get_address_pattern(address) == re.compile(pattern)

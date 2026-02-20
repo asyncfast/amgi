@@ -29,6 +29,7 @@ from typing import TypeVar
 from amgi_types import AMGISendCallable
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
+from asyncfast._utils import get_address_parameters
 from asyncfast.bindings import Binding
 from pydantic import TypeAdapter
 from pydantic.fields import FieldInfo
@@ -39,6 +40,7 @@ _PARAMETER_PATTERN = re.compile(r"{(.*)}")
 P = ParamSpec("P")
 T = TypeVar("T")
 M = TypeVar("M", bound=Mapping[str, Any])
+DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
 
 
 def _next_or_stop(generator: Generator[T, None, Any]) -> T | StopIteration:
@@ -361,6 +363,7 @@ class DependencyCache:
 
 @dataclass(frozen=True)
 class Channel(CallableResolver, ABC):
+    address: str
     parameters: set[str]
 
     async def invoke(
@@ -534,7 +537,8 @@ def resolvers_dependencies(
     return resolvers, dependencies
 
 
-def channel(func: Callable[..., Any], address_parameters: set[str]) -> Channel:
+def channel(func: Callable[..., Any], address: str) -> Channel:
+    address_parameters = get_address_parameters(address)
     resolvers, dependencies = resolvers_dependencies(func, address_parameters)
 
     payloads = sum(
@@ -552,9 +556,13 @@ def channel(func: Callable[..., Any], address_parameters: set[str]) -> Channel:
         )
 
     if inspect.iscoroutinefunction(func):
-        return AsyncChannel(func, resolvers, dependencies, address_parameters)
+        return AsyncChannel(func, resolvers, dependencies, address, address_parameters)
     if inspect.isasyncgenfunction(func):
-        return AsyncGeneratorChannel(func, resolvers, dependencies, address_parameters)
+        return AsyncGeneratorChannel(
+            func, resolvers, dependencies, address, address_parameters
+        )
     if inspect.isgeneratorfunction(func):
-        return SyncGeneratorChannel(func, resolvers, dependencies, address_parameters)
-    return SyncChannel(func, resolvers, dependencies, address_parameters)
+        return SyncGeneratorChannel(
+            func, resolvers, dependencies, address, address_parameters
+        )
+    return SyncChannel(func, resolvers, dependencies, address, address_parameters)
