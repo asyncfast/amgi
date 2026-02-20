@@ -1,5 +1,5 @@
 from asyncfast._asyncfast import AsyncFast
-from asyncfast._asyncfast import ChannelNotFoundError
+from asyncfast._channel import ChannelNotFoundError
 from asyncfast._channel import Depends
 from asyncfast._channel import Header
 from asyncfast._channel import InvalidChannelDefinitionError

@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from dataclasses import KW_ONLY
 from functools import cached_property
 from functools import wraps
+from re import Pattern
 from typing import Annotated
 from typing import Any
 from typing import Generic
@@ -26,10 +27,14 @@ from typing import get_origin
 from typing import ParamSpec
 from typing import TypeVar
 
+from amgi_types import AMGIReceiveCallable
 from amgi_types import AMGISendCallable
+from amgi_types import MessageAckEvent
+from amgi_types import MessageNackEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 from asyncfast._utils import get_address_parameters
+from asyncfast._utils import get_address_pattern
 from asyncfast.bindings import Binding
 from pydantic import TypeAdapter
 from pydantic.fields import FieldInfo
@@ -92,6 +97,16 @@ class InvalidChannelDefinitionError(ValueError):
     """
     Raised when a channel or message handler is defined with an invalid shape.
     """
+
+
+class RouteInvariantError(RuntimeError):
+    """Raised when a selected route fails to match its address."""
+
+
+class ChannelNotFoundError(LookupError):
+    def __init__(self, address: str) -> None:
+        super().__init__(f"Couldn't resolve address: {address}")
+        self.address = address
 
 
 class Header(FieldInfo):
@@ -364,14 +379,31 @@ class DependencyCache:
 @dataclass(frozen=True)
 class Channel(CallableResolver, ABC):
     address: str
+    address_pattern: Pattern[str]
     parameters: set[str]
 
-    async def invoke(
-        self, message_receive: MessageReceive, send: AMGISendCallable
+    async def __call__(
+        self,
+        scope: MessageScope,
+        receive: AMGIReceiveCallable,
+        send: AMGISendCallable,
+        parameters: dict[str, str] | None = None,
     ) -> None:
+        parameters = self.match(scope["address"]) if parameters is None else parameters
+        if parameters is None:
+            raise RouteInvariantError(
+                f"Selected route did not match address {scope['address']!r}"
+            )
+        message_receive = MessageReceive(scope, parameters)
         dependency_cache = DependencyCache(asyncio.get_event_loop())
         async with AsyncExitStack() as async_exit_stack:
             await self.call(message_receive, send, dependency_cache, async_exit_stack)
+
+    def match(self, address: str) -> dict[str, str] | None:
+        match = self.address_pattern.match(address)
+        if match:
+            return match.groupdict()
+        return None
 
 
 @dataclass(frozen=True)
@@ -538,8 +570,9 @@ def resolvers_dependencies(
     return resolvers, dependencies
 
 
-def channel(func: Callable[..., Any], address: str) -> Channel:
+def get_channel(func: Callable[..., Any], address: str) -> Channel:
     address_parameters = get_address_parameters(address)
+    address_pattern = get_address_pattern(address)
     resolvers, dependencies = resolvers_dependencies(func, address_parameters)
 
     payloads = sum(
@@ -557,13 +590,53 @@ def channel(func: Callable[..., Any], address: str) -> Channel:
         )
 
     if inspect.iscoroutinefunction(func):
-        return AsyncChannel(func, resolvers, dependencies, address, address_parameters)
+        return AsyncChannel(
+            func, resolvers, dependencies, address, address_pattern, address_parameters
+        )
     if inspect.isasyncgenfunction(func):
         return AsyncGeneratorChannel(
-            func, resolvers, dependencies, address, address_parameters
+            func, resolvers, dependencies, address, address_pattern, address_parameters
         )
     if inspect.isgeneratorfunction(func):
         return SyncGeneratorChannel(
-            func, resolvers, dependencies, address, address_parameters
+            func, resolvers, dependencies, address, address_pattern, address_parameters
         )
-    return SyncChannel(func, resolvers, dependencies, address, address_parameters)
+    return SyncChannel(
+        func, resolvers, dependencies, address, address_pattern, address_parameters
+    )
+
+
+class Router:
+    def __init__(self) -> None:
+        self.channels: list[Channel] = []
+
+    def add_channel(self, address: str, func: Callable[..., Any]) -> None:
+        self.channels.append(get_channel(func, address))
+
+    async def __call__(
+        self, scope: MessageScope, receive: AMGIReceiveCallable, send: AMGISendCallable
+    ) -> None:
+        try:
+            await self.call_channel(scope, receive, send)
+
+            message_ack_event: MessageAckEvent = {
+                "type": "message.ack",
+            }
+            await send(message_ack_event)
+        except Exception as e:
+            message_nack_event: MessageNackEvent = {
+                "type": "message.nack",
+                "message": str(e),
+            }
+            await send(message_nack_event)
+
+    async def call_channel(
+        self, scope: MessageScope, receive: AMGIReceiveCallable, send: AMGISendCallable
+    ) -> None:
+        address = scope["address"]
+        for channel in self.channels:
+            parameters = channel.match(address)
+            if parameters is not None:
+                await channel(scope, receive, send, parameters)
+                return
+        raise ChannelNotFoundError(address)

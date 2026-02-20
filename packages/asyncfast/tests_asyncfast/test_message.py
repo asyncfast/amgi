@@ -15,7 +15,6 @@ import pytest
 from amgi_types import AMGISendEvent
 from amgi_types import MessageScope
 from asyncfast import AsyncFast
-from asyncfast import ChannelNotFoundError
 from asyncfast import Header
 from asyncfast import Message
 from asyncfast import MessageSender
@@ -823,14 +822,16 @@ async def test_message_non_existant_channel() -> None:
         "address": "not_topic",
         "headers": [],
     }
-    with pytest.raises(
-        ChannelNotFoundError, match="Couldn't resolve address: not_topic"
-    ):
-        await app(
-            message_scope,
-            AsyncMock(),
-            AsyncMock(),
-        )
+    send_mock = AsyncMock()
+    await app(
+        message_scope,
+        AsyncMock(),
+        send_mock,
+    )
+
+    send_mock.assert_awaited_once_with(
+        {"type": "message.nack", "message": "Couldn't resolve address: not_topic"}
+    )
 
 
 async def test_message_payload_untyped() -> None:

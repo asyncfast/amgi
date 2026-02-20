@@ -7,10 +7,9 @@ from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import Mock
 
-from asyncfast._channel import channel
 from asyncfast._channel import Depends
+from asyncfast._channel import get_channel
 from asyncfast._channel import Header
-from asyncfast._channel import MessageReceive
 from asyncfast._channel import MessageSender
 from asyncfast.bindings import KafkaKey
 
@@ -21,17 +20,15 @@ async def test_payload_basic() -> None:
     def func(i: int) -> None:
         mock(i)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-                "payload": b"1",
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+            "payload": b"1",
+        },
+        Mock(),
         Mock(),
     )
 
@@ -44,16 +41,14 @@ async def test_header_basic() -> None:
     def func(header: Annotated[str, Header()]) -> None:
         mock(header)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [(b"header", b"value")],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [(b"header", b"value")],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -66,16 +61,14 @@ async def test_header_default() -> None:
     def func(header: Annotated[str, Header()] = "value") -> None:
         mock(header)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -88,16 +81,14 @@ async def test_header_underscore_to_hyphen() -> None:
     def func(header_name: Annotated[str, Header()]) -> None:
         mock(header_name)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [(b"header-name", b"value")],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [(b"header-name", b"value")],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -110,16 +101,14 @@ async def test_header_alias() -> None:
     def func(etag: Annotated[str, Header(alias="ETag")]) -> None:
         mock(etag)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [(b"ETag", b"9e30981e-02d5-11f1-9648-e323315723e1")],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [(b"ETag", b"9e30981e-02d5-11f1-9648-e323315723e1")],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -132,16 +121,14 @@ async def test_address_parameter() -> None:
     def func(user: str) -> None:
         mock(user)
 
-    await channel(func, "channel.{user}").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel.54a08cc6-02db-11f1-afbf-f3f4688d5de4",
-                "headers": [],
-            },
-            {"user": "54a08cc6-02db-11f1-afbf-f3f4688d5de4"},
-        ),
+    await get_channel(func, "channel.{user}")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel.54a08cc6-02db-11f1-afbf-f3f4688d5de4",
+            "headers": [],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -154,17 +141,15 @@ async def test_binding() -> None:
     def func(key: Annotated[int, KafkaKey()]) -> None:
         mock(key)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-                "bindings": {"kafka": {"key": b"123"}},
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+            "bindings": {"kafka": {"key": b"123"}},
+        },
+        Mock(),
         Mock(),
     )
 
@@ -177,16 +162,14 @@ async def test_binding_default() -> None:
     def func(key: Annotated[int, KafkaKey()] = 123) -> None:
         mock(key)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -199,17 +182,15 @@ async def test_async_func() -> None:
     async def func(i: int) -> None:
         await mock(i)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-                "payload": b"1",
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+            "payload": b"1",
+        },
+        Mock(),
         Mock(),
     )
 
@@ -226,17 +207,15 @@ async def test_async_generator_func() -> None:
             "headers": [(b"Id", b"10")],
         }
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-                "payload": b"1",
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+            "payload": b"1",
+        },
+        Mock(),
         send_mock,
     )
 
@@ -260,17 +239,15 @@ async def test_sync_generator_func() -> None:
             "headers": [(b"Id", b"10")],
         }
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-                "payload": b"1",
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+            "payload": b"1",
+        },
+        Mock(),
         send_mock,
     )
 
@@ -296,17 +273,15 @@ async def test_message_sender() -> None:
             }
         )
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-                "payload": b"1",
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+            "payload": b"1",
+        },
+        Mock(),
         send_mock,
     )
 
@@ -334,16 +309,14 @@ async def test_async_depends() -> None:
     def func(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
         mock(headers)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [(b"header1", b"1"), (b"header2", b"2")],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [(b"header1", b"1"), (b"header2", b"2")],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -364,16 +337,14 @@ async def test_sync_depends() -> None:
     def func(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
         mock(headers)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [(b"header1", b"1"), (b"header2", b"2")],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [(b"header1", b"1"), (b"header2", b"2")],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -393,16 +364,14 @@ async def test_async_depends_use_cache() -> None:
     ) -> None:
         mock_func(dependency1, dependency2)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -425,16 +394,14 @@ async def test_async_depends_use_cache_false() -> None:
     ) -> None:
         mock_func(dependency1, dependency2)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -465,16 +432,14 @@ async def test_async_yielding_depends() -> None:
     def func(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
         mock(headers)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [(b"header1", b"1"), (b"header2", b"2")],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [(b"header1", b"1"), (b"header2", b"2")],
+        },
+        Mock(),
         Mock(),
     )
 
@@ -505,16 +470,14 @@ async def test_sync_yielding_depends() -> None:
     def func(headers: Annotated[dict[str, int], Depends(dependency)]) -> None:
         mock(headers)
 
-    await channel(func, "channel").invoke(
-        MessageReceive(
-            {
-                "type": "message",
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "address": "channel",
-                "headers": [(b"header1", b"1"), (b"header2", b"2")],
-            },
-            {},
-        ),
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [(b"header1", b"1"), (b"header2", b"2")],
+        },
+        Mock(),
         Mock(),
     )
 
