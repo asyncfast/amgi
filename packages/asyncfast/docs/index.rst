@@ -79,6 +79,7 @@ Taking ideas from:
    sending
    dependencies
    lifespan
+   middleware
 
 .. _amgi: https://amgi.readthedocs.io/en/latest/
 
