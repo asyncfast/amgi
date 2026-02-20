@@ -519,7 +519,8 @@ def parameter_resolver(
     if get_origin(parameter.annotation) is MessageSender:
         return MessageSenderResolver(parameter.annotation)
 
-    return PayloadResolver(parameter.annotation)
+    type_ = object if parameter.empty == parameter.annotation else parameter.annotation
+    return PayloadResolver(type_)
 
 
 def resolvers_dependencies(

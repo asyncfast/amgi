@@ -1188,3 +1188,34 @@ def test_dependencies() -> None:
             }
         },
     }
+
+
+async def test_untyped() -> None:
+    app = AsyncFast()
+
+    @app.channel("topic.{name}")
+    async def topic_handler(payload, name):  # type: ignore[no-untyped-def]
+        pass  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "TopicHandler": {
+                "address": "topic.{name}",
+                "messages": {
+                    "TopicHandlerMessage": {
+                        "$ref": "#/components/messages/TopicHandlerMessage"
+                    }
+                },
+                "parameters": {"name": {}},
+            }
+        },
+        "components": {"messages": {"TopicHandlerMessage": {"payload": {}}}},
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receiveTopicHandler": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/TopicHandler"},
+            }
+        },
+    }
