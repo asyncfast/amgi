@@ -2,6 +2,7 @@ from collections.abc import Generator
 from collections.abc import Iterable
 from collections.abc import Iterator
 from collections.abc import Mapping
+from collections.abc import Sequence
 from typing import Annotated
 from typing import Any
 from typing import ClassVar
@@ -16,58 +17,53 @@ from asyncfast.bindings import Binding
 from pydantic import TypeAdapter
 
 
-class _Field:
-    def __init__(self, type_: type):
-        self.type = type_
-        self.type_adapter = TypeAdapter[Any](type_)
-
-    def __hash__(self) -> int:
-        return hash(self.type)
-
-
 class Message(Mapping[str, Any]):
 
     __address__: ClassVar[str | None] = None
-    __headers__: ClassVar[dict[str, tuple[str, _Field]]]
-    __parameters__: ClassVar[dict[str, TypeAdapter[Any]]]
-    __payload__: ClassVar[tuple[str, _Field] | None]
-    __bindings__: ClassVar[dict[str, tuple[str, str, _Field]]]
+    __headers__: ClassVar[Sequence[tuple[str, str, type[Any], TypeAdapter[Any]]]]
+    __parameters__: ClassVar[Sequence[tuple[str, TypeAdapter[Any]]]]
+    __payload__: ClassVar[tuple[str, type[Any], TypeAdapter[Any]] | None]
+    __bindings__: ClassVar[Sequence[tuple[str, str, str, type[Any], TypeAdapter[Any]]]]
 
     def __init_subclass__(cls, address: str | None = None, **kwargs: Any) -> None:
         cls.__address__ = address
         annotations = list(_generate_message_annotations(address, cls.__annotations__))
 
-        headers = {
-            name: (
+        headers = tuple(
+            (
+                name,
                 (
                     get_args(annotated)[1].alias
                     if get_args(annotated)[1].alias
                     else name.replace("_", "-")
                 ),
-                _Field(annotated),
+                annotated,
+                TypeAdapter(annotated),
             )
             for name, annotated in annotations
             if isinstance(get_args(annotated)[1], Header)
-        }
+        )
 
-        parameters = {
-            name: TypeAdapter(annotated)
+        parameters = tuple(
+            (name, TypeAdapter(annotated))
             for name, annotated in annotations
             if isinstance(get_args(annotated)[1], Parameter)
-        }
+        )
 
-        bindings = {
-            name: (
+        bindings = tuple(
+            (
+                name,
                 get_args(annotated)[1].__protocol__,
                 get_args(annotated)[1].__field_name__,
-                _Field(annotated),
+                annotated,
+                TypeAdapter(annotated),
             )
             for name, annotated in annotations
             if isinstance(get_args(annotated)[1], Binding)
-        }
+        )
 
         payloads = [
-            (name, _Field(annotated))
+            (name, annotated, TypeAdapter(annotated))
             for name, annotated in annotations
             if isinstance(get_args(annotated)[1], Payload)
         ]
@@ -87,8 +83,8 @@ class Message(Mapping[str, Any]):
         elif key == "headers":
             return self._get_headers()
         elif key == "payload" and self.__payload__:
-            name, field = self.__payload__
-            return field.type_adapter.dump_json(getattr(self, name))
+            name, _, type_adapter = self.__payload__
+            return type_adapter.dump_json(getattr(self, name))
         elif key == "bindings" and self.__bindings__:
             return self._get_bindings()
         raise KeyError(key)
@@ -110,14 +106,14 @@ class Message(Mapping[str, Any]):
             return None
         parameters = {
             name: type_adapter.dump_python(getattr(self, name))
-            for name, type_adapter in self.__parameters__.items()
+            for name, type_adapter in self.__parameters__
         }
 
         return self.__address__.format(**parameters)
 
     def _generate_headers(self) -> Iterable[tuple[str, bytes]]:
-        for name, (alias, field) in self.__headers__.items():
-            yield alias, self._get_value(name, field.type_adapter)
+        for name, alias, _, type_adapter in self.__headers__:
+            yield alias, self._get_value(name, type_adapter)
 
     def _get_headers(self) -> Iterable[tuple[bytes, bytes]]:
         return [(name.encode(), value) for name, value in self._generate_headers()]
@@ -131,9 +127,9 @@ class Message(Mapping[str, Any]):
 
     def _get_bindings(self) -> dict[str, dict[str, Any]]:
         bindings: dict[str, dict[str, Any]] = {}
-        for name, (protocol, field_name, field) in self.__bindings__.items():
+        for name, protocol, field_name, _, type_adapter in self.__bindings__:
             bindings.setdefault(protocol, {})[field_name] = self._get_value(
-                name, field.type_adapter
+                name, type_adapter
             )
         return bindings
 
