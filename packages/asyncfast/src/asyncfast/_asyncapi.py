@@ -34,8 +34,9 @@ from pydantic_core import CoreSchema
 def generate_resolvers(
     callable_resolver: CallableResolver,
 ) -> Generator[Resolver[Any], None, None]:
-    yield from callable_resolver.resolvers.values()
-    for dependency in callable_resolver.dependencies.values():
+    for _, resolver in callable_resolver.resolvers:
+        yield resolver
+    for _, dependency in callable_resolver.dependencies:
         yield from generate_resolvers(dependency)
 
 
@@ -133,7 +134,7 @@ class ChannelDefinition:
     def bindings(self) -> Sequence[BindingResolver[Any]]:
         return [
             resolver
-            for resolver in self.channel.resolvers.values()
+            for _, resolver in self.channel.resolvers
             if isinstance(resolver, BindingResolver)
         ]
 
@@ -200,19 +201,16 @@ class ChannelDefinition:
             MessageDefinition(
                 message.__name__,
                 message.__address__,
-                {name for name in message.__parameters__},
+                {name for name, _ in message.__parameters__},
+                [(alias, type_, ...) for _, alias, type_, _ in message.__headers__],
                 [
-                    (alias, field.type, ...)
-                    for name, (alias, field) in message.__headers__.items()
-                ],
-                [
-                    (protocol, field_name, field.type, field.type_adapter.core_schema)
-                    for protocol, field_name, field in message.__bindings__.values()
+                    (protocol, field_name, type_, type_adapter.core_schema)
+                    for _, protocol, field_name, type_, type_adapter in message.__bindings__
                 ],
                 (
                     (
-                        message.__payload__[1].type,
-                        message.__payload__[1].type_adapter.core_schema,
+                        message.__payload__[1],
+                        message.__payload__[2].core_schema,
                     )
                     if message.__payload__
                     else None

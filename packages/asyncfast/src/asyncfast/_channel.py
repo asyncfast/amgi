@@ -11,6 +11,7 @@ from collections.abc import AsyncGenerator
 from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Mapping
+from collections.abc import Sequence
 from contextlib import AbstractAsyncContextManager
 from contextlib import asynccontextmanager
 from contextlib import AsyncExitStack
@@ -228,8 +229,8 @@ class MessageSenderResolver(Resolver[MessageSender[M]]):
 @dataclass(frozen=True)
 class CallableResolver(ABC):
     func: Callable[..., Any]
-    resolvers: dict[str, Resolver[Any]]
-    dependencies: dict[str, DependencyResolver]
+    resolvers: Sequence[tuple[str, Resolver[Any]]]
+    dependencies: Sequence[tuple[str, DependencyResolver]]
 
     async def resolve(
         self,
@@ -240,18 +241,19 @@ class CallableResolver(ABC):
     ) -> dict[str, Any]:
         resolver_result = {
             name: resolver.resolve(message_receive, send)
-            for name, resolver in self.resolvers.items()
+            for name, resolver in self.resolvers
         }
 
+        dependency_names = (name for name, _ in self.dependencies)
         dependency_result = dict(
             zip(
-                self.dependencies.keys(),
+                dependency_names,
                 await asyncio.gather(
                     *(
                         dependency_cache.resolve(
                             dependency, message_receive, send, async_exit_stack
                         )
-                        for dependency in self.dependencies.values()
+                        for _, dependency in self.dependencies
                     )
                 ),
             )
@@ -557,17 +559,19 @@ def parameter_resolver(
 
 def resolvers_dependencies(
     func: Callable[..., Any], address_parameters: set[str]
-) -> tuple[dict[str, Resolver[Any]], dict[str, DependencyResolver]]:
+) -> tuple[
+    Sequence[tuple[str, Resolver[Any]]], Sequence[tuple[str, DependencyResolver]]
+]:
     signature = inspect.signature(func)
-    resolvers = {}
-    dependencies = {}
+    resolvers = []
+    dependencies = []
     for name, parameter in signature.parameters.items():
         resolver = parameter_resolver(name, parameter, address_parameters)
         if isinstance(resolver, Resolver):
-            resolvers[name] = resolver
+            resolvers.append((name, resolver))
         else:
-            dependencies[name] = resolver
-    return resolvers, dependencies
+            dependencies.append((name, resolver))
+    return tuple(resolvers), tuple(dependencies)
 
 
 def get_channel(func: Callable[..., Any], address: str) -> Channel:
@@ -575,14 +579,12 @@ def get_channel(func: Callable[..., Any], address: str) -> Channel:
     address_pattern = get_address_pattern(address)
     resolvers, dependencies = resolvers_dependencies(func, address_parameters)
 
-    payloads = sum(
-        isinstance(resolver, PayloadResolver) for resolver in resolvers.values()
-    )
+    payloads = sum(isinstance(resolver, PayloadResolver) for _, resolver in resolvers)
     if payloads > 1:
         raise InvalidChannelDefinitionError("Channel must have no more than 1 payload")
 
     message_senders = sum(
-        isinstance(resolver, MessageSenderResolver) for resolver in resolvers.values()
+        isinstance(resolver, MessageSenderResolver) for _, resolver in resolvers
     )
     if message_senders > 1:
         raise InvalidChannelDefinitionError(
