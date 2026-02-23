@@ -7,16 +7,19 @@ import signal
 import sys
 import warnings
 from collections import defaultdict
+from collections.abc import AsyncGenerator
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Iterable
 from collections.abc import Sequence
+from contextlib import asynccontextmanager
 from functools import cached_property
 from types import TracebackType
 from typing import Any
 from typing import AsyncContextManager
 from typing import Literal
+from typing import Protocol
 from typing import TypedDict
 
 import boto3
@@ -63,6 +66,24 @@ class _Record(TypedDict):
 
 class _SqsEventSourceMapping(TypedDict):
     Records: list[_Record]
+
+
+class _InvocationHook(Protocol):
+    def __call__(
+        self,
+        event: _SqsEventSourceMapping,
+        context: Any,
+    ) -> AsyncContextManager[None]:
+        """
+        Wraps one Lambda invocation
+        """
+
+
+@asynccontextmanager
+async def _noop_hook(
+    event: _SqsEventSourceMapping, context: Any
+) -> AsyncGenerator[None, None]:
+    yield
 
 
 class _ItemIdentifier(TypedDict):
@@ -257,6 +278,7 @@ class SqsEventSourceMappingHandler:
         aws_secret_access_key: str | None = None,
         lifespan: bool = True,
         message_send: _MessageSendManagerT | None = None,
+        invocation_hook: _InvocationHook | None = None,
     ) -> None:
         self._app = app
         self._region_name = region_name
@@ -270,6 +292,7 @@ class SqsEventSourceMappingHandler:
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
+        self._invocation_hook = invocation_hook or _noop_hook
         self._loop = asyncio.new_event_loop()
         self._lifespan = lifespan
         self._lifespan_context: Lifespan | None = None
@@ -283,37 +306,45 @@ class SqsEventSourceMappingHandler:
     def __call__(
         self, event: _SqsEventSourceMapping, context: Any
     ) -> _BatchItemFailures:
-        return self._loop.run_until_complete(self._call(event))
+        return self._loop.run_until_complete(self._call(event, context))
 
-    async def _call(self, event: _SqsEventSourceMapping) -> _BatchItemFailures:
-        if not self._lifespan_context and self._lifespan:
-            self._lifespan_context = Lifespan(self._app, self._state)
-            await self._lifespan_context.__aenter__()
-        if self._message_send is None:
-            self._message_send = await self._message_send_context.__aenter__()
-        event_source_arn_records = defaultdict(list)
-        corrupted_message_ids = []
-        for record in event["Records"]:
-            if hashlib.md5(record["body"].encode()).hexdigest() == record["md5OfBody"]:
-                event_source_arn_records[record["eventSourceARN"]].append(record)
-            else:
-                corrupted_message_ids.append(record["messageId"])
+    async def _call(
+        self, event: _SqsEventSourceMapping, context: Any
+    ) -> _BatchItemFailures:
+        async with self._invocation_hook(event, context):
+            if not self._lifespan_context and self._lifespan:
+                self._lifespan_context = Lifespan(self._app, self._state)
+                await self._lifespan_context.__aenter__()
+            if self._message_send is None:
+                self._message_send = await self._message_send_context.__aenter__()
+            event_source_arn_records = defaultdict(list)
+            corrupted_message_ids = []
+            for record in event["Records"]:
+                if (
+                    hashlib.md5(record["body"].encode()).hexdigest()
+                    == record["md5OfBody"]
+                ):
+                    event_source_arn_records[record["eventSourceARN"]].append(record)
+                else:
+                    corrupted_message_ids.append(record["messageId"])
 
-        unacked_message_ids = await asyncio.gather(
-            *(
-                self._call_source_batch(event_source_arn, records, self._message_send)
-                for event_source_arn, records in event_source_arn_records.items()
-            )
-        )
-
-        return {
-            "batchItemFailures": [
-                {"itemIdentifier": message_id}
-                for message_id in itertools.chain(
-                    *unacked_message_ids, corrupted_message_ids
+            unacked_message_ids = await asyncio.gather(
+                *(
+                    self._call_source_batch(
+                        event_source_arn, records, self._message_send
+                    )
+                    for event_source_arn, records in event_source_arn_records.items()
                 )
-            ]
-        }
+            )
+
+            return {
+                "batchItemFailures": [
+                    {"itemIdentifier": message_id}
+                    for message_id in itertools.chain(
+                        *unacked_message_ids, corrupted_message_ids
+                    )
+                ]
+            }
 
     async def _call_source_batch(
         self,

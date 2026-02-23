@@ -1,5 +1,6 @@
 import asyncio
 from typing import Generator
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -65,6 +66,7 @@ async def test_sqs_handler_record_send(
                     }
                 ]
             },
+            Mock(),
         )
     )
     async with app.call() as (scope, receive, send):
@@ -140,6 +142,7 @@ async def test_sqs_handler_record_send_invalid_message(
                     }
                 ]
             },
+            Mock(),
         )
     )
     async with app.call() as (scope, receive, send):
