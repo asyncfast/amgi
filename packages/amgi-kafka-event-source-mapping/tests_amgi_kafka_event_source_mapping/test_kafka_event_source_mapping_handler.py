@@ -6,6 +6,7 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+from amgi_kafka_event_source_mapping import _KafkaEventSourceMapping
 from amgi_kafka_event_source_mapping import KafkaEventSourceMappingHandler
 from amgi_kafka_event_source_mapping import NackError
 from amgi_types import AMGIReceiveCallable
@@ -57,6 +58,7 @@ async def test_kafka_event_source_mapping_handler_records() -> None:
                     ]
                 },
             },
+            Mock(),
         )
     )
     async with app.call() as (scope, receive, send):
@@ -122,6 +124,7 @@ async def test_kafka_event_source_mapping_handler_error_nack() -> None:
                     ]
                 },
             },
+            Mock(),
         )
     )
     async with app.call() as (scope, receive, send):
@@ -191,6 +194,7 @@ async def test_kafka_event_source_mapping_handler_log_nack(
                     ]
                 },
             },
+            Mock(),
         )
     )
     with caplog.at_level(logging.ERROR, logger="amgi-kafka-event-source-mapping.error"):
@@ -235,6 +239,7 @@ async def test_lifespan() -> None:
                 "bootstrapServers": "b-2.demo-cluster-1.a1bcde.c1.kafka.us-east-1.amazonaws.com:9092,b-1.demo-cluster-1.a1bcde.c1.kafka.us-east-1.amazonaws.com:9092",
                 "records": {},
             },
+            Mock(),
         )
     )
     async with app.lifespan({"item": state_item}):
@@ -277,6 +282,7 @@ async def test_lifespan() -> None:
                         ]
                     },
                 },
+                Mock(),
             )
         )
         async with app.call() as (scope, receive, send):
@@ -385,6 +391,7 @@ async def test_kafka_event_source_mapping_handler_message_send() -> None:
                     ]
                 },
             },
+            Mock(),
         )
     )
     async with app.call() as (scope, receive, send):
@@ -462,6 +469,7 @@ async def test_kafka_event_source_mapping_receive_not_callable() -> None:
                     ]
                 },
             },
+            Mock(),
         )
     )
     async with app.call() as (scope, receive, send):
@@ -469,3 +477,65 @@ async def test_kafka_event_source_mapping_receive_not_callable() -> None:
             await receive()
 
     await call_task
+
+
+async def test_kafka_event_source_mapping_handler_invocation_hook() -> None:
+    app = MockApp()
+    mock_invocation_hook = Mock(return_value=AsyncMock())
+    kafka_event_source_mapping_handler = KafkaEventSourceMappingHandler(
+        app,
+        lifespan=False,
+        message_send=AsyncMock(),
+        invocation_hook=mock_invocation_hook,
+    )
+
+    mock_context = Mock()
+    event: _KafkaEventSourceMapping = {
+        "eventSource": "aws:kafka",
+        "eventSourceArn": "arn:aws:kafka:us-east-1:123456789012:cluster/vpc-2priv-2pub/751d2973-a626-431c-9d4e-d7975eb44dd7-2",
+        "bootstrapServers": "b-2.demo-cluster-1.a1bcde.c1.kafka.us-east-1.amazonaws.com:9092,b-1.demo-cluster-1.a1bcde.c1.kafka.us-east-1.amazonaws.com:9092",
+        "records": {
+            "mytopic-0": [
+                {
+                    "topic": "mytopic",
+                    "partition": 0,
+                    "offset": 15,
+                    "timestamp": 1545084650987,
+                    "timestampType": "CREATE_TIME",
+                    "key": "a2V5",
+                    "value": "SGVsbG8sIHRoaXMgaXMgYSB0ZXN0Lg==",
+                    "headers": [
+                        {
+                            "headerKey": [
+                                104,
+                                101,
+                                97,
+                                100,
+                                101,
+                                114,
+                                86,
+                                97,
+                                108,
+                                117,
+                                101,
+                            ]
+                        }
+                    ],
+                },
+            ]
+        },
+    }
+    call_task = asyncio.get_running_loop().create_task(
+        kafka_event_source_mapping_handler._call(
+            event,
+            mock_context,
+        )
+    )
+    async with app.call():
+        mock_invocation_hook.assert_called_once_with(event, mock_context)
+        mock_invocation_hook.return_value.__aenter__.assert_awaited_once()
+        mock_invocation_hook.return_value.__aexit__.assert_not_awaited()
+
+    await call_task
+
+    mock_invocation_hook.return_value.__aexit__.assert_awaited_once()

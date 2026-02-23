@@ -76,6 +76,7 @@ async def test_kafka_event_source_mapping_handler_message_send(
                     ]
                 },
             },
+            Mock(),
         )
     )
     async with AIOKafkaConsumer(

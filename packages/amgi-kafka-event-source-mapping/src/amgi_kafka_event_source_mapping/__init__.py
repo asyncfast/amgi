@@ -5,16 +5,19 @@ import logging
 import signal
 import sys
 from asyncio import Task
+from collections.abc import AsyncGenerator
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Sequence
+from contextlib import asynccontextmanager
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Any
 from typing import AsyncContextManager
 from typing import Literal
+from typing import Protocol
 
 from amgi_aiokafka import MessageSend as AioKafkaMessageSend
 from amgi_common import Lifespan
@@ -69,6 +72,24 @@ class _KafkaEventSourceMapping(TypedDict):
     eventSourceArn: NotRequired[str]
     bootstrapServers: str
     records: dict[str, list[_KafkaRecord]]
+
+
+class _InvocationHook(Protocol):
+    def __call__(
+        self,
+        event: _KafkaEventSourceMapping,
+        context: Any,
+    ) -> AsyncContextManager[None]:
+        """
+        Wraps one Lambda invocation
+        """
+
+
+@asynccontextmanager
+async def _noop_hook(
+    event: _KafkaEventSourceMapping, context: Any
+) -> AsyncGenerator[None, None]:
+    yield
 
 
 class _Send:
@@ -186,10 +207,12 @@ class KafkaEventSourceMappingHandler:
         lifespan: bool = True,
         on_nack: Literal["log", "error"] = "log",
         message_send: _MessageSendManagerT | None = None,
+        invocation_hook: _InvocationHook | None = None,
     ) -> None:
         self._app = app
         self._on_nack = on_nack
         self._lifespan = lifespan
+        self._invocation_hook = invocation_hook or _noop_hook
         self._loop = asyncio.new_event_loop()
         self._message_send_manager = (
             _MessageSender()
@@ -208,32 +231,33 @@ class KafkaEventSourceMappingHandler:
             pass
 
     def __call__(self, event: _KafkaEventSourceMapping, context: Any) -> None:
-        return self._loop.run_until_complete(self._call(event))
+        return self._loop.run_until_complete(self._call(event, context))
 
-    async def _call(self, event: _KafkaEventSourceMapping) -> None:
-        if not self._lifespan_context and self._lifespan:
-            self._lifespan_context = Lifespan(self._app, self._state)
-            await self._lifespan_context.__aenter__()
-        if self._message_sender is None:
-            self._message_sender = await self._message_send_manager.__aenter__()
+    async def _call(self, event: _KafkaEventSourceMapping, context: Any) -> None:
+        async with self._invocation_hook(event, context):
+            if not self._lifespan_context and self._lifespan:
+                self._lifespan_context = Lifespan(self._app, self._state)
+                await self._lifespan_context.__aenter__()
+            if self._message_sender is None:
+                self._message_sender = await self._message_send_manager.__aenter__()
 
-        record_nacks = await asyncio.gather(
-            *(
-                self._call_source_batch(
-                    event["bootstrapServers"],
-                    _partition_records_topic(records),
-                    records,
-                    self._message_sender,
+            record_nacks = await asyncio.gather(
+                *(
+                    self._call_source_batch(
+                        event["bootstrapServers"],
+                        _partition_records_topic(records),
+                        records,
+                        self._message_sender,
+                    )
+                    for records in event["records"].values()
                 )
-                for records in event["records"].values()
             )
-        )
 
-        all_nacks = tuple(itertools.chain.from_iterable(record_nacks))
-        if self._on_nack == "error" and all_nacks:
-            raise NackError(all_nacks)
-        for nack in all_nacks:
-            _logger.error(str(nack))
+            all_nacks = tuple(itertools.chain.from_iterable(record_nacks))
+            if self._on_nack == "error" and all_nacks:
+                raise NackError(all_nacks)
+            for nack in all_nacks:
+                _logger.error(str(nack))
 
     async def _call_source_batch(
         self,
