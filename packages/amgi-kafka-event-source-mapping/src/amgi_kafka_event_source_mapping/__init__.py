@@ -204,6 +204,7 @@ class KafkaEventSourceMappingHandler:
     def __init__(
         self,
         app: AMGIApplication,
+        *,
         lifespan: bool = True,
         on_nack: Literal["log", "error"] = "log",
         message_send: _MessageSendManagerT | None = None,
