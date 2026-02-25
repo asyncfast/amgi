@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "amgi-aiobotocore"
-version = "0.36.0"
+version = "0.37.0"
 description = "AMGI AWS Services Servers"
 readme = "README.md"
 license = "MIT"
@@ -27,8 +27,8 @@ classifiers = [
 ]
 dependencies = [
   "aiobotocore>=2.25.0",
-  "amgi-common==0.36.0",
-  "amgi-types==0.36.0",
+  "amgi-common==0.37.0",
+  "amgi-types==0.37.0",
   "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
 

@@ -6,7 +6,7 @@ a Kafka event source mapped environment.
 ## Installation
 
 ```bash
-pip install amgi-kafka-event-source-mapping==0.36.0
+pip install amgi-kafka-event-source-mapping==0.37.0
 ```
 
 ## Example

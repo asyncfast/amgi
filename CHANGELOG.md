@@ -1,3 +1,16 @@
+## 0.37.0 (2026-02-25)
+
+### Feat
+
+- **amgi-sqs-event-source-mapping**: make sqs event source mapping handler init options keyword-only
+- **amgi-kafka-event-source-mapping**: make kafka event source mapping handler init options keyword-only
+- **amgi-sqs-event-source-mapping**: add invocation hook
+- **amgi-kafka-event-source-mapping**: add invocation hook
+
+### Perf
+
+- **asyncfast**: optimize resolver/binding storage
+
 ## 0.36.0 (2026-02-20)
 
 ### Feat

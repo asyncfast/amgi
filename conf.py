@@ -5,7 +5,7 @@ from multiproject.utils import get_project
 
 copyright = "2025, Jack Burridge"
 author = "Jack Burridge"
-release = "0.36.0"
+release = "0.37.0"
 
 
 exclude_patterns = ["_build", ".venv"]

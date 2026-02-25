@@ -6,7 +6,7 @@ amgi-aiokafka is an [AMGI](https://amgi.readthedocs.io/en/latest/) compatible se
 ## Installation
 
 ```
-pip install amgi-aiokafka==0.36.0
+pip install amgi-aiokafka==0.37.0
 ```
 
 ## Example
