@@ -272,6 +272,7 @@ class SqsEventSourceMappingHandler:
     def __init__(
         self,
         app: AMGIApplication,
+        *,
         region_name: str | None = None,
         endpoint_url: str | None = None,
         aws_access_key_id: str | None = None,
