@@ -30,7 +30,6 @@ dependencies = [
   "amgi-types==0.37.0",
   "paho-mqtt>=2.1.0",
 ]
-
 entry-points.amgi_server.amgi-paho-mqtt = "amgi_paho_mqtt:run"
 
 [dependency-groups]
@@ -43,11 +42,7 @@ dev = [
   "testcontainers[mqtt]>=4.13.0",
 ]
 
-[tool.uv.sources.test-utils]
-workspace = true
-
-[tool.uv.sources.amgi-common]
-workspace = true
-
-[tool.uv.sources.amgi-types]
-workspace = true
+[tool.uv]
+sources.amgi-common.workspace = true
+sources.amgi-types.workspace = true
+sources.test-utils.workspace = true

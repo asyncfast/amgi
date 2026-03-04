@@ -13,7 +13,7 @@ repos:
       - id: mypy
         additional_dependencies: ["pydantic==2.11.7", "types-docutils", "sphinx>=7.4.7"]
   - repo: https://github.com/PyCQA/autoflake
-    rev: v2.3.1
+    rev: v2.3.3
     hooks:
       - id: autoflake
         args: [--remove-all-unused-imports, --in-place]
@@ -22,7 +22,7 @@ repos:
     hooks:
       - id: yamlfmt
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.12.1
+    rev: v4.13.9
     hooks:
       - id: commitizen
         stages: [commit-msg]
@@ -45,7 +45,7 @@ repos:
         files: 'pyproject\.toml$'
         additional_dependencies: ["tomli==1.2.0", "tomli-w==1.2.0", "packaging==25.0"]
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: v2.11.1
+    rev: v2.16.2
     hooks:
       - id: pyproject-fmt
         args: [--keep-full-version]

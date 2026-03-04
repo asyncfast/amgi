@@ -36,7 +36,6 @@ dependencies = [
   "amgi-types==0.37.0",
   "pydantic>=2.0.0",
 ]
-
 optional-dependencies.standard = [
   "asyncfast-cli==0.37.0",
 ]
@@ -56,16 +55,14 @@ dev = [
   "pytest-timeout>=2.4.0",
 ]
 
-[tool.uv.sources.amgi-types]
-workspace = true
+[tool.uv]
+sources.amgi-types.workspace = true
+sources.asyncfast-cli.workspace = true
 
-[tool.uv.sources.asyncfast-cli]
-workspace = true
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-timeout = 10
-timeout_func_only = true
-addopts = [
+[tool.pytest]
+ini_options.asyncio_mode = "auto"
+ini_options.timeout = 10
+ini_options.timeout_func_only = true
+ini_options.addopts = [
   "--benchmark-max-time=0.1",
 ]
