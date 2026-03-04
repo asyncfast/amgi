@@ -14,7 +14,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-dependencies = [  ]
+dependencies = []
 
 [dependency-groups]
 dev = [
@@ -33,21 +33,21 @@ dev = [
   "tox-uv>=1.27.0",
 ]
 
-[tool.uv.workspace]
-members = [
-  "packages/*",
+[tool.uv]
+workspace.members = [
   "example",
+  "packages/*",
 ]
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-timeout = 10
-timeout_func_only = true
-filterwarnings = [
+[tool.pytest]
+ini_options.asyncio_mode = "auto"
+ini_options.timeout = 10
+ini_options.timeout_func_only = true
+ini_options.filterwarnings = [
   "ignore:^The wait_for_logs function with string or callable predicates is deprecated:DeprecationWarning",
   "ignore:^The @wait_container_is_ready decorator is deprecated:DeprecationWarning",
 ]
-markers = [
+ini_options.markers = [
   "integration: tests that require external services (Docker/Testcontainers)",
 ]
 

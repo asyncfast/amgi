@@ -31,7 +31,6 @@ dependencies = [
   "amgi-types==0.37.0",
   "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
-
 entry-points.amgi_server.amgi-aiobotocore-sqs = "amgi_aiobotocore.sqs:_run_cli"
 
 [dependency-groups]
@@ -44,11 +43,7 @@ dev = [
   "testcontainers[localstack]>=4.13.0",
 ]
 
-[tool.uv.sources.amgi-common]
-workspace = true
-
-[tool.uv.sources.amgi-types]
-workspace = true
-
-[tool.uv.sources.test-utils]
-workspace = true
+[tool.uv]
+sources.amgi-common.workspace = true
+sources.amgi-types.workspace = true
+sources.test-utils.workspace = true

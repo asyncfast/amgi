@@ -30,7 +30,6 @@ dependencies = [
   "amgi-types==0.37.0",
   "typing-extensions>=4.15.0; python_full_version<'3.13'",
 ]
-
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
 urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-common"
 urls.Issues = "https://github.com/asyncfast/amgi/issues/"
@@ -45,8 +44,6 @@ dev = [
   "test-utils",
 ]
 
-[tool.uv.sources.test-utils]
-workspace = true
-
-[tool.uv.sources.amgi-types]
-workspace = true
+[tool.uv]
+sources.amgi-types.workspace = true
+sources.test-utils.workspace = true

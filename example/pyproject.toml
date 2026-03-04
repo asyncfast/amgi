@@ -18,7 +18,7 @@ dependencies = [
   "asyncfast",
 ]
 
-[tool.uv.sources]
-amgi-aiokafka = { workspace = true }
-asyncfast = { workspace = true }
-amgi-paho-mqtt = { workspace = true }
+[tool.uv]
+sources.amgi-aiokafka = { workspace = true }
+sources.amgi-paho-mqtt = { workspace = true }
+sources.asyncfast = { workspace = true }

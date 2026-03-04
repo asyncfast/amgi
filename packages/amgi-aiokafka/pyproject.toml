@@ -33,7 +33,6 @@ dependencies = [
   "amgi-types==0.37.0",
   "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
-
 urls.Changelog = "https://github.com/asyncfast/amgi/blob/main/CHANGELOG.md"
 urls.Homepage = "https://github.com/asyncfast/amgi/tree/main/packages/amgi-aiokafka"
 urls.Issues = "https://github.com/asyncfast/amgi/issues/"
@@ -50,11 +49,7 @@ dev = [
   "testcontainers[kafka]>=4.13.0",
 ]
 
-[tool.uv.sources.amgi-types]
-workspace = true
-
-[tool.uv.sources.amgi-common]
-workspace = true
-
-[tool.uv.sources.test-utils]
-workspace = true
+[tool.uv]
+sources.amgi-common.workspace = true
+sources.amgi-types.workspace = true
+sources.test-utils.workspace = true
