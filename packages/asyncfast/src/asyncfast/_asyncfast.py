@@ -16,6 +16,7 @@ from amgi_types import LifespanStartupCompleteEvent
 from amgi_types import Scope
 from asyncfast._asyncapi import get_asyncapi
 from asyncfast._channel import Router
+from asyncfast.middleware.errors import ServerErrorMiddleware
 
 P = ParamSpec("P")
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
@@ -123,7 +124,7 @@ class AsyncFast:
         app = self._app
         for cls, args, kwargs in self._middleware:
             app = cls(app, *args, **kwargs)
-        return app
+        return ServerErrorMiddleware(app)
 
     def add_middleware(
         self,
