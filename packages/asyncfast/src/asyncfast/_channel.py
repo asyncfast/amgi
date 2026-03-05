@@ -30,8 +30,6 @@ from typing import TypeVar
 
 from amgi_types import AMGIReceiveCallable
 from amgi_types import AMGISendCallable
-from amgi_types import MessageAckEvent
-from amgi_types import MessageNackEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 from asyncfast._utils import get_address_parameters
@@ -616,23 +614,6 @@ class Router:
         self.channels.append(get_channel(func, address))
 
     async def __call__(
-        self, scope: MessageScope, receive: AMGIReceiveCallable, send: AMGISendCallable
-    ) -> None:
-        try:
-            await self.call_channel(scope, receive, send)
-
-            message_ack_event: MessageAckEvent = {
-                "type": "message.ack",
-            }
-            await send(message_ack_event)
-        except Exception as e:
-            message_nack_event: MessageNackEvent = {
-                "type": "message.nack",
-                "message": str(e),
-            }
-            await send(message_nack_event)
-
-    async def call_channel(
         self, scope: MessageScope, receive: AMGIReceiveCallable, send: AMGISendCallable
     ) -> None:
         address = scope["address"]
