@@ -1,3 +1,9 @@
+## 0.38.0 (2026-03-05)
+
+### Feat
+
+- **asyncfast**: add server error middleware for message ack/nack
+
 ## 0.37.0 (2026-02-25)
 
 ### Feat
