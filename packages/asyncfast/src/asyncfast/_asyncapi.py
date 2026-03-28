@@ -15,11 +15,11 @@ from typing import Union
 from asyncfast._channel import BindingResolver
 from asyncfast._channel import CallableResolver
 from asyncfast._channel import Channel
+from asyncfast._channel import ChannelRouter
 from asyncfast._channel import HeaderResolver
 from asyncfast._channel import MessageSenderResolver
 from asyncfast._channel import PayloadResolver
 from asyncfast._channel import Resolver
-from asyncfast._channel import Router
 from asyncfast._message import Message
 from pydantic import BaseModel
 from pydantic import create_model
@@ -319,7 +319,7 @@ def get_asyncapi(
     *,
     title: str,
     version: str,
-    router: Router,
+    router: ChannelRouter,
 ) -> dict[str, Any]:
     channel_definitions = tuple(
         ChannelDefinition(channel) for channel in router.channels

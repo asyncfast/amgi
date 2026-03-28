@@ -30,6 +30,7 @@ async def test_payload_basic() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with(1)
@@ -50,6 +51,7 @@ async def test_header_basic() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with("value")
@@ -70,6 +72,7 @@ async def test_header_default() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with("value")
@@ -90,6 +93,7 @@ async def test_header_underscore_to_hyphen() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with("value")
@@ -110,6 +114,7 @@ async def test_header_alias() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with("9e30981e-02d5-11f1-9648-e323315723e1")
@@ -130,6 +135,7 @@ async def test_address_parameter() -> None:
         },
         Mock(),
         Mock(),
+        {"user": "54a08cc6-02db-11f1-afbf-f3f4688d5de4"},
     )
 
     mock.assert_called_with("54a08cc6-02db-11f1-afbf-f3f4688d5de4")
@@ -151,6 +157,7 @@ async def test_binding() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with(123)
@@ -171,6 +178,7 @@ async def test_binding_default() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with(123)
@@ -192,6 +200,7 @@ async def test_async_func() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_awaited_once_with(1)
@@ -217,6 +226,7 @@ async def test_async_generator_func() -> None:
         },
         Mock(),
         send_mock,
+        {},
     )
 
     send_mock.assert_awaited_once_with(
@@ -249,6 +259,7 @@ async def test_sync_generator_func() -> None:
         },
         Mock(),
         send_mock,
+        {},
     )
 
     send_mock.assert_awaited_once_with(
@@ -283,6 +294,7 @@ async def test_message_sender() -> None:
         },
         Mock(),
         send_mock,
+        {},
     )
 
     send_mock.assert_awaited_once_with(
@@ -318,6 +330,7 @@ async def test_async_depends() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with({"header1": 1, "header2": 2})
@@ -346,6 +359,7 @@ async def test_sync_depends() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock.assert_called_with({"header1": 1, "header2": 2})
@@ -373,6 +387,7 @@ async def test_async_depends_use_cache() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock_func.assert_called_with(
@@ -403,6 +418,7 @@ async def test_async_depends_use_cache_false() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     mock_func.assert_called_with(
@@ -441,6 +457,7 @@ async def test_async_yielding_depends() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     assert parent.mock_calls == [
@@ -479,6 +496,7 @@ async def test_sync_yielding_depends() -> None:
         },
         Mock(),
         Mock(),
+        {},
     )
 
     assert parent.mock_calls == [
