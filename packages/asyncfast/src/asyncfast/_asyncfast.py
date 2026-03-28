@@ -15,7 +15,7 @@ from amgi_types import LifespanShutdownCompleteEvent
 from amgi_types import LifespanStartupCompleteEvent
 from amgi_types import Scope
 from asyncfast._asyncapi import get_asyncapi
-from asyncfast._channel import Router
+from asyncfast._channel import ChannelRouter
 from asyncfast.middleware.errors import ServerErrorMiddleware
 
 P = ParamSpec("P")
@@ -54,7 +54,7 @@ class AsyncFast:
         self._version = version
         self._lifespan_context = lifespan
         self._middleware = list(middleware) if middleware else []
-        self._router = Router()
+        self._router = ChannelRouter()
         self._lifespan: AbstractAsyncContextManager[None] | None = None
         self._asyncapi_schema: dict[str, Any] | None = None
         self._middleware_stack: AMGIApplication | None = None
