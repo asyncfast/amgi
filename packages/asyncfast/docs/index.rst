@@ -77,6 +77,7 @@ Taking ideas from:
 
    receiving
    sending
+   message_send_router
    dependencies
    lifespan
    middleware

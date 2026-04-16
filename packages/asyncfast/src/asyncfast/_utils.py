@@ -1,6 +1,7 @@
 import re
 from collections import Counter
 from re import Pattern
+from typing import Final
 from typing import Generic
 from typing import TypeVar
 
@@ -42,16 +43,28 @@ class ChannelNotFoundError(LookupError):
         self.address = address
 
 
+class MissingType:
+    pass
+
+
 class Router(Generic[T]):
+    MISSING: Final = MissingType()
+
     def __init__(self) -> None:
         self.routes: list[tuple[Pattern[str], T]] = []
 
     def add_route(self, address: str, route: T) -> None:
         self.routes.append((get_address_pattern(address), route))
 
-    def get(self, address: str) -> tuple[dict[str, str], T]:
+    def get(
+        self, address: str, default: T | MissingType = MISSING
+    ) -> tuple[dict[str, str], T]:
         for address_pattern, route in self.routes:
             parameters = address_pattern.match(address)
             if parameters is not None:
                 return parameters.groupdict(), route
+
+        if not isinstance(default, MissingType):
+            return {}, default
+
         raise ChannelNotFoundError(address)

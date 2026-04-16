@@ -6,3 +6,5 @@ sphinx-copybutton>=0.5.2
 redis>=7.0.1
 packages/asyncfast
 packages/amgi-types
+packages/amgi-aiobotocore
+packages/amgi-aiokafka
