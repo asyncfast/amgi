@@ -1,3 +1,13 @@
+## 0.39.0 (2026-04-18)
+
+### Feat
+
+- **asyncfast**: add message send router
+
+### Refactor
+
+- **asyncfast**: add routing functionality to its own routing class
+
 ## 0.38.0 (2026-03-05)
 
 ### Feat
