@@ -11,7 +11,7 @@ repos:
     rev: v1.19.1
     hooks:
       - id: mypy
-        additional_dependencies: ["pydantic==2.11.7", "types-docutils", "sphinx>=7.4.7"]
+        additional_dependencies: ["pydantic==2.11.7", "types-docutils", "sphinx>=7.4.7", "starlette==1.2.1"]
   - repo: https://github.com/PyCQA/autoflake
     rev: v2.3.3
     hooks:
