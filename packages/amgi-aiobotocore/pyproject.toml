@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "amgi-aiobotocore"
-version = "0.39.0"
+version = "0.40.0"
 description = "AMGI AWS Services Servers"
 readme = "README.md"
 license = "MIT"
@@ -27,8 +27,8 @@ classifiers = [
 ]
 dependencies = [
   "aiobotocore>=2.25.0",
-  "amgi-common==0.39.0",
-  "amgi-types==0.39.0",
+  "amgi-common==0.40.0",
+  "amgi-types==0.40.0",
   "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
 entry-points.amgi_server.amgi-aiobotocore-sqs = "amgi_aiobotocore.sqs:_run_cli"
