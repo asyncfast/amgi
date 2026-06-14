@@ -1,3 +1,4 @@
+import itertools
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -6,8 +7,8 @@ import pytest
 from amgi_types import AMGIApplication
 from amgi_types import AMGIReceiveCallable
 from amgi_types import AMGISendCallable
+from amgi_types import AMGISendEvent
 from amgi_types import MessageScope
-from amgi_types import MessageSendEvent
 from amgi_types import Scope
 from pytest_amgi import AMGIProducerFactory
 from pytest_amgi import Message
@@ -252,171 +253,24 @@ async def test_result_nack_message_none(amgi_producer: AMGIProducerFactory) -> N
 
 
 @pytest.mark.parametrize(
-    ["message_send_event", "message"],
-    [
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "headers": [],
-            },
-            Message(address="address"),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "payload": b"test",
-                "headers": [],
-            },
-            Message(
-                address="address",
-                payload=b"test",
-            ),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "payload": b"test",
-                "headers": [(b"key", b"value")],
-            },
-            Message(
-                address="address",
-                payload=b"test",
-                headers={"key": "value"},
-            ),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "payload": b"test",
-                "headers": [(b"key", b"value")],
-            },
-            Message(
-                address="address",
-                payload=b"test",
-                headers={"key": "value"},
-            ),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "payload": b'{"id":1}',
-                "headers": [],
-            },
-            Message(
-                address="address",
-                json={"id": 1},
-            ),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "payload": b'{"id": 1}',
-                "headers": [],
-            },
-            Message(
-                address="address",
-                json={"id": 1},
-            ),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "headers": [],
-                "bindings": {"kafka": {"key": b"key"}},
-            },
-            Message(address="address", bindings={"kafka": {"key": b"key"}}),
-        ),
-    ],
+    ["acknowledge1", "acknowledge2"],
+    itertools.product(
+        [{"type": "message.ack"}, {"type": "message.nack", "message": "failure"}],
+        repeat=2,
+    ),
 )
-def test_message_equality(
-    message_send_event: MessageSendEvent, message: Message
+async def test_producer_allows_only_one_acknowledgement(
+    amgi_producer: AMGIProducerFactory,
+    acknowledge1: AMGISendEvent,
+    acknowledge2: AMGISendEvent,
 ) -> None:
-    assert message_send_event == message
+    async def app(
+        scope: MessageScope, receive: AMGIReceiveCallable, send: AMGISendCallable
+    ) -> None:
+        await send(acknowledge1)
+        await send(acknowledge2)
 
+    producer = await amgi_producer(app_factory(app))
 
-@pytest.mark.parametrize(
-    ["message_send_event", "message"],
-    [
-        (
-            {
-                "type": "message.ack",
-                "address": "address",
-                "headers": [],
-            },
-            Message(address="address"),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "other-address",
-                "headers": [],
-            },
-            Message(address="address"),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "payload": b"other",
-                "headers": [],
-            },
-            Message(address="address", payload=b"test"),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "payload": b'{"id": 2}',
-                "headers": [],
-            },
-            Message(address="address", json={"id": 1}),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "payload": b"test",
-                "headers": [(b"key", b"other")],
-            },
-            Message(address="address", payload=b"test", headers={"key": "value"}),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "bindings": {"kafka": {"key": b"other"}},
-            },
-            Message(address="address", bindings={"kafka": {"key": b"key"}}),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "headers": [],
-                "extra": "unexpected",
-            },
-            Message(address="address"),
-        ),
-        (
-            {
-                "type": "message.send",
-                "address": "address",
-                "headers": object(),
-            },
-            Message(address="address"),
-        ),
-        (
-            None,
-            Message(address="address"),
-        ),
-    ],
-)
-def test_message_inequality(message_send_event: Any, message: Message) -> None:
-    assert message_send_event != message
+    with pytest.raises(RuntimeError):
+        await producer.send("address")
