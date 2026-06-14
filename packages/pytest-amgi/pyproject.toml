@@ -1,0 +1,40 @@
+[build-system]
+build-backend = "uv_build"
+requires = [
+  "uv-build>=0.10.7,<0.11.0",
+]
+
+[project]
+name = "pytest-amgi"
+version = "0.40.0"
+description = "Pytest helpers for AMGI applications"
+readme = "README.md"
+authors = [
+  { name = "jack.burridge", email = "jack.burridge@mail.com" },
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "amgi-common==0.40.0",
+  "amgi-types==0.40.0",
+  "pytest>=9.0.3",
+]
+entry-points.pytest11.amgi = "pytest_amgi"
+
+[dependency-groups]
+dev = [
+  "pytest-asyncio>=1.4.0",
+  "pytest-cov>=7.0.0",
+  "pytest-timeout>=2.4.0",
+]
+
+[tool.uv]
+sources.amgi-common.workspace = true
+sources.amgi-types.workspace = true
