@@ -1,3 +1,9 @@
+## 0.41.0 (2026-06-14)
+
+### Feat
+
+- add pytest-amgi package for testing apps
+
 ## 0.40.0 (2026-06-07)
 
 ### Feat
