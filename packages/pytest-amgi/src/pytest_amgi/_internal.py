@@ -142,7 +142,6 @@ class AMGIMessageResult:
     def assert_nacked(self, *, match: str | None = None) -> None:
         assert self.nack_message is not None
         if match is not None:
-
             assert re.search(match, self.nack_message) is not None
 
     def assert_has_message_sends(self, message_sends: Sequence[Message]) -> None:
@@ -209,6 +208,12 @@ class AMGIProducer:
             raise RuntimeError("Receive should not be called for message scopes")
 
         async def send(event: AMGISendEvent) -> None:
+            if event["type"] in {"message.ack", "message.nack"} and any(
+                previous_event["type"] in {"message.ack", "message.nack"}
+                for previous_event in events
+            ):
+                raise RuntimeError("Multiple acknowledgement events should not be sent")
+
             events.append(event)
 
         await self._app(scope, receive, send)
