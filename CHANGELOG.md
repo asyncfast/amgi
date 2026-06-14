@@ -1,3 +1,9 @@
+## 0.41.1 (2026-06-14)
+
+### Fix
+
+- **pytest-amgi**: reject multiple acknowledgement events
+
 ## 0.41.0 (2026-06-14)
 
 ### Feat
