@@ -81,6 +81,7 @@ Taking ideas from:
    dependencies
    lifespan
    middleware
+   testing
 
 .. _amgi: https://amgi.readthedocs.io/en/latest/
 
