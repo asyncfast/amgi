@@ -8,6 +8,7 @@ from abc import abstractmethod
 from asyncio import AbstractEventLoop
 from asyncio import Task
 from collections.abc import AsyncGenerator
+from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Generator
 from collections.abc import Mapping
@@ -44,6 +45,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 M = TypeVar("M", bound=Mapping[str, Any])
 DecoratedCallable = TypeVar("DecoratedCallable", bound=Callable[..., Any])
+MessageSendCallable = Callable[[MessageSendEvent], Awaitable[None]]
 
 
 def _next_or_stop(generator: Generator[T, None, Any]) -> T | StopIteration:
@@ -185,7 +187,7 @@ class HeaderResolver(TypeResolve[T]):
         return self.type_adapter.validate_python(value)
 
 
-async def send_message(send: AMGISendCallable, message: Mapping[str, Any]) -> None:
+async def send_message(send: MessageSendCallable, message: Mapping[str, Any]) -> None:
     message_send_event: MessageSendEvent = {
         "type": "message.send",
         "address": message["address"],
@@ -196,7 +198,7 @@ async def send_message(send: AMGISendCallable, message: Mapping[str, Any]) -> No
 
 
 class MessageSender(Generic[M]):
-    def __init__(self, send: AMGISendCallable) -> None:
+    def __init__(self, send: MessageSendCallable) -> None:
         self._send = send
 
     async def send(self, message: M) -> None:
