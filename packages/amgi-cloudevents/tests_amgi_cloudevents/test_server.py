@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import nullcontext
 from unittest.mock import AsyncMock
@@ -188,6 +189,33 @@ async def test_route_errors_when_message_send_is_not_configured(
 
     response = await response_task
     assert response.status_code == 204
+
+
+async def test_route_logs_missing_message_send_when_configured(
+    app: MockApp, caplog: pytest.LogCaptureFixture
+) -> None:
+    transport = ASGITransport(app=Server(app, message_send_log_missing=True))
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response_task = asyncio.create_task(_post_cloud_event(client))
+
+        with caplog.at_level(logging.WARNING, logger="amgi-cloudevents.error"):
+            async with app.call() as (scope, receive, send):
+                await send(
+                    {
+                        "type": "message.send",
+                        "address": "com.example.output",
+                        "headers": [],
+                        "payload": b"output",
+                    }
+                )
+
+        response = await response_task
+
+    assert response.status_code == 204
+    assert caplog.messages == [
+        "CloudEvents message.send is not configured. Pass message_send to Server "
+        "to allow AMGI handlers to send follow-up messages."
+    ]
 
 
 async def test_route_uses_configured_message_send(app: MockApp) -> None:

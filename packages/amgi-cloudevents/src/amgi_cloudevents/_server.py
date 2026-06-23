@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -25,17 +26,25 @@ from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 _MessageSendT = Callable[[MessageSendEvent], Awaitable[None]]
 _MessageSendManagerT = AsyncContextManager[_MessageSendT]
+_logger = logging.getLogger("amgi-cloudevents.error")
 
 
 class MissingMessageSend:
+    def __init__(self, message_send_log_missing: bool) -> None:
+        self._message_send_log_missing = message_send_log_missing
+
     async def __aenter__(self) -> _MessageSendT:
         return self._send
 
     async def _send(self, event: MessageSendEvent) -> None:
-        raise RuntimeError(
+        send_error = (
             "CloudEvents message.send is not configured. Pass message_send to Server "
             "to allow AMGI handlers to send follow-up messages."
         )
+        if self._message_send_log_missing:
+            _logger.warning(send_error)
+        else:
+            raise RuntimeError(send_error)
 
     async def __aexit__(
         self,
@@ -92,10 +101,13 @@ class Server(Starlette):
         app: AMGIApplication,
         path: str = "/event",
         message_send: _MessageSendManagerT | None = None,
+        message_send_log_missing: bool = False,
     ) -> None:
         self._app = app
         self._state: dict[str, Any] = {}
-        self._message_send_context = message_send or MissingMessageSend()
+        self._message_send_context = message_send or MissingMessageSend(
+            message_send_log_missing=message_send_log_missing
+        )
         self._message_send: _MessageSendT | None = None
         super().__init__(
             routes=[Route(path, self._route, methods=["POST"])], lifespan=self._lifespan
