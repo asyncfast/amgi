@@ -559,14 +559,6 @@ def get_channel(func: Callable[..., Any], address: str) -> Channel:
     if payloads > 1:
         raise InvalidChannelDefinitionError("Channel must have no more than 1 payload")
 
-    message_senders = sum(
-        isinstance(resolver, MessageSenderResolver) for _, resolver in resolvers
-    )
-    if message_senders > 1:
-        raise InvalidChannelDefinitionError(
-            "Channel must have no more than 1 message sender"
-        )
-
     if inspect.iscoroutinefunction(func):
         return AsyncChannel(func, resolvers, dependencies, address, address_parameters)
     if inspect.isasyncgenfunction(func):
