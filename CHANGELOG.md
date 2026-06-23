@@ -1,3 +1,14 @@
+## 0.42.0 (2026-06-23)
+
+### Feat
+
+- **asyncfast**: allow multiple message sender dependencies
+- **amgi-cloudevents**: add option to log when missing send configuration
+
+### Fix
+
+- **asyncfast**: narrow message sender send callable type
+
 ## 0.41.1 (2026-06-14)
 
 ### Fix
