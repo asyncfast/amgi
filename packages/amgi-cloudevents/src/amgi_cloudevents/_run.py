@@ -12,6 +12,7 @@ def run(
     message_send_endpoint: str | None = None,
     message_send_source: str = "/amgi-cloudevents",
     message_send_content_mode: ContentMode = "structured",
+    message_send_log_missing: bool = False,
 ) -> None:
     import uvicorn
 
@@ -24,4 +25,13 @@ def run(
         if message_send_endpoint is not None
         else None
     )
-    uvicorn.run(Server(app, path=path, message_send=message_send), host=host, port=port)
+    uvicorn.run(
+        Server(
+            app,
+            path=path,
+            message_send=message_send,
+            message_send_log_missing=message_send_log_missing,
+        ),
+        host=host,
+        port=port,
+    )
