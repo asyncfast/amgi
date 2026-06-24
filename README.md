@@ -171,6 +171,11 @@ This is engineered abstraction.
 
 The following AMGI servers are currently available:
 
+### CloudEvents
+
+- **[amgi-cloudevents](https://pypi.org/project/amgi-cloudevents/)** - [CloudEvents](https://cloudevents.io/)
+  HTTP adapter for AMGI applications
+
 ### Kafka
 
 - **[amgi-aiokafka](https://pypi.org/project/amgi-aiokafka/)** - [Kafka](https://kafka.apache.org/) server
