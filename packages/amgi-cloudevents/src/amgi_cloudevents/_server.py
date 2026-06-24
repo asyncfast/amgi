@@ -102,9 +102,11 @@ class Server(Starlette):
         path: str = "/event",
         message_send: _MessageSendManagerT | None = None,
         message_send_log_missing: bool = False,
+        address_attribute: str = "type",
     ) -> None:
         self._app = app
         self._state: dict[str, Any] = {}
+        self._address_attribute = address_attribute
         self._message_send_context = message_send or MissingMessageSend(
             message_send_log_missing=message_send_log_missing
         )
@@ -132,15 +134,6 @@ class Server(Starlette):
         await self._app(scope, receive, send)
         return send
 
-    def _response(self, send: Send) -> Response:
-        if send.nack_message is not None:
-            return Response(
-                send.nack_message, status_code=HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        if send.acknowledged:
-            return Response(status_code=HTTP_204_NO_CONTENT)
-        return Response(status_code=HTTP_204_NO_CONTENT)
-
     async def _route(self, request: Request) -> Response:
         try:
             cloud_event = from_http(
@@ -152,7 +145,9 @@ class Server(Starlette):
             return Response(str(exc), status_code=HTTP_400_BAD_REQUEST)
 
         attributes = cloud_event.get_attributes()
-        address = attributes["type"]
+        address = attributes.get(self._address_attribute)
+        if address is None:
+            return Response(status_code=HTTP_400_BAD_REQUEST)
         if not isinstance(address, str):
             return Response(
                 "CloudEvent type attribute must be a string",
@@ -168,4 +163,10 @@ class Server(Starlette):
             "state": self._state.copy(),
         }
         send = await self._call_app(scope)
-        return self._response(send)
+        if send.nack_message is not None:
+            return Response(
+                send.nack_message, status_code=HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        if send.acknowledged:
+            return Response(status_code=HTTP_204_NO_CONTENT)
+        return Response(status_code=HTTP_204_NO_CONTENT)

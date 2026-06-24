@@ -46,7 +46,10 @@ async def client(transport: ASGITransport) -> AsyncGenerator[AsyncClient, None]:
         yield client
 
 
-async def _post_cloud_event(client: AsyncClient) -> httpx.Response:
+async def _post_cloud_event(
+    client: AsyncClient, headers: dict[str, str] | None = None
+) -> httpx.Response:
+    headers = headers or {}
     return await client.post(
         "/event",
         content=b"payload",
@@ -57,8 +60,7 @@ async def _post_cloud_event(client: AsyncClient) -> httpx.Response:
             "ce-type": "com.example.event",
             "ce-subject": "subject-1",
             "ce-time": "2026-06-07T10:00:00Z",
-            "ce-traceparent": "00-abcdef0123456789abcdef0123456789-abcdef0123456789-01",
-            "content-type": "application/octet-stream",
+            **headers,
         },
     )
 
@@ -76,13 +78,8 @@ async def test_route_message_shape(app: MockApp, client: AsyncClient) -> None:
                 (b"id", b"event-1"),
                 (b"source", b"/source"),
                 (b"type", b"com.example.event"),
-                (b"datacontenttype", b"application/octet-stream"),
                 (b"subject", b"subject-1"),
                 (b"time", b"2026-06-07T10:00:00Z"),
-                (
-                    b"traceparent",
-                    b"00-abcdef0123456789abcdef0123456789-abcdef0123456789-01",
-                ),
             ],
             "payload": b"payload",
             "state": {},
@@ -245,3 +242,43 @@ async def test_route_uses_configured_message_send(app: MockApp) -> None:
             "payload": b"output",
         }
     )
+
+
+async def test_route_uses_address_attribute(app: MockApp) -> None:
+    transport = ASGITransport(app=Server(app, address_attribute="eventtype"))
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response_task = asyncio.create_task(
+            _post_cloud_event(client, {"ce-eventtype": "com.example.eventtype"})
+        )
+
+        async with app.call() as (scope, receive, send):
+            assert scope == {
+                "address": "com.example.eventtype",
+                "amgi": {"spec_version": "2.0", "version": "2.0"},
+                "headers": [
+                    (b"specversion", b"1.0"),
+                    (b"id", b"event-1"),
+                    (b"source", b"/source"),
+                    (b"type", b"com.example.event"),
+                    (b"subject", b"subject-1"),
+                    (b"time", b"2026-06-07T10:00:00Z"),
+                    (b"eventtype", b"com.example.eventtype"),
+                ],
+                "payload": b"payload",
+                "state": {},
+                "type": "message",
+            }
+
+    response = await response_task
+
+    assert response.status_code == 204
+
+
+async def test_route_fails_if_cant_extract_address_attribute(app: MockApp) -> None:
+    transport = ASGITransport(app=Server(app, address_attribute="eventtype"))
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await _post_cloud_event(client)
+
+    assert response.status_code == 400
