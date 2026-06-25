@@ -1,3 +1,9 @@
+## 0.43.0 (2026-06-25)
+
+### Feat
+
+- **amgi-cloudevents**: support configurable address attribute
+
 ## 0.42.0 (2026-06-23)
 
 ### Feat
