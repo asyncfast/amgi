@@ -28,7 +28,7 @@ This example includes multiple docker compose files for different protocols, whi
 Run the Kafka compose file with:
 
 ```commandline
-docker compose --file kafka/docker-compose.yml up --detach
+docker compose --file kafka/docker-compose.yaml up --detach
 ```
 
 This includes:
@@ -47,7 +47,7 @@ asyncfast run amgi-aiokafka main:app input_channel
 Run the MQTT compose file with:
 
 ```commandline
-docker compose --file mqtt/docker-compose.yml up --detach
+docker compose --file mqtt/docker-compose.yaml up --detach
 ```
 
 This includes:
