@@ -5,7 +5,7 @@ CloudEvents HTTP adapter for AMGI applications.
 ## Installation
 
 ```shell
-pip install "amgi-cloudevents[uvicorn]==0.43.0"
+pip install "amgi-cloudevents[uvicorn]==0.44.0"
 ```
 
 ## Receiving CloudEvents

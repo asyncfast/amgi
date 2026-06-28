@@ -1,3 +1,9 @@
+## 0.44.0 (2026-06-28)
+
+### Feat
+
+- **asyncfast-cli**: support application factories
+
 ## 0.43.0 (2026-06-25)
 
 ### Feat
