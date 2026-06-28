@@ -49,6 +49,31 @@ def test_run_app(mock_entry_points_select: Mock) -> None:
     }
 
 
+def test_run_app_factory(mock_entry_points_select: Mock) -> None:
+    sys.path.insert(0, str(Path(__file__).parent))
+
+    mock_run = Mock()
+
+    def _run(app: AMGIApplication) -> None:
+        mock_run(app)
+
+    mock_entry_point = Mock()
+    mock_entry_point.name = "test"
+    mock_entry_point.load.return_value = _run
+
+    mock_entry_points_select.return_value = [mock_entry_point]
+
+    sys.modules.pop("asyncfast_cli.cli", None)
+
+    from asyncfast_cli.cli import app
+
+    result = runner.invoke(app, ["run", "--factory", "test", "main:create_app"])
+    assert result.exit_code == 0
+
+    mock_run.assert_called_once()
+    assert mock_run.call_args.args[0].asyncapi()["asyncapi"] == "3.0.0"
+
+
 def test_run_app_load_failure(mock_entry_points_select: Mock) -> None:
     mock_entry_point = Mock()
     mock_entry_point.load.side_effect = RuntimeError

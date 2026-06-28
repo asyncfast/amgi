@@ -2,6 +2,7 @@ import importlib
 import json
 import os
 import sys
+from dataclasses import dataclass
 from importlib.metadata import entry_points
 from typing import Annotated
 from typing import Any
@@ -30,7 +31,7 @@ def import_from_string(import_str: Any) -> Any:
         message = 'Could not import module "{module_str}".'
         raise Exception(message.format(module_str=module_str))
 
-    instance = module
+    instance: Any = module
     try:
         for attr_str in attrs_str.split("."):
             instance = getattr(instance, attr_str)
@@ -39,6 +40,18 @@ def import_from_string(import_str: Any) -> Any:
         raise Exception(message.format(attrs_str=attrs_str, module_str=module_str))
 
     return instance
+
+
+@dataclass(frozen=True)
+class RunOptions:
+    factory: bool
+
+
+def application_factory(app: Any, ctx: typer.Context) -> Any:
+    options = ctx.find_object(RunOptions)
+    if options is not None and options.factory:
+        return app()
+    return app
 
 
 app = typer.Typer()
@@ -58,6 +71,18 @@ def callback() -> None:
 run_app = typer.Typer()
 app.add_typer(run_app, name="run")
 
+
+@run_app.callback()
+def run(
+    ctx: typer.Context,
+    factory: Annotated[
+        bool,
+        typer.Option(help="Treat the application import as a factory."),
+    ] = False,
+) -> None:
+    ctx.obj = RunOptions(factory=factory)
+
+
 for entry_point in entry_points().select(group="amgi_server"):
     try:
         test_app = typer.Typer()
@@ -66,7 +91,11 @@ for entry_point in entry_points().select(group="amgi_server"):
         for name, annotation in function.__annotations__.items():
             if annotation is AMGIApplication:
                 function.__annotations__[name] = Annotated[
-                    AMGIApplication, typer.Argument(parser=import_from_string)
+                    AMGIApplication,
+                    typer.Argument(
+                        parser=import_from_string,
+                        callback=application_factory,
+                    ),
                 ]
         test_app.command(entry_point.name)(function)
         get_command(test_app)
