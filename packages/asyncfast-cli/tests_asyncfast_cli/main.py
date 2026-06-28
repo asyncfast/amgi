@@ -9,3 +9,7 @@ app.asyncapi.return_value = {
     "operations": {},
     "components": {"messages": {}},
 }
+
+
+def create_app() -> Mock:
+    return app

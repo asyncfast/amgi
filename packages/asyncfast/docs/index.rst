@@ -46,11 +46,17 @@ The simplest AsyncFast could be:
 Running
 =======
 
-To run the app install an AMGI server (at the moment there is only ``amgi-aiokafka``) then run:
+To run the app install an AMGI server then run:
 
 .. code::
 
    $ asyncfast run amgi-aiokafka main:app channel
+
+Applications exposed through a factory function can be run with ``--factory``:
+
+.. code::
+
+   $ asyncfast run --factory amgi-aiokafka main:create_app channel
 
 AsyncAPI Generation
 ===================
