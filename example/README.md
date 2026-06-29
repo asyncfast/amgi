@@ -102,3 +102,23 @@ Connect the app via Redis with:
 ```commandline
 asyncfast run amgi-redis main:app  input_channel
 ```
+
+## AMQP
+
+Run the AMQP compose file with:
+
+```commandline
+docker compose --file amqp/docker-compose.yaml up --detach
+```
+
+This includes:
+
+- RabbitMQ running on `localhost:5672`
+- RabbitMQ Management Console ([`http://localhost:15672/`](http://localhost:15672/))
+
+Connect the app via AMQP with:
+
+```commandline
+asyncfast run amgi-aio-pika main:app input_channel
+```
+

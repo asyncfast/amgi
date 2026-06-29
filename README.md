@@ -171,6 +171,11 @@ This is engineered abstraction.
 
 The following AMGI servers are currently available:
 
+### AMQP
+
+- **[amgi-aio-pika](https://pypi.org/project/amgi-aio-pika/)** - [AMQP](https://www.amqp.org/) (RabbitMQ) server
+  implementation
+
 ### CloudEvents
 
 - **[amgi-cloudevents](https://pypi.org/project/amgi-cloudevents/)** - [CloudEvents](https://cloudevents.io/)
