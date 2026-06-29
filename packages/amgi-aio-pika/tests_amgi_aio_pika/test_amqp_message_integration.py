@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncGenerator
 from typing import Generator
 from uuid import uuid4
@@ -34,9 +33,7 @@ def rabbitmq_url(rabbitmq_container: RabbitMqContainer) -> str:
 
 
 @pytest.fixture
-async def app(
-    rabbitmq_url: str, queue_name: str
-) -> AsyncGenerator[MockApp, None]:
+async def app(rabbitmq_url: str, queue_name: str) -> AsyncGenerator[MockApp, None]:
     app = MockApp()
     server = Server(app, queue_name, url=rabbitmq_url)
     async with app.lifespan(server=server):
@@ -44,9 +41,7 @@ async def app(
 
 
 @pytest.mark.integration
-async def test_message(
-    app: MockApp, queue_name: str, rabbitmq_url: str
-) -> None:
+async def test_message(app: MockApp, queue_name: str, rabbitmq_url: str) -> None:
     connection = await aio_pika.connect_robust(rabbitmq_url)
     async with connection:
         channel = await connection.channel()
@@ -63,12 +58,11 @@ async def test_message(
         assert "amqp" in scope.get("bindings", {})
         assert scope["bindings"]["amqp"]["routing_key"] == queue_name
         assert scope["state"] == {}
+        await send({"type": "message.ack"})
 
 
 @pytest.mark.integration
-async def test_message_send(
-    app: MockApp, queue_name: str, rabbitmq_url: str
-) -> None:
+async def test_message_send(app: MockApp, queue_name: str, rabbitmq_url: str) -> None:
     connection = await aio_pika.connect_robust(rabbitmq_url)
     async with connection:
         channel = await connection.channel()
@@ -95,6 +89,7 @@ async def test_message_send(
                     },
                 }
             )
+            await send({"type": "message.ack"})
 
         msg = await send_queue.get()
         assert msg is not None
@@ -123,6 +118,7 @@ async def test_lifespan(rabbitmq_url: str, queue_name: str) -> None:
         async with app.call() as (scope, receive, send):
             assert scope["type"] == "message"
             assert scope["state"] == {"item": state_item}
+            await send({"type": "message.ack"})
 
 
 @pytest.mark.integration
