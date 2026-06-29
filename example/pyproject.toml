@@ -13,12 +13,14 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+  "amgi-aio-pika",
   "amgi-aiokafka",
   "amgi-paho-mqtt",
   "asyncfast",
 ]
 
 [tool.uv]
+sources.amgi-aio-pika = { workspace = true }
 sources.amgi-aiokafka = { workspace = true }
 sources.amgi-paho-mqtt = { workspace = true }
 sources.asyncfast = { workspace = true }
