@@ -9,7 +9,7 @@ from amgi_aio_pika import run
 from amgi_aio_pika import Server
 from test_utils import assert_run_can_terminate
 from test_utils import MockApp
-from testcontainers.rabbitmq import RabbitMqContainer  # type: ignore[import-untyped]
+from testcontainers.rabbitmq import RabbitMqContainer
 
 
 @pytest.fixture(scope="module")
