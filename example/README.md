@@ -121,4 +121,3 @@ Connect the app via AMQP with:
 ```commandline
 asyncfast run amgi-aio-pika main:app input_channel
 ```
-

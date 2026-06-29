@@ -7,6 +7,10 @@ from typing import Any
 from typing import AsyncContextManager
 
 import aio_pika
+from aio_pika.abc import AbstractChannel
+from aio_pika.abc import AbstractIncomingMessage
+from aio_pika.abc import AbstractQueue
+from aio_pika.abc import AbstractRobustConnection
 from amgi_common import Lifespan
 from amgi_common import server_serve
 from amgi_common import Stoppable
@@ -15,11 +19,6 @@ from amgi_types import AMGIReceiveEvent
 from amgi_types import AMGISendEvent
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
-from aio_pika.abc import AbstractChannel
-from aio_pika.abc import AbstractIncomingMessage
-from aio_pika.abc import AbstractQueue
-from aio_pika.abc import AbstractRobustChannel
-from aio_pika.abc import AbstractRobustConnection
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -90,10 +89,9 @@ class MessageSend:
             for key, value in event.get("headers", ())
         }
 
-        amqp_bindings = (
-            event.get("bindings", {}).get("amqp", {})
-            or event.get("bindings", {}).get("aio_pika", {})
-        )
+        amqp_bindings = event.get("bindings", {}).get("amqp", {}) or event.get(
+            "bindings", {}
+        ).get("aio_pika", {})
         exchange_name = amqp_bindings.get("exchange", "")
         routing_key = amqp_bindings.get("routing_key", event["address"])
 
@@ -192,9 +190,7 @@ class Server:
         state: dict[str, Any],
     ) -> None:
         loop = asyncio.get_running_loop()
-        async for message in self._stoppable.call(
-            queue.get, timeout=1, fail=False
-        ):
+        async for message in self._stoppable.call(queue.get, timeout=1, fail=False):
             if message is not None:
                 task = loop.create_task(
                     self._handle_message(message, message_send, state)

@@ -26,9 +26,9 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+  "aio-pika>=9.0.0",
   "amgi-common==0.44.0",
   "amgi-types==0.44.0",
-  "aio-pika>=9.0.0",
   "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
 entry-points.amgi_server.amgi-aio-pika = "amgi_aio_pika:_run_cli"
