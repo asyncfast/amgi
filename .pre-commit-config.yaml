@@ -11,7 +11,7 @@ repos:
     rev: v1.19.1
     hooks:
       - id: mypy
-        additional_dependencies: ["pydantic==2.11.7", "types-docutils", "sphinx>=7.4.7", "starlette==1.2.1"]
+        additional_dependencies: ["pydantic==2.11.7", "types-docutils", "types-PyYAML", "sphinx>=7.4.7", "starlette==1.2.1"]
   - repo: https://github.com/PyCQA/autoflake
     rev: v2.3.3
     hooks:
@@ -44,6 +44,14 @@ repos:
         types: [toml]
         files: 'pyproject\.toml$'
         additional_dependencies: ["tomli==1.2.0", "tomli-w==1.2.0", "packaging==25.0"]
+      - id: tox-labels-in-test-matrix
+        name: tox-labels-in-test-matrix
+        entry: python -m hooks.tox_labels_in_test_matrix
+        language: python
+        args: [tox.ini, .github/workflows/tests.yml, --exclude, clean]
+        pass_filenames: false
+        files: '^(tox\.ini|\.github/workflows/tests\.yml)$'
+        additional_dependencies: ["pyyaml==6.0.3"]
   - repo: https://github.com/tox-dev/pyproject-fmt
     rev: v2.16.2
     hooks:
