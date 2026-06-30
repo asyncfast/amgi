@@ -48,6 +48,7 @@ jobs:
           - name: windows-latest
             pytest_args: -m "not integration"
         label:
+          - amgi-aio-pika
           - amgi-aiobotocore
           - amgi-aiokafka
           - amgi-cloudevents
