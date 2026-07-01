@@ -5,7 +5,7 @@ Pytest helpers for driving AMGI applications in-process.
 ## Installation
 
 ```
-pip install pytest-amgi==0.44.0
+pip install pytest-amgi==0.45.0
 ```
 
 ## Example

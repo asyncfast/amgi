@@ -1,3 +1,14 @@
+## 0.45.0 (2026-07-01)
+
+### Feat
+
+- **amqp**: cover aio-pika message branches
+- **amqp**: add amgi-aio-pika label to tests job
+- **amqp**: update example amqp rabbitmq to 4.3.2
+- **amqp**: remove test type ignore
+- **amqp**: fix Copilot PR issues
+- **amqp**: add AMQP support
+
 ## 0.44.0 (2026-06-28)
 
 ### Feat

@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "amgi-cloudevents"
-version = "0.44.0"
+version = "0.45.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,8 +19,8 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "amgi-common==0.44.0",
-  "amgi-types==0.44.0",
+  "amgi-common==0.45.0",
+  "amgi-types==0.45.0",
   "cloudevents>=2.1.0",
   "httpx>=0.28.1",
   "starlette>=1.2.1",
