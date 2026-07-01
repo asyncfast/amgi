@@ -87,7 +87,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Download coverage artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/download-artifact@v7
         with:
           pattern: coverage-*
           path: coverage-reports
@@ -95,4 +95,5 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           directory: coverage-reports
+          fail_ci_if_error: true
           use_oidc: true
