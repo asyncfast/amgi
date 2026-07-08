@@ -1,3 +1,9 @@
+## 0.45.1 (2026-07-08)
+
+### Fix
+
+- **amgi-aiokafka**: guard consumer fetch during rebalances to prevent concurrency issues
+
 ## 0.45.0 (2026-07-01)
 
 ### Feat
