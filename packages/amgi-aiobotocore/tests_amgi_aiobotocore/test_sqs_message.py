@@ -101,6 +101,7 @@ async def test_message(
             "address": queue_name,
             "headers": [(b"string-value", b"string"), (b"bytes-value", b"bytes")],
             "payload": b"value",
+            "bindings": {"sqs": {}},
             "state": {},
         }
 
@@ -134,6 +135,7 @@ async def test_message_nack(
             "address": queue_name,
             "headers": [(b"string-value", b"string"), (b"bytes-value", b"bytes")],
             "payload": b"value",
+            "bindings": {"sqs": {}},
             "state": {},
         }
 
@@ -182,6 +184,100 @@ async def test_message_send(
         assert message["MessageAttributes"] == {
             "test": {"StringValue": "test", "DataType": "String"}
         }
+
+
+async def test_message_send_fifo(
+    app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
+) -> None:
+    send_queue_name = f"send-{uuid4()}.fifo"
+    create_queue_response = await sqs_client.create_queue(
+        QueueName=send_queue_name,
+        Attributes={
+            "FifoQueue": "true",
+        },
+    )
+    send_queue_url = create_queue_response["QueueUrl"]
+
+    await sqs_client.send_message(
+        QueueUrl=queue_url,
+        MessageBody="value",
+    )
+    message_deduplication_id = str(uuid4())
+    message_group_id = str(uuid4())
+
+    async with app.call() as (scope, receive, send):
+        await send(
+            {
+                "type": "message.send",
+                "address": send_queue_name,
+                "headers": [],
+                "payload": b"test",
+                "bindings": {
+                    "sqs": {
+                        "message_deduplication_id": message_deduplication_id,
+                        "message_group_id": message_group_id,
+                    }
+                },
+            }
+        )
+
+        messages_response = await sqs_client.receive_message(
+            QueueUrl=send_queue_url,
+            MessageSystemAttributeNames=["All"],
+        )
+        assert "Messages" in messages_response
+        assert len(messages_response["Messages"]) == 1
+        message = messages_response["Messages"][0]
+        assert message["Body"] == "test"
+        assert (
+            message["Attributes"]["MessageDeduplicationId"] == message_deduplication_id
+        )
+        assert message["Attributes"]["MessageGroupId"] == message_group_id
+
+
+async def test_message_fifo(moto_endpoint: str, sqs_client: Any) -> None:
+    queue_name = f"receive-{uuid4()}.fifo"
+    create_queue_response = await sqs_client.create_queue(
+        QueueName=queue_name,
+        Attributes={
+            "FifoQueue": "true",
+        },
+    )
+    queue_url = create_queue_response["QueueUrl"]
+    app = MockApp()
+    server = Server(
+        app,
+        queue_name,
+        region_name="us-east-1",
+        endpoint_url=moto_endpoint,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+    )
+    async with app.lifespan(server=server):
+        message_deduplication_id = str(uuid4())
+        message_group_id = str(uuid4())
+
+        await sqs_client.send_message(
+            QueueUrl=queue_url,
+            MessageBody="value",
+            MessageGroupId=message_group_id,
+            MessageDeduplicationId=message_deduplication_id,
+        )
+        async with app.call() as (scope, receive, send):
+            assert scope == {
+                "type": "message",
+                "amgi": {"version": "2.0", "spec_version": "2.0"},
+                "address": queue_name,
+                "headers": [],
+                "payload": b"value",
+                "bindings": {
+                    "sqs": {
+                        "message_group_id": message_group_id,
+                        "message_deduplication_id": message_deduplication_id,
+                    }
+                },
+                "state": {},
+            }
 
 
 async def test_message_send_invalid_message(
@@ -284,6 +380,7 @@ async def test_lifespan(
                 "payload": b"value",
                 "amgi": {"version": "2.0", "spec_version": "2.0"},
                 "type": "message",
+                "bindings": {"sqs": {}},
                 "state": {"item": state_item},
             }
 
