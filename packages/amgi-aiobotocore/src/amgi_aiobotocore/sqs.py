@@ -176,6 +176,12 @@ def _make_entry(
     delay_seconds = bindings.get("delay_seconds")
     if delay_seconds is not None:
         entry["DelaySeconds"] = delay_seconds
+    message_deduplication_id = bindings.get("message_deduplication_id")
+    if message_deduplication_id is not None:
+        entry["MessageDeduplicationId"] = message_deduplication_id
+    message_group_id = bindings.get("message_group_id")
+    if message_group_id is not None:
+        entry["MessageGroupId"] = message_group_id
     return entry
 
 
@@ -361,6 +367,7 @@ class Server:
             QueueUrl=queue_url,
             WaitTimeSeconds=2,
             MessageAttributeNames=["All"],
+            MessageSystemAttributeNames=["All"],
         ):
             messages = messages_response.get("Messages", ())
             await asyncio.gather(
@@ -389,6 +396,16 @@ class Server:
         encoded_headers = list(
             _encode_message_attributes(message.get("MessageAttributes", {}))
         )
+        system_attributes = message.get("Attributes", {})
+
+        sqs_bindings = {}
+
+        message_group_id = system_attributes.get("MessageGroupId")
+        if message_group_id:
+            sqs_bindings["message_group_id"] = message_group_id
+        message_deduplication_id = system_attributes.get("MessageDeduplicationId")
+        if message_deduplication_id:
+            sqs_bindings["message_deduplication_id"] = message_deduplication_id
 
         scope: MessageScope = {
             "type": "message",
@@ -396,6 +413,7 @@ class Server:
             "address": queue_name,
             "headers": encoded_headers,
             "payload": message["Body"].encode(),
+            "bindings": {"sqs": sqs_bindings},
             "state": state.copy(),
         }
         await self._app(
