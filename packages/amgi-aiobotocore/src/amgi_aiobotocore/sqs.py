@@ -156,6 +156,29 @@ class _DeleteBatcher:
         await self._operation_batcher.enqueue((queue_url, receipt_handle))
 
 
+def _make_entry(
+    id_: str,
+    payload: bytes | None,
+    headers: Iterable[tuple[bytes, bytes]],
+    bindings: dict[str, Any],
+) -> dict[str, Any]:
+    entry = {
+        "Id": id_,
+        "MessageBody": ("" if payload is None else payload.decode()),
+        "MessageAttributes": {
+            name.decode(): {
+                "StringValue": value.decode(),
+                "DataType": "String",
+            }
+            for name, value in headers
+        },
+    }
+    delay_seconds = bindings.get("delay_seconds")
+    if delay_seconds is not None:
+        entry["DelaySeconds"] = delay_seconds
+    return entry
+
+
 class _SendBatcher:
     def __init__(self, client: Any) -> None:
         self._client = client
@@ -165,28 +188,20 @@ class _SendBatcher:
 
     async def send_message_batch(
         self,
-        batch: Iterable[tuple[str, bytes | None, Iterable[tuple[bytes, bytes]]]],
+        batch: Iterable[
+            tuple[str, bytes | None, Iterable[tuple[bytes, bytes]], dict[str, Any]]
+        ],
     ) -> Sequence[None | Exception]:
-        queue_urls, batch_payloads, batch_headers = zip(*batch)
+        queue_urls, batch_payloads, batch_headers, batch_bindings = zip(*batch)
         assert len(set(queue_urls)) == 1
         queue_url = queue_urls[0]
 
         send_message_batch_response = await self._client.send_message_batch(
             QueueUrl=queue_url,
             Entries=[
-                {
-                    "Id": str(i),
-                    "MessageBody": ("" if payload is None else payload.decode()),
-                    "MessageAttributes": {
-                        name.decode(): {
-                            "StringValue": value.decode(),
-                            "DataType": "String",
-                        }
-                        for name, value in headers
-                    },
-                }
-                for i, (payload, headers) in enumerate(
-                    zip(batch_payloads, batch_headers)
+                _make_entry(str(i), payload, headers, bindings)
+                for i, (payload, headers, bindings) in enumerate(
+                    zip(batch_payloads, batch_headers, batch_bindings)
                 )
             ],
         )
@@ -202,8 +217,9 @@ class _SendBatcher:
         queue_url: str,
         payload: bytes | None,
         headers: Iterable[tuple[bytes, bytes]],
+        bindings: dict[str, Any],
     ) -> None:
-        await self._operation_batcher.enqueue((queue_url, payload, headers))
+        await self._operation_batcher.enqueue((queue_url, payload, headers, bindings))
 
 
 class MessageSend:
@@ -234,7 +250,10 @@ class MessageSend:
     async def __call__(self, event: MessageSendEvent) -> None:
         queue_url = await self._queue_url_cache.get_queue_url(event["address"])
         await self._send_batcher.send_message(
-            queue_url, event["payload"], event["headers"]
+            queue_url,
+            event.get("payload"),
+            event["headers"],
+            event.get("bindings", {}).get("sqs", {}),
         )
 
     async def __aexit__(
