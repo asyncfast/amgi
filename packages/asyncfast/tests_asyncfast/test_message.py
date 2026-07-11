@@ -20,6 +20,7 @@ from asyncfast import Message
 from asyncfast import MessageSender
 from asyncfast import Payload
 from asyncfast.bindings import KafkaKey
+from asyncfast.bindings import SqsMessageGroupId
 from pydantic import BaseModel
 
 
@@ -729,6 +730,31 @@ async def test_message_binding_kafka_key() -> None:
         "address": "topic",
         "headers": [],
         "bindings": {"kafka": {"key": b"1234"}},
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(1234)
+
+
+async def test_message_binding_sqs_message_group_id() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(group_id: Annotated[int, SqsMessageGroupId()]) -> None:
+        test_mock(group_id)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
+        "address": "topic",
+        "headers": [],
+        "bindings": {"sqs": {"message_group_id": "1234"}},
     }
     await app(
         message_scope,

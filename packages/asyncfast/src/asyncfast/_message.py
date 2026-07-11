@@ -23,7 +23,7 @@ class Message(Mapping[str, Any]):
     __headers__: ClassVar[Sequence[tuple[str, str, type[Any], TypeAdapter[Any]]]]
     __parameters__: ClassVar[Sequence[tuple[str, TypeAdapter[Any]]]]
     __payload__: ClassVar[tuple[str, type[Any], TypeAdapter[Any]] | None]
-    __bindings__: ClassVar[Sequence[tuple[str, str, str, type[Any], TypeAdapter[Any]]]]
+    __bindings__: ClassVar[Sequence[tuple[str, Binding, type[Any], TypeAdapter[Any]]]]
 
     def __init_subclass__(cls, address: str | None = None, **kwargs: Any) -> None:
         cls.__address__ = address
@@ -53,8 +53,7 @@ class Message(Mapping[str, Any]):
         bindings = tuple(
             (
                 name,
-                get_args(annotated)[1].__protocol__,
-                get_args(annotated)[1].__field_name__,
+                get_args(annotated)[1],
                 annotated,
                 TypeAdapter(annotated),
             )
@@ -127,9 +126,12 @@ class Message(Mapping[str, Any]):
 
     def _get_bindings(self) -> dict[str, dict[str, Any]]:
         bindings: dict[str, dict[str, Any]] = {}
-        for name, protocol, field_name, _, type_adapter in self.__bindings__:
-            bindings.setdefault(protocol, {})[field_name] = self._get_value(
-                name, type_adapter
+        for name, binding, _, type_adapter in self.__bindings__:
+            bindings.setdefault(binding.__protocol__, {})[binding.__field_name__] = (
+                binding.dump_value(
+                    getattr(self, name),
+                    type_adapter,
+                )
             )
         return bindings
 
