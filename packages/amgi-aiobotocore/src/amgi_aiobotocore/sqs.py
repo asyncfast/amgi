@@ -74,9 +74,9 @@ def _encode_message_attributes(
 ) -> Iterable[tuple[bytes, bytes]]:
     for name, value in message_attributes.items():
         encoded_value = (
-            value["StringValue"].encode()
-            if value["DataType"] == "StringValue"
-            else value["BinaryValue"]
+            value["BinaryValue"]
+            if value["DataType"].startswith("Binary")
+            else value["StringValue"].encode()
         )
         yield name.encode(), encoded_value
 
@@ -180,7 +180,7 @@ class _SendBatcher:
                     "MessageAttributes": {
                         name.decode(): {
                             "StringValue": value.decode(),
-                            "DataType": "StringValue",
+                            "DataType": "String",
                         }
                         for name, value in headers
                     },
