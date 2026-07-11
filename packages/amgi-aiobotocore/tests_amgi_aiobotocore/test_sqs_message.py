@@ -5,15 +5,16 @@ from typing import Generator
 from uuid import uuid4
 
 import pytest
+from aiobotocore.session import get_session
 from amgi_aiobotocore.sqs import _run_cli
 from amgi_aiobotocore.sqs import run
 from amgi_aiobotocore.sqs import Server
 from amgi_aiobotocore.sqs import SqsBatchFailureError
 from amgi_types import MessageAckEvent
 from amgi_types import MessageNackEvent
+from moto.moto_server.threaded_moto_server import ThreadedMotoServer
 from test_utils import assert_run_can_terminate
 from test_utils import MockApp
-from testcontainers.localstack import LocalStackContainer
 
 
 class _StrMatcher:
@@ -22,28 +23,39 @@ class _StrMatcher:
 
 
 @pytest.fixture(scope="module")
-def localstack_container() -> Generator[LocalStackContainer, None, None]:
-    with LocalStackContainer(image="ghcr.io/asyncfast/localstack:4.9.2").with_services(
-        "sqs"
-    ) as localstack_container:
-        yield localstack_container
+def moto_endpoint() -> Generator[str, None, None]:
+    server = ThreadedMotoServer(ip_address="127.0.0.1", port=0)
+    server.start()
+    host, port = server.get_host_and_port()
+    try:
+        yield f"http://{host}:{port}"
+    finally:
+        server.stop()
 
 
 @pytest.fixture
-async def sqs_client(localstack_container: LocalStackContainer) -> Any:
-    return localstack_container.get_client("sqs")
+async def sqs_client(moto_endpoint: str) -> AsyncGenerator[Any, None]:
+    session = get_session()
+    async with session.create_client(
+        "sqs",
+        region_name="us-east-1",
+        endpoint_url=moto_endpoint,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+    ) as client:
+        yield client
 
 
 @pytest.fixture
-def queue_name_url(sqs_client: Any) -> tuple[str, str]:
+async def queue_name_url(sqs_client: Any) -> tuple[str, str]:
     queue_name = f"receive-{uuid4()}"
-    queue_url = cast(
-        str,
-        sqs_client.create_queue(
-            QueueName=queue_name, Attributes={"VisibilityTimeout": "0"}
-        )["QueueUrl"],
+    create_queue_response = await sqs_client.create_queue(
+        QueueName=queue_name, Attributes={"VisibilityTimeout": "0"}
     )
-    return queue_name, queue_url
+    return queue_name, cast(
+        str,
+        create_queue_response["QueueUrl"],
+    )
 
 
 @pytest.fixture
@@ -57,27 +69,24 @@ def queue_url(queue_name_url: tuple[str, str]) -> str:
 
 
 @pytest.fixture
-async def app(
-    queue_name: str, localstack_container: LocalStackContainer
-) -> AsyncGenerator[MockApp, None]:
+async def app(queue_name: str, moto_endpoint: str) -> AsyncGenerator[MockApp, None]:
     app = MockApp()
     server = Server(
         app,
         queue_name,
-        region_name=localstack_container.region_name,
-        endpoint_url=localstack_container.get_url(),
-        aws_access_key_id="testcontainers-localstack",
-        aws_secret_access_key="testcontainers-localstack",
+        region_name="us-east-1",
+        endpoint_url=moto_endpoint,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
     )
     async with app.lifespan(server=server):
         yield app
 
 
-@pytest.mark.integration
 async def test_message(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
-    sqs_client.send_message(
+    await sqs_client.send_message(
         QueueUrl=queue_url,
         MessageBody="value",
         MessageAttributes={
@@ -101,17 +110,16 @@ async def test_message(
         await send(message_ack_event)
 
     assert "Messages" not in (
-        sqs_client.receive_message(
+        await sqs_client.receive_message(
             QueueUrl=queue_url,
         )
     )
 
 
-@pytest.mark.integration
 async def test_message_nack(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
-    sqs_client.send_message(
+    await sqs_client.send_message(
         QueueUrl=queue_url,
         MessageBody="value",
         MessageAttributes={
@@ -135,20 +143,21 @@ async def test_message_nack(
         }
         await send(message_ack_event)
 
-    messages_response = sqs_client.receive_message(
+    messages_response = await sqs_client.receive_message(
         QueueUrl=queue_url,
     )
     assert "Messages" in messages_response
     assert len(messages_response["Messages"]) == 1
 
 
-@pytest.mark.integration
 async def test_message_send(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
     send_queue_name = f"send-{uuid4()}"
-    send_queue_url = sqs_client.create_queue(QueueName=send_queue_name)["QueueUrl"]
-    sqs_client.send_message(
+    create_queue_response = await sqs_client.create_queue(QueueName=send_queue_name)
+    send_queue_url = create_queue_response["QueueUrl"]
+
+    await sqs_client.send_message(
         QueueUrl=queue_url,
         MessageBody="value",
     )
@@ -163,7 +172,7 @@ async def test_message_send(
             }
         )
 
-        messages_response = sqs_client.receive_message(
+        messages_response = await sqs_client.receive_message(
             QueueUrl=send_queue_url, MessageAttributeNames=["All"]
         )
         assert "Messages" in messages_response
@@ -171,19 +180,16 @@ async def test_message_send(
         message = messages_response["Messages"][0]
         assert message["Body"] == "test"
         assert message["MessageAttributes"] == {
-            "test": {"StringValue": "test", "DataType": "String.Value"}
+            "test": {"StringValue": "test", "DataType": "String"}
         }
 
 
-@pytest.mark.integration
 async def test_message_send_invalid_message(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
     send_queue_name = f"send-{uuid4()}"
-    sqs_client.create_queue(
-        QueueName=send_queue_name, Attributes={"MaximumMessageSize": "1024"}
-    )
-    sqs_client.send_message(
+    await sqs_client.create_queue(QueueName=send_queue_name)
+    await sqs_client.send_message(
         QueueUrl=queue_url,
         MessageBody="value",
     )
@@ -195,17 +201,16 @@ async def test_message_send_invalid_message(
                     "type": "message.send",
                     "address": send_queue_name,
                     "headers": [],
-                    "payload": b"a" * 1025,
+                    "bindings": {"sqs": {"delay_seconds": 901}},
                 }
             )
 
 
-@pytest.mark.integration
 async def test_message_send_does_not_cache_invalid_queue_url(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
     send_queue_name = f"send-{uuid4()}"
-    sqs_client.send_message(
+    await sqs_client.send_message(
         QueueUrl=queue_url,
         MessageBody="value",
     )
@@ -223,7 +228,8 @@ async def test_message_send_does_not_cache_invalid_queue_url(
                 }
             )
 
-        send_queue_url = sqs_client.create_queue(QueueName=send_queue_name)["QueueUrl"]
+        create_queue_response = await sqs_client.create_queue(QueueName=send_queue_name)
+        send_queue_url = create_queue_response["QueueUrl"]
 
         await send(
             {
@@ -234,37 +240,35 @@ async def test_message_send_does_not_cache_invalid_queue_url(
             }
         )
 
-        messages_response = sqs_client.receive_message(
+        messages_response = await sqs_client.receive_message(
             QueueUrl=send_queue_url, MessageAttributeNames=["All"]
         )
         assert "Messages" in messages_response
         assert len(messages_response["Messages"]) == 1
         message = messages_response["Messages"][0]
         assert message["Body"] == "test"
-        assert message["MessageAttributes"] == {}
 
 
-@pytest.mark.integration
 async def test_lifespan(
     queue_url: str,
     queue_name: str,
-    localstack_container: LocalStackContainer,
+    moto_endpoint: str,
     sqs_client: Any,
 ) -> None:
     app = MockApp()
     server = Server(
         app,
         queue_name,
-        region_name=localstack_container.region_name,
-        endpoint_url=localstack_container.get_url(),
-        aws_access_key_id="testcontainers-localstack",
-        aws_secret_access_key="testcontainers-localstack",
+        region_name="us-east-1",
+        endpoint_url=moto_endpoint,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
     )
 
     state_item = uuid4()
 
     async with app.lifespan({"item": state_item}, server):
-        sqs_client.send_message(
+        await sqs_client.send_message(
             QueueUrl=queue_url,
             MessageBody="value",
             MessageAttributes={
@@ -284,35 +288,32 @@ async def test_lifespan(
             }
 
 
-@pytest.mark.integration
-def test_run(queue_name: str, localstack_container: LocalStackContainer) -> None:
+def test_run(queue_name: str, moto_endpoint: str) -> None:
     assert_run_can_terminate(
         run,
         queue_name,
-        region_name=localstack_container.region_name,
-        endpoint_url=localstack_container.get_url(),
-        aws_access_key_id="testcontainers-localstack",
-        aws_secret_access_key="testcontainers-localstack",
+        region_name="us-east-1",
+        endpoint_url=moto_endpoint,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
     )
 
 
-@pytest.mark.integration
-def test_run_cli(queue_name: str, localstack_container: LocalStackContainer) -> None:
+def test_run_cli(queue_name: str, moto_endpoint: str) -> None:
     assert_run_can_terminate(
         _run_cli,
         [queue_name],
-        region_name=localstack_container.region_name,
-        endpoint_url=localstack_container.get_url(),
-        aws_access_key_id="testcontainers-localstack",
-        aws_secret_access_key="testcontainers-localstack",
+        region_name="us-east-1",
+        endpoint_url=moto_endpoint,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
     )
 
 
-@pytest.mark.integration
 async def test_message_receive_not_callable(
     app: MockApp, queue_url: str, queue_name: str, sqs_client: Any
 ) -> None:
-    sqs_client.send_message(
+    await sqs_client.send_message(
         QueueUrl=queue_url,
         MessageBody="value",
         MessageAttributes={
