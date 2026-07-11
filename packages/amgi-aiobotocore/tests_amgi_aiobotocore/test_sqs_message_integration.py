@@ -81,8 +81,8 @@ async def test_message(
         QueueUrl=queue_url,
         MessageBody="value",
         MessageAttributes={
-            "string-value": {"StringValue": "string", "DataType": "StringValue"},
-            "bytes-value": {"BinaryValue": b"bytes", "DataType": "BinaryValue"},
+            "string-value": {"StringValue": "string", "DataType": "String.Value"},
+            "bytes-value": {"BinaryValue": b"bytes", "DataType": "Binary.Value"},
         },
     )
     async with app.call() as (scope, receive, send):
@@ -115,8 +115,8 @@ async def test_message_nack(
         QueueUrl=queue_url,
         MessageBody="value",
         MessageAttributes={
-            "string-value": {"StringValue": "string", "DataType": "StringValue"},
-            "bytes-value": {"BinaryValue": b"bytes", "DataType": "BinaryValue"},
+            "string-value": {"StringValue": "string", "DataType": "String.Value"},
+            "bytes-value": {"BinaryValue": b"bytes", "DataType": "Binary.Value"},
         },
     )
     async with app.call() as (scope, receive, send):
@@ -171,7 +171,7 @@ async def test_message_send(
         message = messages_response["Messages"][0]
         assert message["Body"] == "test"
         assert message["MessageAttributes"] == {
-            "test": {"StringValue": "test", "DataType": "StringValue"}
+            "test": {"StringValue": "test", "DataType": "String.Value"}
         }
 
 
@@ -268,8 +268,8 @@ async def test_lifespan(
             QueueUrl=queue_url,
             MessageBody="value",
             MessageAttributes={
-                "string-value": {"StringValue": "string", "DataType": "StringValue"},
-                "bytes-value": {"BinaryValue": b"bytes", "DataType": "BinaryValue"},
+                "string-value": {"StringValue": "string", "DataType": "String.Value"},
+                "bytes-value": {"BinaryValue": b"bytes", "DataType": "Binary.Value"},
             },
         )
 
@@ -316,8 +316,8 @@ async def test_message_receive_not_callable(
         QueueUrl=queue_url,
         MessageBody="value",
         MessageAttributes={
-            "string-value": {"StringValue": "string", "DataType": "StringValue"},
-            "bytes-value": {"BinaryValue": b"bytes", "DataType": "BinaryValue"},
+            "string-value": {"StringValue": "string", "DataType": "String.Value"},
+            "bytes-value": {"BinaryValue": b"bytes", "DataType": "Binary.Value"},
         },
     )
     async with app.call() as (scope, receive, send):
