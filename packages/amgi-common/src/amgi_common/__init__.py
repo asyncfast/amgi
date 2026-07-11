@@ -283,6 +283,9 @@ def server_serve(server: _Server) -> None:
 
 async def _server_serve_async(server: _Server, loop: AbstractEventLoop) -> None:
     for signal in (SIGINT, SIGTERM):
-        loop.add_signal_handler(signal, server.stop)
+        try:
+            loop.add_signal_handler(signal, server.stop)
+        except NotImplementedError:
+            pass
 
     await server.serve()
