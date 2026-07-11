@@ -1,8 +1,5 @@
 from dataclasses import dataclass
 from typing import Annotated
-from typing import Any
-from typing import Callable
-from typing import cast
 from uuid import UUID
 
 import pytest
@@ -10,20 +7,7 @@ from asyncfast import Header
 from asyncfast import Message
 from asyncfast.bindings import KafkaKey
 from pydantic import BaseModel
-from pytest_benchmark.fixture import BenchmarkFixture
-
-MessageBenchmark = Callable[[Message], dict[str, Any]]
-
-
-@pytest.fixture
-def message_benchmark(benchmark: BenchmarkFixture) -> MessageBenchmark:
-    def _message_benchmark(
-        message: Message,
-    ) -> dict[str, Any]:
-        result = benchmark(lambda: dict(message))
-        return cast(dict[str, Any], result)
-
-    return _message_benchmark
+from tests_asyncfast.conftest import MessageBenchmark
 
 
 def test_message_payload(message_benchmark: MessageBenchmark) -> None:
@@ -118,20 +102,6 @@ def test_message_header_bytes(message_benchmark: MessageBenchmark) -> None:
     assert message_benchmark(response) == {
         "address": "response_channel",
         "headers": [(b"id", b"1234")],
-    }
-
-
-def test_message_binding_kafka_key(message_benchmark: MessageBenchmark) -> None:
-    @dataclass
-    class Response(Message, address="response_channel"):
-        key: Annotated[UUID, KafkaKey()]
-
-    response = Response(key=UUID("ec5e9f87-c896-4fb1-b028-8352ef654e05"))
-
-    assert message_benchmark(response) == {
-        "address": "response_channel",
-        "bindings": {"kafka": {"key": b"ec5e9f87-c896-4fb1-b028-8352ef654e05"}},
-        "headers": [],
     }
 
 

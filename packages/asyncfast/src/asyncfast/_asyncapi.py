@@ -204,8 +204,13 @@ class ChannelDefinition:
                 {name for name, _ in message.__parameters__},
                 [(alias, type_, ...) for _, alias, type_, _ in message.__headers__],
                 [
-                    (protocol, field_name, type_, type_adapter.core_schema)
-                    for _, protocol, field_name, type_, type_adapter in message.__bindings__
+                    (
+                        binding.__protocol__,
+                        binding.__field_name__,
+                        type_,
+                        type_adapter.core_schema,
+                    )
+                    for _, binding, type_, type_adapter in message.__bindings__
                 ],
                 (
                     (
