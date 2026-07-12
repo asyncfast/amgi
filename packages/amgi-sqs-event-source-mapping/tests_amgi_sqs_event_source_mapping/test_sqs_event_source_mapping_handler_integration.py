@@ -87,7 +87,7 @@ async def test_sqs_handler_record_send(
         message = messages_response["Messages"][0]
         assert message["Body"] == "test"
         assert message["MessageAttributes"] == {
-            "test": {"StringValue": "test", "DataType": "StringValue"}
+            "test": {"StringValue": "test", "DataType": "String"}
         }
 
     await call_task
@@ -189,5 +189,5 @@ async def test_message_send(localstack_container: LocalStackContainer) -> None:
         message = messages_response["Messages"][0]
         assert message["Body"] == "test"
         assert message["MessageAttributes"] == {
-            "test": {"StringValue": "test", "DataType": "StringValue"}
+            "test": {"StringValue": "test", "DataType": "String"}
         }

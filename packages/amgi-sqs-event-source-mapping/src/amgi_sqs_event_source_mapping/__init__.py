@@ -105,7 +105,7 @@ def _encode_message_attributes(
     for name, value in message_attributes.items():
         encoded_value = (
             base64.b64decode(value["binaryValue"])
-            if value["dataType"] == "Binary"
+            if value["dataType"].startswith("Binary")
             else value["stringValue"].encode()
         )
         yield name.encode(), encoded_value
@@ -177,7 +177,7 @@ class _SendBatcher:
                     "MessageAttributes": {
                         name.decode(): {
                             "StringValue": value.decode(),
-                            "DataType": "StringValue",
+                            "DataType": "String",
                         }
                         for name, value in headers
                     },
