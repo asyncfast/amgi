@@ -175,3 +175,46 @@ async def test_message_send(mock_sqs: MockAWS) -> None:
         assert message["MessageAttributes"] == {
             "test": {"StringValue": "test", "DataType": "String"}
         }
+
+
+async def test_message_send_fifo(mock_sqs: MockAWS) -> None:
+    sqs_client = boto3.client("sqs", region_name="us-east-1")
+
+    send_queue_name = f"send-{uuid4()}.fifo"
+    send_queue_url = sqs_client.create_queue(
+        QueueName=send_queue_name,
+        Attributes={
+            "FifoQueue": "true",
+        },
+    )["QueueUrl"]
+    message_deduplication_id = str(uuid4())
+    message_group_id = str(uuid4())
+
+    async with MessageSend(region_name="us-east-1") as message_send:
+        await message_send(
+            {
+                "type": "message.send",
+                "address": send_queue_name,
+                "payload": b"test",
+                "headers": [],
+                "bindings": {
+                    "sqs": {
+                        "message_deduplication_id": message_deduplication_id,
+                        "message_group_id": message_group_id,
+                    }
+                },
+            }
+        )
+
+        messages_response = sqs_client.receive_message(
+            QueueUrl=send_queue_url,
+            MessageSystemAttributeNames=["All"],
+        )
+        assert "Messages" in messages_response
+        assert len(messages_response["Messages"]) == 1
+        message = messages_response["Messages"][0]
+        assert message["Body"] == "test"
+        assert (
+            message["Attributes"]["MessageDeduplicationId"] == message_deduplication_id
+        )
+        assert message["Attributes"]["MessageGroupId"] == message_group_id

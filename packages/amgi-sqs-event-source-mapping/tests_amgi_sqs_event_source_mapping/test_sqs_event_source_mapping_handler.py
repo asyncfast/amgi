@@ -97,7 +97,66 @@ async def test_sqs_handler_records(
             "address": "my-queue",
             "headers": [(b"myAttribute", b"myValue")],
             "payload": b"Test message.",
+            "bindings": {"sqs": {}},
             "state": {},
+        }
+        await send(
+            {
+                "type": "message.ack",
+            }
+        )
+
+    batch_item_failures = await call_task
+    assert batch_item_failures == {"batchItemFailures": []}
+
+
+async def test_sqs_handler_records_fifo(
+    app: MockApp, sqs_event_source_mapping_handler: SqsEventSourceMappingHandler
+) -> None:
+    message_group_id = str(uuid4())
+    message_deduplication_id = str(uuid4())
+    call_task = asyncio.get_running_loop().create_task(
+        sqs_event_source_mapping_handler._call(
+            {
+                "Records": [
+                    {
+                        "messageId": "11d6ee51-4cc7-4302-9e22-7cd8afdaadf5",
+                        "receiptHandle": "AQEBBX8nesZEXmkhsmZeyIE8iQAMig7qw...",
+                        "body": "Test message.",
+                        "attributes": {
+                            "ApproximateReceiveCount": "1",
+                            "SentTimestamp": "1573251510774",
+                            "SequenceNumber": "18849496460467696128",
+                            "MessageGroupId": message_group_id,
+                            "SenderId": "AIDAIO23YVJENQZJOL4VO",
+                            "MessageDeduplicationId": message_deduplication_id,
+                            "ApproximateFirstReceiveTimestamp": "1573251510774",
+                        },
+                        "messageAttributes": {},
+                        "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
+                        "eventSource": "aws:sqs",
+                        "eventSourceARN": "arn:aws:sqs:us-east-2:123456789012:fifo.fifo",
+                        "awsRegion": "us-east-2",
+                    }
+                ]
+            },
+            Mock(),
+        )
+    )
+    async with app.call() as (scope, receive, send):
+        assert scope == {
+            "address": "fifo.fifo",
+            "amgi": {"spec_version": "2.0", "version": "2.0"},
+            "headers": [],
+            "payload": b"Test message.",
+            "state": {},
+            "bindings": {
+                "sqs": {
+                    "message_group_id": message_group_id,
+                    "message_deduplication_id": message_deduplication_id,
+                }
+            },
+            "type": "message",
         }
         await send(
             {
@@ -151,6 +210,7 @@ async def test_sqs_handler_record_nack(
             "address": "my-queue",
             "headers": [(b"myAttribute", b"myValue")],
             "payload": b"Test message.",
+            "bindings": {"sqs": {}},
             "state": {},
         }
 
@@ -211,6 +271,7 @@ async def test_sqs_handler_record_unacked(
             "address": "my-queue",
             "headers": [(b"myAttribute", b"myValue")],
             "payload": b"Test message.",
+            "bindings": {"sqs": {}},
             "state": {},
         }
 
@@ -263,6 +324,7 @@ async def test_sqs_handler_record_message_attribute_binary_value(
             "address": "my-queue",
             "headers": [(b"myAttribute", b"myValue")],
             "payload": b"Test message.",
+            "bindings": {"sqs": {}},
             "state": {},
         }
 
@@ -370,6 +432,7 @@ async def test_lifespan() -> None:
                 "address": "my-queue",
                 "headers": [(b"myAttribute", b"myValue")],
                 "payload": b"Test message.",
+                "bindings": {"sqs": {}},
                 "state": {"item": state_item},
             }
 
