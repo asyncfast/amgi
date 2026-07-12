@@ -1,12 +1,16 @@
 import asyncio
+import importlib
 import multiprocessing.synchronize
+from asyncio import AbstractEventLoop
 from asyncio import Event
 from asyncio import Queue
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from functools import partial
+from threading import Thread
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import Optional
 from typing import Protocol
 
@@ -86,21 +90,70 @@ async def _app(
         raise Exception
 
 
+def _stop_server(
+    server: _Server,
+    lifespan_event: multiprocessing.synchronize.Event,
+    loop: AbstractEventLoop,
+) -> None:
+    lifespan_event.wait()
+    loop.call_soon_threadsafe(server.stop)
+
+
+def _run_until_lifespan_then_stop(
+    run: Callable[..., None],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+    lifespan_event: multiprocessing.synchronize.Event,
+) -> None:
+    module = importlib.import_module(run.__module__)
+    original_server_serve = cast(
+        Callable[[_Server], None], getattr(module, "server_serve")
+    )
+
+    def server_serve(server: _Server) -> None:
+        original_serve = server.serve
+
+        async def serve() -> None:
+            loop = asyncio.get_running_loop()
+            Thread(
+                target=_stop_server,
+                args=(server, lifespan_event, loop),
+                daemon=True,
+            ).start()
+            await original_serve()
+
+        setattr(server, "serve", serve)
+        try:
+            original_server_serve(server)
+        finally:
+            setattr(server, "serve", original_serve)
+
+    setattr(module, "server_serve", server_serve)
+    try:
+        run(partial(_app, lifespan_event=lifespan_event), *args, **kwargs)
+    finally:
+        setattr(module, "server_serve", original_server_serve)
+
+
 def assert_run_can_terminate(
     run: Callable[..., None], *args: Any, **kwargs: Any
 ) -> None:
-    lifespan_event = multiprocessing.Event()
+    context = multiprocessing.get_context("spawn")
+    lifespan_event = context.Event()
 
-    process = multiprocessing.Process(
-        target=run,
-        args=(partial(_app, lifespan_event=lifespan_event), *args),
-        kwargs=kwargs,
+    process = context.Process(
+        target=_run_until_lifespan_then_stop,
+        args=(run, args, kwargs, lifespan_event),
     )
     process.start()
 
-    lifespan_event.wait()
-    assert lifespan_event.is_set()
+    try:
+        assert lifespan_event.wait(5)
+        process.join(5)
+    finally:
+        if process.is_alive():  # pragma: no cover
+            process.kill()
+            process.join()
 
-    process.terminate()
-    process.join()
     assert not process.is_alive()
+    assert process.exitcode == 0
