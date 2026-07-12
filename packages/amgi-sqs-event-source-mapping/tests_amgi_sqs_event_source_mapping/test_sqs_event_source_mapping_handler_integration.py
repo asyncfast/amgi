@@ -3,36 +3,32 @@ from typing import Generator
 from unittest.mock import Mock
 from uuid import uuid4
 
+import boto3
 import pytest
 from amgi_sqs_event_source_mapping import MessageSend
 from amgi_sqs_event_source_mapping import SqsBatchFailureError
 from amgi_sqs_event_source_mapping import SqsEventSourceMappingHandler
+from moto import mock_aws
+from moto.core.models import MockAWS
 from test_utils import MockApp
-from testcontainers.localstack import LocalStackContainer
 
 
-@pytest.fixture(scope="module")
-def localstack_container() -> Generator[LocalStackContainer, None, None]:
-    with LocalStackContainer(image="ghcr.io/asyncfast/localstack:4.9.2").with_services(
-        "sqs"
-    ) as localstack_container:
-        yield localstack_container
+@pytest.fixture
+def mock_sqs() -> Generator[MockAWS, None, None]:
+    with mock_aws() as _mock_aws:
+        yield _mock_aws
 
 
-@pytest.mark.integration
 async def test_sqs_handler_record_send(
-    localstack_container: LocalStackContainer,
+    mock_sqs: MockAWS,
 ) -> None:
     app = MockApp()
     sqs_event_source_mapping_handler = SqsEventSourceMappingHandler(
         app,
-        region_name=localstack_container.region_name,
-        endpoint_url=localstack_container.get_url(),
-        aws_access_key_id="testcontainers-localstack",
-        aws_secret_access_key="testcontainers-localstack",
+        region_name="us-east-1",
         lifespan=False,
     )
-    sqs_client = localstack_container.get_client("sqs")
+    sqs_client = boto3.client("sqs", region_name="us-east-1")
 
     send_queue_name = f"send-{uuid4()}"
     send_queue_url = sqs_client.create_queue(QueueName=send_queue_name)["QueueUrl"]
@@ -93,25 +89,19 @@ async def test_sqs_handler_record_send(
     await call_task
 
 
-@pytest.mark.integration
 async def test_sqs_handler_record_send_invalid_message(
-    localstack_container: LocalStackContainer,
+    mock_sqs: MockAWS,
 ) -> None:
     app = MockApp()
     sqs_event_source_mapping_handler = SqsEventSourceMappingHandler(
         app,
-        region_name=localstack_container.region_name,
-        endpoint_url=localstack_container.get_url(),
-        aws_access_key_id="testcontainers-localstack",
-        aws_secret_access_key="testcontainers-localstack",
+        region_name="us-east-1",
         lifespan=False,
     )
-    sqs_client = localstack_container.get_client("sqs")
+    sqs_client = boto3.client("sqs", region_name="us-east-1")
 
     send_queue_name = f"send-{uuid4()}"
-    sqs_client.create_queue(
-        QueueName=send_queue_name, Attributes={"MaximumMessageSize": "1024"}
-    )
+    sqs_client.create_queue(QueueName=send_queue_name)
 
     call_task = asyncio.get_running_loop().create_task(
         sqs_event_source_mapping_handler._call(
@@ -152,26 +142,20 @@ async def test_sqs_handler_record_send_invalid_message(
                     "type": "message.send",
                     "address": send_queue_name,
                     "headers": [],
-                    "payload": b"a" * 1025,
+                    "bindings": {"sqs": {"delay_seconds": 901}},
                 }
             )
 
     await call_task
 
 
-@pytest.mark.integration
-async def test_message_send(localstack_container: LocalStackContainer) -> None:
-    sqs_client = localstack_container.get_client("sqs")
+async def test_message_send(mock_sqs: MockAWS) -> None:
+    sqs_client = boto3.client("sqs", region_name="us-east-1")
 
     send_queue_name = f"send-{uuid4()}"
     send_queue_url = sqs_client.create_queue(QueueName=send_queue_name)["QueueUrl"]
 
-    async with MessageSend(
-        region_name=localstack_container.region_name,
-        endpoint_url=localstack_container.get_url(),
-        aws_access_key_id="testcontainers-localstack",
-        aws_secret_access_key="testcontainers-localstack",
-    ) as message_send:
+    async with MessageSend(region_name="us-east-1") as message_send:
         await message_send(
             {
                 "type": "message.send",
