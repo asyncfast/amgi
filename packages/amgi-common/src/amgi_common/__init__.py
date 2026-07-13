@@ -4,6 +4,7 @@ import asyncio
 import logging
 import sys
 from asyncio import AbstractEventLoop
+from asyncio import CancelledError
 from asyncio import Event
 from asyncio import Future
 from asyncio import Queue
@@ -14,6 +15,7 @@ from collections.abc import Coroutine
 from collections.abc import Hashable
 from collections.abc import Iterable
 from collections.abc import Sequence
+from contextlib import suppress
 from functools import partial
 from itertools import islice
 from signal import SIGINT
@@ -177,6 +179,8 @@ class _StoppableAsyncIterator(Generic[T]):
         )
         if self._stop_event.is_set():
             callable_task.cancel()
+            with suppress(CancelledError):
+                await callable_task
             raise StopAsyncIteration
         return await callable_task
 
