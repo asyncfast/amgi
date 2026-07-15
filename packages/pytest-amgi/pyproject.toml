@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "pytest-amgi"
-version = "0.45.1"
+version = "0.46.0"
 description = "Pytest helpers for AMGI applications"
 readme = "README.md"
 authors = [
@@ -22,8 +22,8 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "amgi-common==0.45.1",
-  "amgi-types==0.45.1",
+  "amgi-common==0.46.0",
+  "amgi-types==0.46.0",
   "pytest>=9.0.3",
 ]
 entry-points.pytest11.amgi = "pytest_amgi"

@@ -1,3 +1,20 @@
+## 0.46.0 (2026-07-15)
+
+### Feat
+
+- **amgi-sqs-event-source-mapping**: add support for message deduplication id and message group id
+- **amgi-sqs-event-source-mapping**: add support for delay seconds
+- **asyncfast**: add sqs message bindings
+- **amgi-aiobotocore**: add support for message deduplication id and message group id
+- **amgi-aiobotocore**: add support for delay seconds
+
+### Fix
+
+- **amgi-common**: await cancelled stoppable calls
+- **amgi-sqs-event-source-mapping**: properly handle message attribute data types
+- **amgi-common**: handle unsupported signal handlers on windows
+- **amgi-aiobotocore**: properly handle message attribute data types
+
 ## 0.45.1 (2026-07-08)
 
 ### Fix
