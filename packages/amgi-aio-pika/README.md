@@ -6,7 +6,7 @@ AMQP (RabbitMQ) using `aio-pika`.
 ## Installation
 
 ```
-pip install amgi-aio-pika==0.46.0
+pip install amgi-aio-pika==0.47.0
 ```
 
 ## Example

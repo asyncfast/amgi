@@ -10,7 +10,7 @@ applications against [NATS](https://nats.io/) using either push or pull subscrip
 ## Installation
 
 ```
-pip install amgi-nats==0.46.0
+pip install amgi-nats==0.47.0
 ```
 
 ## Push Example
