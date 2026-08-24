@@ -15,6 +15,7 @@ classifiers = [
 dependencies = [
   "amgi-aio-pika",
   "amgi-aiokafka",
+  "amgi-nats",
   "amgi-paho-mqtt",
   "asyncfast",
 ]
@@ -22,5 +23,6 @@ dependencies = [
 [tool.uv]
 sources.amgi-aio-pika = { workspace = true }
 sources.amgi-aiokafka = { workspace = true }
+sources.amgi-nats = { workspace = true }
 sources.amgi-paho-mqtt = { workspace = true }
 sources.asyncfast = { workspace = true }

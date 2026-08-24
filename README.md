@@ -192,6 +192,11 @@ The following AMGI servers are currently available:
 
 - **[amgi-paho-mqtt](https://pypi.org/project/amgi-paho-mqtt/)** - [MQTT](https://mqtt.org/) server implementation
 
+### NATS
+
+- **[amgi-nats](https://pypi.org/project/amgi-nats/)** - Contains [NATS](https://nats.io/) push and pull server
+  implementations
+
 ### Redis
 
 - **[amgi-redis](https://pypi.org/project/amgi-redis/)** - [Redis](https://redis.io/) server implementation
