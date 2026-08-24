@@ -54,6 +54,7 @@ jobs:
           - amgi-cloudevents
           - amgi-common
           - amgi-kafka-event-source-mapping
+          - amgi-nats
           - amgi-paho-mqtt
           - amgi-redis
           - amgi-sqs-event-source-mapping

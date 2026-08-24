@@ -63,6 +63,31 @@ Connect the app via MQTT with:
 asyncfast run amgi-paho-mqtt main:app input_channel
 ```
 
+## NATS
+
+Run the NATS compose file with:
+
+```commandline
+docker compose --file nats/docker-compose.yaml up --detach
+```
+
+This includes:
+
+- A NATS server with JetStream enabled, running on `nats://localhost:4222`
+- NATS monitoring endpoint ([`http://localhost:8222/`](http://localhost:8222/))
+
+Connect the app via NATS push subscriptions with:
+
+```commandline
+asyncfast run amgi-nats-push main:app input_channel
+```
+
+Or via NATS pull subscriptions with:
+
+```commandline
+asyncfast run amgi-nats-pull main:app input_channel
+```
+
 ## SQS
 
 Run the SQS compose file with:

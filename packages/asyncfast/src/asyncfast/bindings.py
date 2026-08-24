@@ -6,7 +6,7 @@ from pydantic import TypeAdapter
 from pydantic.fields import FieldInfo
 
 
-class Binding(FieldInfo, ABC):
+class Binding(FieldInfo, ABC):  # type: ignore[misc]
     __protocol__: ClassVar[str]
     __field_name__: ClassVar[str]
 
@@ -14,7 +14,7 @@ class Binding(FieldInfo, ABC):
         return type_adapter.dump_python(value, mode="json")
 
 
-class KafkaKey(Binding):
+class KafkaKey(Binding):  # type: ignore[misc]
     __protocol__ = "kafka"
     __field_name__ = "key"
 
@@ -25,16 +25,16 @@ class KafkaKey(Binding):
         return type_adapter.dump_json(value)
 
 
-class SqsDelaySeconds(Binding):
+class SqsDelaySeconds(Binding):  # type: ignore[misc]
     __protocol__ = "sqs"
     __field_name__ = "delay_seconds"
 
 
-class SqsMessageDeduplicationId(Binding):
+class SqsMessageDeduplicationId(Binding):  # type: ignore[misc]
     __protocol__ = "sqs"
     __field_name__ = "message_deduplication_id"
 
 
-class SqsMessageGroupId(Binding):
+class SqsMessageGroupId(Binding):  # type: ignore[misc]
     __protocol__ = "sqs"
     __field_name__ = "message_group_id"

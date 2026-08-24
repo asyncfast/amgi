@@ -1,0 +1,8 @@
+services:
+  nats:
+    image: nats:2.10
+    command: -js
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+      - "8222:8222"

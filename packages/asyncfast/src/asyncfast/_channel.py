@@ -99,15 +99,15 @@ class InvalidChannelDefinitionError(ValueError):
     """
 
 
-class Header(FieldInfo):
+class Header(FieldInfo):  # type: ignore[misc]
     pass
 
 
-class Payload(FieldInfo):
+class Payload(FieldInfo):  # type: ignore[misc]
     pass
 
 
-class Parameter(FieldInfo):
+class Parameter(FieldInfo):  # type: ignore[misc]
     pass
 
 
