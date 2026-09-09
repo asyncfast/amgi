@@ -22,7 +22,7 @@ class Message(Mapping[str, Any]):
     __address__: ClassVar[str | None] = None
     __headers__: ClassVar[Sequence[tuple[str, str, type[Any], TypeAdapter[Any]]]]
     __parameters__: ClassVar[Sequence[tuple[str, TypeAdapter[Any]]]]
-    __payload__: ClassVar[tuple[str, type[Any], TypeAdapter[Any]] | None]
+    __payload__: ClassVar[tuple[str, Payload, type[Any], TypeAdapter[Any]] | None]
     __bindings__: ClassVar[Sequence[tuple[str, Binding, type[Any], TypeAdapter[Any]]]]
 
     def __init_subclass__(cls, address: str | None = None, **kwargs: Any) -> None:
@@ -62,7 +62,7 @@ class Message(Mapping[str, Any]):
         )
 
         payloads = [
-            (name, annotated, TypeAdapter(annotated))
+            (name, get_args(annotated)[1], annotated, TypeAdapter(annotated))
             for name, annotated in annotations
             if isinstance(get_args(annotated)[1], Payload)
         ]
@@ -82,8 +82,8 @@ class Message(Mapping[str, Any]):
         elif key == "headers":
             return self._get_headers()
         elif key == "payload" and self.__payload__:
-            name, _, type_adapter = self.__payload__
-            return type_adapter.dump_json(getattr(self, name))
+            name, payload, _, type_adapter = self.__payload__
+            return payload.dump_value(getattr(self, name), type_adapter)
         elif key == "bindings" and self.__bindings__:
             return self._get_bindings()
         raise KeyError(key)
