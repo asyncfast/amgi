@@ -60,6 +60,7 @@ jobs:
           - amgi-sqs-event-source-mapping
           - amgi-types
           - asyncfast
+          - asyncfast-avro
           - asyncfast-cli
           - pytest-amgi
     steps:

@@ -18,6 +18,7 @@ from asyncfast._channel import Channel
 from asyncfast._channel import ChannelRouter
 from asyncfast._channel import HeaderResolver
 from asyncfast._channel import MessageSenderResolver
+from asyncfast._channel import Payload
 from asyncfast._channel import PayloadResolver
 from asyncfast._channel import Resolver
 from asyncfast._message import Message
@@ -47,7 +48,7 @@ class MessageDefinition:
     parameters: set[str]
     headers: Sequence[tuple[str, type[Any], Any]]
     bindings: Sequence[tuple[str, str, type[Any], CoreSchema]]
-    payload: tuple[type[Any], CoreSchema] | None
+    payload: tuple[type[Any], TypeAdapter[Any], Payload] | None
 
     @property
     def channel_definition(self) -> dict[str, Any]:
@@ -92,8 +93,14 @@ class MessageDefinition:
 
         payload = self.payload
         if payload:
-            type_, _ = payload
-            message["payload"] = field_mapping[hash(type_), json_schema_mode]
+            type_, type_adapter, payload_annotation = payload
+            if payload_annotation.__schema_format__ is None:
+                message["payload"] = field_mapping[hash(type_), json_schema_mode]
+            else:
+                message["payload"] = {
+                    "schemaFormat": payload_annotation.__schema_format__,
+                    "schema": payload_annotation.asyncapi_schema(type_adapter),
+                }
 
         if self.bindings:
             bindings: dict[str, dict[str, Any]] = {}
@@ -122,8 +129,9 @@ class MessageDefinition:
             ).core_schema
         payload = self.payload
         if payload:
-            type_, core_schema = payload
-            yield hash(type_), json_schema_mode, core_schema
+            type_, type_adapter, payload_annotation = payload
+            if payload_annotation.__schema_format__ is None:
+                yield hash(type_), json_schema_mode, type_adapter.core_schema
 
 
 @dataclass(frozen=True)
@@ -214,8 +222,9 @@ class ChannelDefinition:
                 ],
                 (
                     (
+                        message.__payload__[2],
+                        message.__payload__[3],
                         message.__payload__[1],
-                        message.__payload__[2].core_schema,
                     )
                     if message.__payload__
                     else None
@@ -249,7 +258,11 @@ class ChannelDefinition:
                 for binding_resolver in self.bindings
             ],
             (
-                (self.payload.type, self.payload.type_adapter.core_schema)
+                (
+                    self.payload.type,
+                    self.payload.type_adapter,
+                    self.payload.payload_annotation,
+                )
                 if self.payload
                 else None
             ),
