@@ -1,0 +1,52 @@
+[build-system]
+build-backend = "uv_build"
+requires = [
+  "uv-build>=0.8.14,<0.9.0",
+]
+
+[project]
+name = "asyncfast-avro"
+version = "0.47.0"
+description = "Add your description here"
+readme = "README.md"
+license = "MIT"
+license-files = [
+  "LICENSE",
+]
+authors = [
+  { name = "jack.burridge", email = "jack.burridge@mail.com" },
+]
+requires-python = ">=3.10"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "asyncfast==0.47.0",
+  "fastavro>=1.7",
+  "pydantic>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4.1",
+  "pytest-asyncio>=1.1",
+  "pytest-benchmark>=5.2.3",
+  "pytest-cov>=7.0.0",
+  "pytest-timeout>=2.4.0",
+]
+
+[tool.uv]
+sources.asyncfast.workspace = true
+
+[tool.pytest]
+ini_options.asyncio_mode = "auto"
+ini_options.timeout = 10
+ini_options.timeout_func_only = true
+ini_options.addopts = [
+  "--benchmark-max-time=0.1",
+]
