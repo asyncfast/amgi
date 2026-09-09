@@ -36,6 +36,9 @@ dependencies = [
   "amgi-types==0.47.0",
   "pydantic>=2.0.0",
 ]
+optional-dependencies.avro = [
+  "asyncfast-avro==0.47.0",
+]
 optional-dependencies.standard = [
   "asyncfast-cli==0.47.0",
 ]
@@ -57,6 +60,7 @@ dev = [
 
 [tool.uv]
 sources.amgi-types.workspace = true
+sources.asyncfast-avro.workspace = true
 sources.asyncfast-cli.workspace = true
 
 [tool.pytest]

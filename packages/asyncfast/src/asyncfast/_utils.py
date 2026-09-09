@@ -37,6 +37,12 @@ def get_address_pattern(address: str) -> Pattern[str]:
     return re.compile(address_regex)
 
 
+class InvalidChannelDefinitionError(ValueError):
+    """
+    Raised when a channel or message handler is defined with an invalid shape.
+    """
+
+
 class ChannelNotFoundError(LookupError):
     def __init__(self, address: str) -> None:
         super().__init__(f"Couldn't resolve address: {address}")
