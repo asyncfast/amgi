@@ -1,0 +1,8 @@
+services:
+  pulsar:
+    image: apachepulsar/pulsar:4.0.5
+    command: bin/pulsar standalone
+    restart: unless-stopped
+    ports:
+      - "6650:6650"
+      - "8080:8080"

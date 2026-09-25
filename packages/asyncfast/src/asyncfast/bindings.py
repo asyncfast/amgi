@@ -25,6 +25,19 @@ class KafkaKey(Binding):  # type: ignore[misc]
         return type_adapter.dump_json(value)
 
 
+class PulsarKey(Binding):  # type: ignore[misc]
+    __protocol__ = "pulsar"
+    __field_name__ = "key"
+
+    def dump_value(self, value: Any, type_adapter: TypeAdapter[Any]) -> Any:
+        python = type_adapter.dump_python(value, mode="json")
+        if python is None:
+            return None
+        if isinstance(python, str):
+            return python
+        return type_adapter.dump_json(value).decode()
+
+
 class SqsDelaySeconds(Binding):  # type: ignore[misc]
     __protocol__ = "sqs"
     __field_name__ = "delay_seconds"
