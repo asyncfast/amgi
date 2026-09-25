@@ -88,6 +88,25 @@ Or via NATS pull subscriptions with:
 asyncfast run amgi-nats-pull main:app input_channel
 ```
 
+## Pulsar
+
+Run the Pulsar compose file with:
+
+```commandline
+docker compose --file apache-pulsar/docker-compose.yaml up --detach
+```
+
+This includes:
+
+- A Pulsar standalone cluster running on `pulsar://localhost:6650`
+- Pulsar HTTP service ([`http://localhost:8080/`](http://localhost:8080/))
+
+Connect the app via Pulsar with:
+
+```commandline
+asyncfast run amgi-pulsar main:app input_channel
+```
+
 ## SQS
 
 Run the SQS compose file with:
