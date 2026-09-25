@@ -109,6 +109,11 @@ handler = SqsEventSourceMappingHandler(app)
 
 The application code remains unchanged.
 
+## AsyncFast Extensions
+
+- **[asyncfast-avro](https://pypi.org/project/asyncfast-avro/)** - [Avro](https://avro.apache.org/) binary payload
+  support for AsyncFast, with the schema published in the generated AsyncAPI document
+
 # What Is AMGI?
 
 At its core, AMGI defines a minimal, low-level callable interface, similar in spirit to ASGI:
