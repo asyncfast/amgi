@@ -194,6 +194,8 @@ async def send_message(send: MessageSendCallable, message: Mapping[str, Any]) ->
         "headers": message["headers"],
         "payload": message.get("payload"),
     }
+    if (bindings := message.get("bindings")) is not None:
+        message_send_event["bindings"] = bindings
     await send(message_send_event)
 
 

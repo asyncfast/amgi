@@ -197,6 +197,11 @@ The following AMGI servers are currently available:
 - **[amgi-nats](https://pypi.org/project/amgi-nats/)** - Contains [NATS](https://nats.io/) push and pull server
   implementations
 
+### Pulsar
+
+- **[amgi-pulsar](https://pypi.org/project/amgi-pulsar/)** - [Apache Pulsar](https://pulsar.apache.org/) server
+  implementation
+
 ### Redis
 
 - **[amgi-redis](https://pypi.org/project/amgi-redis/)** - [Redis](https://redis.io/) server implementation
