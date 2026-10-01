@@ -58,6 +58,7 @@ jobs:
           - amgi-paho-mqtt
           - amgi-redis
           - amgi-sqs-event-source-mapping
+          - amgi-stomp
           - amgi-types
           - asyncfast
           - asyncfast-cli

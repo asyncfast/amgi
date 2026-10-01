@@ -1,0 +1,7 @@
+services:
+  activemq-artemis:
+    image: apache/activemq-artemis:2.44.0
+    restart: unless-stopped
+    ports:
+      - "61613:61613"
+      - "8161:8161"

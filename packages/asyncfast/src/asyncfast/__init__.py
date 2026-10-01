@@ -8,6 +8,8 @@ from asyncfast._channel import Parameter
 from asyncfast._channel import Payload
 from asyncfast._message import Message
 from asyncfast._utils import ChannelNotFoundError
+from asyncfast.bindings import StompMessageId
+from asyncfast.bindings import StompSubscription
 
 __all__ = [
     "AsyncFast",
@@ -20,4 +22,6 @@ __all__ = [
     "Payload",
     "Message",
     "ChannelNotFoundError",
+    "StompMessageId",
+    "StompSubscription",
 ]

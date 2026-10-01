@@ -21,6 +21,7 @@ members = [
     "amgi-paho-mqtt",
     "amgi-redis",
     "amgi-sqs-event-source-mapping",
+    "amgi-stomp",
     "amgi-types",
     "asyncfast",
     "asyncfast-cli",
@@ -786,6 +787,43 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "test-utils", editable = "packages/test-utils" },
+]
+
+[[package]]
+name = "amgi-stomp"
+version = "0.47.0"
+source = { editable = "packages/amgi-stomp" }
+dependencies = [
+    { name = "amgi-common" },
+    { name = "amgi-types" },
+    { name = "stompman", marker = "python_full_version >= '3.11'" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "test-utils" },
+    { name = "testcontainers" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "amgi-common", editable = "packages/amgi-common" },
+    { name = "amgi-types", editable = "packages/amgi-types" },
+    { name = "stompman", marker = "python_full_version >= '3.11'", specifier = ">=3.16.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest-timeout", specifier = ">=2.4.0" },
+    { name = "test-utils", editable = "packages/test-utils" },
+    { name = "testcontainers", specifier = ">=4.13.0" },
 ]
 
 [[package]]
@@ -1627,6 +1665,7 @@ dependencies = [
     { name = "amgi-aiokafka" },
     { name = "amgi-nats" },
     { name = "amgi-paho-mqtt" },
+    { name = "amgi-stomp" },
     { name = "asyncfast" },
 ]
 
@@ -1636,6 +1675,7 @@ requires-dist = [
     { name = "amgi-aiokafka", editable = "packages/amgi-aiokafka" },
     { name = "amgi-nats", editable = "packages/amgi-nats" },
     { name = "amgi-paho-mqtt", editable = "packages/amgi-paho-mqtt" },
+    { name = "amgi-stomp", editable = "packages/amgi-stomp" },
     { name = "asyncfast", editable = "packages/asyncfast" },
 ]
 
@@ -4115,6 +4155,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/eb/e3/7c1dc7381d9f8ab7d854328ebfa884e62cb3f3d8549ddfd37c7814f42afa/starlette-1.3.1.tar.gz", hash = "sha256:05d0213193f2fbaae60e2ecb593b4add4262ad4e46536b54abe36f11a71724e0", size = 2703240, upload-time = "2026-06-12T09:23:11.602Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/bb/2799cc2ede3ed41131f8975621e7213dfc7ef4acbbaadfa440f32500c370/starlette-1.3.1-py3-none-any.whl", hash = "sha256:c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6", size = 73632, upload-time = "2026-06-12T09:23:10.017Z" },
+]
+
+[[package]]
+name = "stompman"
+version = "3.16.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/50/ae169a5a09729adedea5bf1a1a8bd939493e6a5c1cd7f8544750d4b8f4a6/stompman-3.16.0.tar.gz", hash = "sha256:700476a8c9428f8c3cb1bc0211a6e80c7248db6dca09992e6707350c2a5332d3", size = 21841, upload-time = "2026-09-17T14:51:49.579Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e6/0e/1cc4ec247e460a7b469a2d734f1c518b5770a888a72ac19279c080efee24/stompman-3.16.0-py3-none-any.whl", hash = "sha256:8d8b755043e31024ee7f1d5dfe773ba61cd410dc43dd4ea861fa26e57556e93b", size = 29647, upload-time = "2026-09-17T14:51:48.227Z" },
 ]
 
 [[package]]
