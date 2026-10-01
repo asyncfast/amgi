@@ -21,6 +21,8 @@ from asyncfast import MessageSender
 from asyncfast import Payload
 from asyncfast.bindings import KafkaKey
 from asyncfast.bindings import SqsMessageGroupId
+from asyncfast.bindings import StompMessageId
+from asyncfast.bindings import StompSubscription
 from pydantic import BaseModel
 
 
@@ -763,6 +765,89 @@ async def test_message_binding_sqs_message_group_id() -> None:
     )
 
     test_mock.assert_called_once_with(1234)
+
+
+async def test_message_binding_stomp_message_id() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(message_id: Annotated[str, StompMessageId()]) -> None:
+        test_mock(message_id)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
+        "address": "topic",
+        "headers": [],
+        "bindings": {"stomp": {"message_id": "message-id-1"}},
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with("message-id-1")
+
+
+async def test_message_binding_stomp_subscription() -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(subscription: Annotated[str, StompSubscription()]) -> None:
+        test_mock(subscription)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
+        "address": "topic",
+        "headers": [],
+        "bindings": {"stomp": {"subscription": "subscription-1"}},
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with("subscription-1")
+
+
+@pytest.mark.parametrize(
+    ["bindings", "expected_value"],
+    (({}, None), ({"stomp": {"message_id": "message-id-1"}}, "message-id-1")),
+)
+async def test_message_binding_default_stomp_message_id(
+    bindings: dict[str, Any], expected_value: Optional[str]
+) -> None:
+    app = AsyncFast()
+
+    test_mock = Mock()
+
+    @app.channel("topic")
+    async def topic_handler(
+        message_id: Annotated[Optional[str], StompMessageId()] = None,
+    ) -> None:
+        test_mock(message_id)
+
+    message_scope: MessageScope = {
+        "type": "message",
+        "amgi": {"version": "2.0", "spec_version": "2.0"},
+        "address": "topic",
+        "headers": [],
+        "bindings": bindings,
+    }
+    await app(
+        message_scope,
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    test_mock.assert_called_once_with(expected_value)
 
 
 @pytest.mark.parametrize(

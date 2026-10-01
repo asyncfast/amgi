@@ -28,6 +28,17 @@ The Pulsar binding object has the following key:
    The :py:obj:`str` of the Pulsar partition key, this can also be :py:obj:`None`. If missing, it defaults to
    :py:obj:`None`.
 
+********
+ STOMP
+********
+
+The STOMP binding object has the following keys:
+
+-  ``message["bindings"]["stomp"]["message_id"]`` - The :py:obj:`str` message id of the STOMP message, assigned by the
+   broker. Useful for deduplication.
+-  ``message["bindings"]["stomp"]["subscription"]`` - The :py:obj:`str` id of the STOMP subscription the message was
+   received on.
+
 .. _asyncapi: https://www.asyncapi.com/en
 
 .. _message bindings object: https://www.asyncapi.com/docs/reference/specification/v3.0.0#messageBindingsObject
