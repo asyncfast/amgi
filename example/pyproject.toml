@@ -18,6 +18,7 @@ dependencies = [
   "amgi-nats",
   "amgi-paho-mqtt",
   "amgi-pulsar",
+  "amgi-stomp",
   "asyncfast",
 ]
 
@@ -27,4 +28,5 @@ sources.amgi-aiokafka = { workspace = true }
 sources.amgi-nats = { workspace = true }
 sources.amgi-paho-mqtt = { workspace = true }
 sources.amgi-pulsar = { workspace = true }
+sources.amgi-stomp = { workspace = true }
 sources.asyncfast = { workspace = true }
