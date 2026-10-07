@@ -6,6 +6,8 @@ from asyncfast._channel import InvalidChannelDefinitionError
 from asyncfast._channel import MessageSender
 from asyncfast._channel import Parameter
 from asyncfast._channel import Payload
+from asyncfast._channel import Reply
+from asyncfast._channel import ReplyAddress
 from asyncfast._message import Message
 from asyncfast._utils import ChannelNotFoundError
 
@@ -18,6 +20,8 @@ __all__ = [
     "MessageSender",
     "Parameter",
     "Payload",
+    "Reply",
+    "ReplyAddress",
     "Message",
     "ChannelNotFoundError",
 ]

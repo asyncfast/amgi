@@ -40,6 +40,9 @@ from pydantic.fields import FieldInfo
 
 _FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_\-]+$")
 _PARAMETER_PATTERN = re.compile(r"{(.*)}")
+_REPLY_LOCATION_PATTERN = re.compile(
+    r"\$message\.(header|payload)(#(\/(([^\/~\n])|(~[01]))*)*)?"
+)
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -109,6 +112,65 @@ class Payload(FieldInfo):  # type: ignore[misc]
 
 class Parameter(FieldInfo):  # type: ignore[misc]
     pass
+
+
+@dataclass(frozen=True)
+class ReplyAddress:
+    """
+    A dynamically determined reply address, following the AsyncAPI Operation Reply Address object.
+
+    :var location:
+        A runtime expression that specifies the location of the reply address, for example
+        "$message.header#/replyTo". It must follow the AsyncAPI runtime expression format, where either
+        "$message.header" or "$message.payload" is followed by a JSON Pointer.
+    :var description: An optional description of the reply address.
+    """
+
+    location: str
+    _: KW_ONLY
+    description: str | None = None
+
+    def __post_init__(self) -> None:
+        if not _REPLY_LOCATION_PATTERN.fullmatch(self.location):
+            raise InvalidChannelDefinitionError(
+                "Reply address location must be a runtime expression of the form "
+                '"$message.header#/<pointer>" or "$message.payload#/<pointer>", '
+                f"got: {self.location!r}"
+            )
+
+
+@dataclass(frozen=True)
+class Reply:
+    """
+    Marks a channel as implementing the request/reply pattern.
+
+    The reply is the message sent by the channel handler, which must therefore send exactly one message
+    type. The AsyncAPI Operation Reply object is added to the receive operation of the channel, where the
+    reply channel is the channel of the sent message:
+
+    .. code-block:: python
+
+       @dataclass
+       class Pong(Message, address="pong"):
+           payload: str
+
+
+       @app.channel("ping", reply=Reply())
+       async def ping(payload: str) -> AsyncGenerator[Pong, None]:
+           yield Pong(payload="pong")
+
+    :var address:
+        An optional reply address, for when the address of the reply is only known at runtime, typically
+        supplied by the requester, for example in a replyTo header. A str location is converted to a
+        ReplyAddress.
+    """
+
+    _: KW_ONLY
+    address: ReplyAddress | str | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.address, str):
+            object.__setattr__(self, "address", ReplyAddress(self.address))
 
 
 @dataclass(frozen=True)
@@ -371,6 +433,7 @@ class DependencyCache:
 class Channel(CallableResolver, ABC):
     address: str
     parameters: set[str]
+    reply: Reply | None = None
 
     async def __call__(
         self,
@@ -551,7 +614,9 @@ def resolvers_dependencies(
     return tuple(resolvers), tuple(dependencies)
 
 
-def get_channel(func: Callable[..., Any], address: str) -> Channel:
+def get_channel(
+    func: Callable[..., Any], address: str, reply: Reply | None = None
+) -> Channel:
     address_parameters = get_address_parameters(address)
     resolvers, dependencies = resolvers_dependencies(func, address_parameters)
 
@@ -560,16 +625,20 @@ def get_channel(func: Callable[..., Any], address: str) -> Channel:
         raise InvalidChannelDefinitionError("Channel must have no more than 1 payload")
 
     if inspect.iscoroutinefunction(func):
-        return AsyncChannel(func, resolvers, dependencies, address, address_parameters)
+        return AsyncChannel(
+            func, resolvers, dependencies, address, address_parameters, reply
+        )
     if inspect.isasyncgenfunction(func):
         return AsyncGeneratorChannel(
-            func, resolvers, dependencies, address, address_parameters
+            func, resolvers, dependencies, address, address_parameters, reply
         )
     if inspect.isgeneratorfunction(func):
         return SyncGeneratorChannel(
-            func, resolvers, dependencies, address, address_parameters
+            func, resolvers, dependencies, address, address_parameters, reply
         )
-    return SyncChannel(func, resolvers, dependencies, address, address_parameters)
+    return SyncChannel(
+        func, resolvers, dependencies, address, address_parameters, reply
+    )
 
 
 class ChannelRouter(Router[Channel]):
@@ -577,8 +646,12 @@ class ChannelRouter(Router[Channel]):
     def channels(self) -> Sequence[Channel]:
         return [channel for _, channel in self.routes]
 
-    def add_channel(self, address: str, func: Callable[..., Any]) -> None:
-        self.add_route(address, get_channel(func, address))
+    def add_channel(
+        self, address: str, func: Callable[..., Any], reply: Reply | None = None
+    ) -> Channel:
+        channel = get_channel(func, address, reply)
+        self.add_route(address, channel)
+        return channel
 
     async def __call__(
         self, scope: MessageScope, receive: AMGIReceiveCallable, send: AMGISendCallable
