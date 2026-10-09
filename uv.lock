@@ -676,6 +676,7 @@ dependencies = [
     { name = "amgi-common" },
     { name = "amgi-types" },
     { name = "paho-mqtt" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 
 [package.dev-dependencies]
@@ -693,6 +694,7 @@ requires-dist = [
     { name = "amgi-common", editable = "packages/amgi-common" },
     { name = "amgi-types", editable = "packages/amgi-types" },
     { name = "paho-mqtt", specifier = ">=2.1.0" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'", specifier = ">=4.15.0" },
 ]
 
 [package.metadata.requires-dev]

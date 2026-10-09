@@ -29,8 +29,9 @@ dependencies = [
   "amgi-common==0.47.0",
   "amgi-types==0.47.0",
   "paho-mqtt>=2.1.0",
+  "typing-extensions>=4.15.0; python_full_version<'3.11'",
 ]
-entry-points.amgi_server.amgi-paho-mqtt = "amgi_paho_mqtt:run"
+entry-points.amgi_server.amgi-paho-mqtt = "amgi_paho_mqtt:_run_cli"
 
 [dependency-groups]
 dev = [
