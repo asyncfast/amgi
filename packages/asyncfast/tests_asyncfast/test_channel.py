@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Annotated
 from typing import Any
 from typing import AsyncGenerator
@@ -7,11 +8,13 @@ from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import Mock
 
+from asyncfast import Message
 from asyncfast._channel import Depends
 from asyncfast._channel import get_channel
 from asyncfast._channel import Header
 from asyncfast._channel import MessageSender
 from asyncfast.bindings import KafkaKey
+from asyncfast.bindings import PulsarKey
 
 
 async def test_payload_basic() -> None:
@@ -235,6 +238,40 @@ async def test_async_generator_func() -> None:
             "address": "send_topic",
             "headers": [(b"Id", b"10")],
             "payload": b'{"key": "KEY-001"}',
+        }
+    )
+
+
+async def test_async_generator_func_with_binding() -> None:
+    send_mock = AsyncMock()
+
+    @dataclass
+    class SendMessage(Message, address="send_topic"):
+        key: Annotated[str, PulsarKey()]
+
+    async def func() -> AsyncGenerator[SendMessage, None]:
+        yield SendMessage(key="KEY-001")
+
+    await get_channel(func, "channel")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "channel",
+            "headers": [],
+            "payload": b"1",
+        },
+        Mock(),
+        send_mock,
+        {},
+    )
+
+    send_mock.assert_awaited_once_with(
+        {
+            "type": "message.send",
+            "address": "send_topic",
+            "headers": [],
+            "payload": None,
+            "bindings": {"pulsar": {"key": "KEY-001"}},
         }
     )
 
