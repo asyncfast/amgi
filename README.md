@@ -201,6 +201,10 @@ The following AMGI servers are currently available:
 
 - **[amgi-redis](https://pypi.org/project/amgi-redis/)** - [Redis](https://redis.io/) server implementation
 
+### STOMP
+
+- **[amgi-stomp](https://pypi.org/project/amgi-stomp/)** - [STOMP](https://stomp.github.io/) server implementation
+
 ### SQS
 
 - **[amgi-aiobotocore](https://pypi.org/project/amgi-aiobotocore/)** - Contains a [SQS](https://aws.amazon.com/sqs/)

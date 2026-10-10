@@ -146,3 +146,23 @@ Connect the app via AMQP with:
 ```commandline
 asyncfast run amgi-aio-pika main:app input_channel
 ```
+
+## STOMP
+
+Run the STOMP compose file with:
+
+```commandline
+docker compose --file stomp/docker-compose.yaml up --detach
+```
+
+This includes:
+
+- An ActiveMQ Artemis broker with STOMP enabled, running on `localhost:61613`
+- The Artemis web console ([`http://localhost:8161/console`](http://localhost:8161/console)) logging in with
+  `artemis`/`artemis`
+
+Connect the app via STOMP with:
+
+```commandline
+asyncfast run amgi-stomp main:app input_channel --login artemis --passcode artemis
+```

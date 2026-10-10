@@ -38,3 +38,13 @@ class SqsMessageDeduplicationId(Binding):  # type: ignore[misc]
 class SqsMessageGroupId(Binding):  # type: ignore[misc]
     __protocol__ = "sqs"
     __field_name__ = "message_group_id"
+
+
+class StompMessageId(Binding):  # type: ignore[misc]
+    __protocol__ = "stomp"
+    __field_name__ = "message_id"
+
+
+class StompSubscription(Binding):  # type: ignore[misc]
+    __protocol__ = "stomp"
+    __field_name__ = "subscription"
