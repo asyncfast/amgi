@@ -17,8 +17,11 @@ from asyncfast._channel import CallableResolver
 from asyncfast._channel import Channel
 from asyncfast._channel import ChannelRouter
 from asyncfast._channel import HeaderResolver
+from asyncfast._channel import InvalidChannelDefinitionError
 from asyncfast._channel import MessageSenderResolver
 from asyncfast._channel import PayloadResolver
+from asyncfast._channel import Reply
+from asyncfast._channel import ReplyAddress
 from asyncfast._channel import Resolver
 from asyncfast._message import Message
 from pydantic import BaseModel
@@ -48,14 +51,15 @@ class MessageDefinition:
     headers: Sequence[tuple[str, type[Any], Any]]
     bindings: Sequence[tuple[str, str, type[Any], CoreSchema]]
     payload: tuple[type[Any], CoreSchema] | None
+    dynamic_address: bool = False
 
     @property
     def channel_definition(self) -> dict[str, Any]:
         definition = {
-            "address": self.address,
+            "address": None if self.dynamic_address else self.address,
             "messages": {self.name: {"$ref": f"#/components/messages/{self.name}"}},
         }
-        if self.parameters:
+        if self.parameters and not self.dynamic_address:
             definition["parameters"] = {name: {} for name in self.parameters}
         return definition
 
@@ -165,6 +169,41 @@ class ChannelDefinition:
             return payloads[0]
         return None
 
+    @cached_property
+    def reply(self) -> Reply | None:
+        return self.channel.reply
+
+    @cached_property
+    def reply_definition(self) -> dict[str, Any] | None:
+        if self.reply is None:
+            return None
+
+        messages = tuple(dict.fromkeys(self.send_messages))
+        if len(messages) != 1:
+            raise InvalidChannelDefinitionError(
+                "Channel with reply must send exactly one message type"
+            )
+        (message,) = messages
+
+        definition: dict[str, Any] = {}
+
+        reply_address = self.reply.address
+        if isinstance(reply_address, ReplyAddress):
+            definition["address"] = {
+                "location": reply_address.location,
+                **(
+                    {"description": reply_address.description}
+                    if reply_address.description
+                    else {}
+                ),
+            }
+
+        definition["channel"] = {"$ref": f"#/channels/{message.__name__}"}
+        definition["messages"] = [
+            {"$ref": f"#/channels/{message.__name__}/messages/{message.__name__}"}
+        ]
+        return definition
+
     def generate_send_messages(self) -> Generator[type[Message], None, None]:
         signature = inspect.signature(self.channel.func)
 
@@ -197,6 +236,7 @@ class ChannelDefinition:
 
     @cached_property
     def send_message_definitions(self) -> Sequence[MessageDefinition]:
+        dynamic_address = self.reply is not None and self.reply.address is not None
         return tuple(
             MessageDefinition(
                 message.__name__,
@@ -220,6 +260,7 @@ class ChannelDefinition:
                     if message.__payload__
                     else None
                 ),
+                dynamic_address,
             )
             for message in self.send_messages
         )
@@ -308,10 +349,16 @@ def generate_operations(
     channel_definitions: Iterable[ChannelDefinition],
 ) -> Generator[tuple[str, dict[str, Any]], None, None]:
     for channel_definition in channel_definitions:
-        yield f"receive{channel_definition.title}", {
+        receive_operation: dict[str, Any] = {
             "action": "receive",
             "channel": {"$ref": f"#/channels/{channel_definition.title}"},
         }
+
+        reply_definition = channel_definition.reply_definition
+        if reply_definition is not None:
+            receive_operation["reply"] = reply_definition
+
+        yield f"receive{channel_definition.title}", receive_operation
 
         for message in channel_definition.send_messages:
             yield f"send{message.__name__}", {

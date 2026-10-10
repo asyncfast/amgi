@@ -14,8 +14,12 @@ from amgi_types import AMGISendCallable
 from amgi_types import LifespanShutdownCompleteEvent
 from amgi_types import LifespanStartupCompleteEvent
 from amgi_types import Scope
+from asyncfast._asyncapi import ChannelDefinition
 from asyncfast._asyncapi import get_asyncapi
 from asyncfast._channel import ChannelRouter
+from asyncfast._channel import get_channel
+from asyncfast._channel import InvalidChannelDefinitionError
+from asyncfast._channel import Reply
 from asyncfast.middleware.errors import ServerErrorMiddleware
 
 P = ParamSpec("P")
@@ -67,13 +71,26 @@ class AsyncFast:
     def version(self) -> str:
         return self._version
 
-    def channel(self, address: str) -> Callable[[DecoratedCallable], DecoratedCallable]:
-        return partial(self._add_channel, address)
+    def channel(
+        self,
+        address: str,
+        *,
+        reply: Reply | None = None,
+    ) -> Callable[[DecoratedCallable], DecoratedCallable]:
+        return partial(self._add_channel, address, reply)
 
     def _add_channel(
-        self, address: str, function: DecoratedCallable
+        self, address: str, reply: Reply | None, function: DecoratedCallable
     ) -> DecoratedCallable:
-        self._router.add_channel(address, function)
+        channel = get_channel(function, address, reply)
+        if (
+            reply is not None
+            and len(set(ChannelDefinition(channel).send_messages)) != 1
+        ):
+            raise InvalidChannelDefinitionError(
+                "Channel with reply must send exactly one message type"
+            )
+        self._router.add_route(address, channel)
         return function
 
     async def __call__(
