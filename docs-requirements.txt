@@ -5,6 +5,7 @@ furo>=2025.7.19
 sphinx-copybutton>=0.5.2
 redis>=7.0.1
 packages/asyncfast
+packages/asyncfast-avro
 packages/amgi-types
 packages/amgi-aiobotocore
 packages/amgi-aiokafka

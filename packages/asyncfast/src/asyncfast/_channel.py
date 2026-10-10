@@ -22,6 +22,7 @@ from functools import cached_property
 from functools import wraps
 from typing import Annotated
 from typing import Any
+from typing import ClassVar
 from typing import Generic
 from typing import get_args
 from typing import get_origin
@@ -33,6 +34,7 @@ from amgi_types import AMGISendCallable
 from amgi_types import MessageScope
 from amgi_types import MessageSendEvent
 from asyncfast._utils import get_address_parameters
+from asyncfast._utils import InvalidChannelDefinitionError
 from asyncfast._utils import Router
 from asyncfast.bindings import Binding
 from pydantic import TypeAdapter
@@ -93,18 +95,22 @@ def asyncify_generator(
     return wrapped_generator
 
 
-class InvalidChannelDefinitionError(ValueError):
-    """
-    Raised when a channel or message handler is defined with an invalid shape.
-    """
-
-
 class Header(FieldInfo):  # type: ignore[misc]
     pass
 
 
 class Payload(FieldInfo):  # type: ignore[misc]
-    pass
+    __schema_format__: ClassVar[str | None] = None
+
+    def dump_value(self, value: Any, type_adapter: TypeAdapter[Any]) -> bytes:
+        return type_adapter.dump_json(value)
+
+    def load_value(self, type_adapter: TypeAdapter[T], payload: bytes) -> T:
+        return type_adapter.validate_json(payload)
+
+    def asyncapi_schema(self, type_adapter: TypeAdapter[Any]) -> Any:
+        # Only called for payload types that declare a custom __schema_format__
+        raise NotImplementedError  # pragma: no cover
 
 
 class Parameter(FieldInfo):  # type: ignore[misc]
@@ -144,11 +150,16 @@ class TypeResolve(Resolver[T], ABC):
 
 @dataclass(frozen=True)
 class PayloadResolver(TypeResolve[T]):
+    payload_annotation: Payload
+
     def resolve(self, message_receive: MessageReceive, send: AMGISendCallable) -> T:
         payload: bytes | None = message_receive.message.get("payload")
         if payload is None:
             return self.type_adapter.validate_python(None)
-        return self.type_adapter.validate_json(payload)
+        return self.validate(payload)
+
+    def validate(self, payload: bytes) -> T:
+        return self.payload_annotation.load_value(self.type_adapter, payload)
 
 
 @dataclass(frozen=True)
@@ -527,11 +538,14 @@ def parameter_resolver(
                 annotation.func, resolvers, dependencies, annotation.use_cache
             )
 
+        if isinstance(annotation, Payload):
+            return PayloadResolver(parameter.annotation, annotation)
+
     if get_origin(parameter.annotation) is MessageSender:
         return MessageSenderResolver(parameter.annotation)
 
     type_ = object if parameter.empty == parameter.annotation else parameter.annotation
-    return PayloadResolver(type_)
+    return PayloadResolver(type_, Payload())
 
 
 def resolvers_dependencies(
