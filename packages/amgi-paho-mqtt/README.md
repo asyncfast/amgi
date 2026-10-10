@@ -43,6 +43,27 @@ Or the application could be run via the commandline:
 asyncfast run amgi-paho-mqtt main:app order-topic
 ```
 
+## Sending Messages
+
+Messages can be sent from the application via the `message.send` event. The `mqtt` binding of the event controls the
+send:
+
+```python
+await send(
+    {
+        "type": "message.send",
+        "address": "order-topic",
+        "headers": [(b"trace-id", b"abc123")],
+        "payload": b"payload",
+        "bindings": {"mqtt": {"qos": 1, "retain": False}},
+    }
+)
+```
+
+`qos` sets the MQTT QoS level (defaults to `0`), and `retain` marks the message as retained (defaults to `False`). With
+MQTT v5, message headers are sent as user properties, with `content-type` mapped to the MQTT content type property.
+MQTT v3.1.1 has no way to represent headers, so they are dropped.
+
 ## Contact
 
 For questions or suggestions, please contact [jack.burridge@mail.com](mailto:jack.burridge@mail.com).
