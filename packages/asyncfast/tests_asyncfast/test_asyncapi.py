@@ -5,12 +5,17 @@ from typing import Annotated
 from typing import Union
 from uuid import UUID
 
+import pytest
 from asyncfast import AsyncFast
 from asyncfast import Depends
 from asyncfast import Header
+from asyncfast import InvalidChannelDefinitionError
 from asyncfast import Message
 from asyncfast import MessageSender
 from asyncfast import Payload
+from asyncfast import Reply
+from asyncfast import ReplyAddress
+from asyncfast import ReplyTo
 from asyncfast.bindings import KafkaKey
 from pydantic import BaseModel
 
@@ -1219,3 +1224,368 @@ async def test_untyped() -> None:
             }
         },
     }
+
+
+def test_asyncapi_reply() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @app.channel("ping", reply=Reply())
+    async def ping(payload: str) -> AsyncGenerator[Pong, None]:
+        yield Pong(payload="pong")  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "Ping": {
+                "address": "ping",
+                "messages": {
+                    "PingMessage": {"$ref": "#/components/messages/PingMessage"}
+                },
+            },
+            "Pong": {
+                "address": "pong",
+                "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "PingMessage": {"payload": {"type": "string"}},
+                "Pong": {"payload": {"type": "string"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receivePing": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/Ping"},
+                "reply": {
+                    "channel": {"$ref": "#/channels/Pong"},
+                    "messages": [{"$ref": "#/channels/Pong/messages/Pong"}],
+                },
+            },
+            "sendPong": {"action": "send", "channel": {"$ref": "#/channels/Pong"}},
+        },
+    }
+
+
+def test_asyncapi_reply_address_string() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @app.channel("ping", reply=Reply(address="$message.header#/replyTo"))
+    async def ping(payload: str) -> AsyncGenerator[Pong, None]:
+        yield Pong(payload="pong")  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "Ping": {
+                "address": "ping",
+                "messages": {
+                    "PingMessage": {"$ref": "#/components/messages/PingMessage"}
+                },
+            },
+            "Pong": {
+                "address": None,
+                "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "PingMessage": {"payload": {"type": "string"}},
+                "Pong": {"payload": {"type": "string"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receivePing": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/Ping"},
+                "reply": {
+                    "address": {"location": "$message.header#/replyTo"},
+                    "channel": {"$ref": "#/channels/Pong"},
+                    "messages": [{"$ref": "#/channels/Pong/messages/Pong"}],
+                },
+            },
+            "sendPong": {"action": "send", "channel": {"$ref": "#/channels/Pong"}},
+        },
+    }
+
+
+def test_asyncapi_reply_address_description() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @app.channel(
+        "ping",
+        reply=Reply(
+            address=ReplyAddress(
+                "$message.header#/replyTo",
+                description="Consumer inbox",
+            )
+        ),
+    )
+    async def ping(payload: str) -> AsyncGenerator[Pong, None]:
+        yield Pong(payload="pong")  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "Ping": {
+                "address": "ping",
+                "messages": {
+                    "PingMessage": {"$ref": "#/components/messages/PingMessage"}
+                },
+            },
+            "Pong": {
+                "address": None,
+                "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "PingMessage": {"payload": {"type": "string"}},
+                "Pong": {"payload": {"type": "string"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receivePing": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/Ping"},
+                "reply": {
+                    "address": {
+                        "location": "$message.header#/replyTo",
+                        "description": "Consumer inbox",
+                    },
+                    "channel": {"$ref": "#/channels/Pong"},
+                    "messages": [{"$ref": "#/channels/Pong/messages/Pong"}],
+                },
+            },
+            "sendPong": {"action": "send", "channel": {"$ref": "#/channels/Pong"}},
+        },
+    }
+
+
+def test_asyncapi_reply_same_channel() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="ping"):
+        payload: str
+
+    @app.channel("ping", reply=Reply())
+    async def ping(payload: str) -> AsyncGenerator[Pong, None]:
+        yield Pong(payload="pong")  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "Ping": {
+                "address": "ping",
+                "messages": {
+                    "PingMessage": {"$ref": "#/components/messages/PingMessage"}
+                },
+            },
+            "Pong": {
+                "address": "ping",
+                "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "PingMessage": {"payload": {"type": "string"}},
+                "Pong": {"payload": {"type": "string"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receivePing": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/Ping"},
+                "reply": {
+                    "channel": {"$ref": "#/channels/Pong"},
+                    "messages": [{"$ref": "#/channels/Pong/messages/Pong"}],
+                },
+            },
+            "sendPong": {"action": "send", "channel": {"$ref": "#/channels/Pong"}},
+        },
+    }
+
+
+def test_asyncapi_reply_message_sender() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @app.channel("ping", reply=Reply())
+    async def ping(message_sender: MessageSender[Pong]) -> None:
+        await message_sender.send(Pong(payload="pong"))  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "Ping": {
+                "address": "ping",
+                "messages": {
+                    "PingMessage": {"$ref": "#/components/messages/PingMessage"}
+                },
+            },
+            "Pong": {
+                "address": "pong",
+                "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "PingMessage": {},
+                "Pong": {"payload": {"type": "string"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receivePing": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/Ping"},
+                "reply": {
+                    "channel": {"$ref": "#/channels/Pong"},
+                    "messages": [{"$ref": "#/channels/Pong/messages/Pong"}],
+                },
+            },
+            "sendPong": {"action": "send", "channel": {"$ref": "#/channels/Pong"}},
+        },
+    }
+
+
+def test_asyncapi_reply_dynamic_address_with_parameters() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="{reply_to}"):
+        reply_to: str
+        payload: str
+
+    @app.channel("ping", reply=Reply(address=ReplyAddress("$message.header#/replyTo")))
+    async def ping(payload: str) -> AsyncGenerator[Pong, None]:
+        yield Pong(reply_to="inbox", payload="pong")  # pragma: no cover
+
+    assert app.asyncapi()["channels"]["Pong"] == {
+        "address": None,
+        "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+    }
+
+
+def test_asyncapi_reply_to_header_derives_address() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="{reply_to}"):
+        reply_to: str
+        payload: str
+
+    @app.channel("ping", reply=Reply())
+    async def ping(
+        reply_to: Annotated[str, ReplyTo(alias="replyTo")],
+    ) -> AsyncGenerator[Pong, None]:
+        yield Pong(reply_to=reply_to, payload="pong")  # pragma: no cover
+
+    schema = app.asyncapi()
+    assert schema["operations"]["receivePing"]["reply"]["address"] == {
+        "location": "$message.header#/replyTo"
+    }
+    assert schema["channels"]["Pong"]["address"] is None
+    assert "headers" in schema["components"]["messages"]["PingMessage"]
+
+
+def test_asyncapi_reply_to_header_via_dependency() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="{reply_to}"):
+        reply_to: str
+        payload: str
+
+    def get_reply_to(reply_to: Annotated[str, ReplyTo()]) -> str:
+        return reply_to  # pragma: no cover
+
+    @app.channel("ping", reply=Reply())
+    async def ping(
+        reply_to: Annotated[str, Depends(get_reply_to)],
+    ) -> AsyncGenerator[Pong, None]:
+        yield Pong(reply_to=reply_to, payload="pong")  # pragma: no cover
+
+    assert app.asyncapi()["operations"]["receivePing"]["reply"]["address"] == {
+        "location": "$message.header#/reply-to"
+    }
+
+
+def test_asyncapi_explicit_reply_address_wins_over_reply_to() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @app.channel("ping", reply=Reply(address="$message.header#/other"))
+    async def ping(
+        reply_to: Annotated[str, ReplyTo()],
+    ) -> AsyncGenerator[Pong, None]:
+        yield Pong(payload="pong")  # pragma: no cover
+
+    assert app.asyncapi()["operations"]["receivePing"]["reply"]["address"] == {
+        "location": "$message.header#/other"
+    }
+
+
+def test_asyncapi_reply_to_without_reply_is_plain_header() -> None:
+    app = AsyncFast()
+
+    @app.channel("ping")
+    async def ping(reply_to: Annotated[str, ReplyTo()]) -> None:
+        pass  # pragma: no cover
+
+    assert "reply" not in app.asyncapi()["operations"]["receivePing"]
+
+
+def test_asyncapi_reply_without_reply_to_has_no_address() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @app.channel("ping", reply=Reply())
+    async def ping() -> AsyncGenerator[Pong, None]:
+        yield Pong(payload="pong")  # pragma: no cover
+
+    assert "address" not in app.asyncapi()["operations"]["receivePing"]["reply"]
+
+
+def test_asyncapi_multiple_reply_to_headers_raises() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @app.channel("ping", reply=Reply())
+    async def ping(
+        first: Annotated[str, ReplyTo()],
+        second: Annotated[str, ReplyTo()],
+    ) -> AsyncGenerator[Pong, None]:
+        yield Pong(payload="pong")  # pragma: no cover
+
+    with pytest.raises(InvalidChannelDefinitionError):
+        app.asyncapi()
