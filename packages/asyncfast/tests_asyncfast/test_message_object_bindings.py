@@ -4,6 +4,7 @@ from uuid import UUID
 
 from asyncfast import Message
 from asyncfast.bindings import KafkaKey
+from asyncfast.bindings import PulsarKey
 from asyncfast.bindings import SqsDelaySeconds
 from asyncfast.bindings import SqsMessageDeduplicationId
 from asyncfast.bindings import SqsMessageGroupId
@@ -34,6 +35,48 @@ def test_message_binding_kafka_key_int(message_benchmark: MessageBenchmark) -> N
     assert message_benchmark(response) == {
         "address": "response_channel",
         "bindings": {"kafka": {"key": b"10"}},
+        "headers": [],
+    }
+
+
+def test_message_binding_pulsar_key(message_benchmark: MessageBenchmark) -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        key: Annotated[UUID, PulsarKey()]
+
+    response = Response(key=UUID("ec5e9f87-c896-4fb1-b028-8352ef654e05"))
+
+    assert message_benchmark(response) == {
+        "address": "response_channel",
+        "bindings": {"pulsar": {"key": "ec5e9f87-c896-4fb1-b028-8352ef654e05"}},
+        "headers": [],
+    }
+
+
+def test_message_binding_pulsar_key_int(message_benchmark: MessageBenchmark) -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        key: Annotated[int, PulsarKey()]
+
+    response = Response(key=10)
+
+    assert message_benchmark(response) == {
+        "address": "response_channel",
+        "bindings": {"pulsar": {"key": "10"}},
+        "headers": [],
+    }
+
+
+def test_message_binding_pulsar_key_none(message_benchmark: MessageBenchmark) -> None:
+    @dataclass
+    class Response(Message, address="response_channel"):
+        key: Annotated[str | None, PulsarKey()]
+
+    response = Response(key=None)
+
+    assert message_benchmark(response) == {
+        "address": "response_channel",
+        "bindings": {"pulsar": {"key": None}},
         "headers": [],
     }
 

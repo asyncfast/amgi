@@ -56,6 +56,7 @@ jobs:
           - amgi-kafka-event-source-mapping
           - amgi-nats
           - amgi-paho-mqtt
+          - amgi-pulsar
           - amgi-redis
           - amgi-sqs-event-source-mapping
           - amgi-types
