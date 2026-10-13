@@ -6,7 +6,7 @@ amgi-redis is an [AMGI](https://amgi.readthedocs.io/en/latest/) compatible serve
 ## Installation
 
 ```
-pip install amgi-redis==0.47.0
+pip install amgi-redis==0.48.0
 ```
 
 ## Example

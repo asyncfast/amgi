@@ -1,3 +1,9 @@
+## 0.48.0 (2026-10-13)
+
+### Feat
+
+- **asyncfast-avro**: add avro payload parsing and schema generation
+
 ## 0.47.0 (2026-08-24)
 
 ### Feat
