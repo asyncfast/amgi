@@ -1,3 +1,9 @@
+## 0.49.0 (2026-10-13)
+
+### Feat
+
+- **amgi-paho-mqtt**: add message send manager
+
 ## 0.48.0 (2026-10-13)
 
 ### Feat
