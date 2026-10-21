@@ -1,3 +1,9 @@
+## 0.50.0 (2026-10-21)
+
+### Feat
+
+- **amgi-pulsar**: add Apache Pulsar support
+
 ## 0.49.0 (2026-10-13)
 
 ### Feat
