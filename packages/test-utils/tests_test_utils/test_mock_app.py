@@ -108,6 +108,6 @@ async def test_lifespan_finishes_unconsumed_messages(message_after_stop: bool) -
     finally:
         # Release queued calls even if the regression returns, so the test can fail
         # without leaving fixture teardown stuck as well.
-        while not app._call_queue.empty():
+        while not app._call_queue.empty():  # pragma: no cover
             app._call_queue.get_nowait()[3].set()
         await task
