@@ -33,6 +33,8 @@ class MockApp:
         self._call_queue = Queue[
             tuple[Scope, AMGIReceiveCallable, AMGISendCallable, Event]
         ]()
+        self._message_return_events: set[Event] = set()
+        self._shutting_down = False
 
     @asynccontextmanager
     async def call(
@@ -66,6 +68,13 @@ class MockApp:
                 try:
                     yield
                 finally:
+                    self._shutting_down = True
+                    # Tests may leave redelivered messages unconsumed. Release
+                    # those calls so the server can finish before lifespan shutdown.
+                    for return_event in self._message_return_events:
+                        return_event.set()
+                    while not self._call_queue.empty():
+                        self._call_queue.get_nowait()[3].set()
                     if server:
                         server.stop()
 
@@ -89,15 +98,25 @@ class MockApp:
                         with suppress(asyncio.CancelledError):
                             await shutdown_task
         finally:
-            if serve_task:
-                await serve_task
+            try:
+                if serve_task:
+                    await serve_task
+            finally:
+                self._shutting_down = False
 
     async def __call__(
         self, scope: Scope, receive: AMGIReceiveCallable, send: AMGISendCallable
     ) -> None:
+        if scope["type"] == "message" and self._shutting_down:
+            return
         return_event = Event()
+        if scope["type"] == "message":
+            self._message_return_events.add(return_event)
         self._call_queue.put_nowait((scope, receive, send, return_event))
-        await return_event.wait()
+        try:
+            await return_event.wait()
+        finally:
+            self._message_return_events.discard(return_event)
 
 
 async def _app(

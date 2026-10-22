@@ -63,3 +63,51 @@ async def test_lifespan_shuts_down_server_when_test_fails() -> None:
         async with app.lifespan(server=server):
             raise ValueError("Test failed")
     assert finished.is_set()
+
+
+@pytest.mark.parametrize("message_after_stop", [False, True])
+async def test_lifespan_finishes_unconsumed_messages(message_after_stop: bool) -> None:
+    app = MockApp()
+    stopped = asyncio.Event()
+    ready = asyncio.Event()
+    finished = asyncio.Event()
+
+    async def serve() -> None:
+        async with Lifespan(app):
+            ready.set()
+            if message_after_stop:
+                await stopped.wait()
+            await app(
+                {
+                    "type": "message",
+                    "amgi": {"version": "2.0", "spec_version": "2.0"},
+                    "address": "test",
+                    "headers": [],
+                    "payload": b"test",
+                    "bindings": {},
+                    "state": {},
+                },
+                AsyncMock(),
+                AsyncMock(),
+            )
+            await stopped.wait()
+        finished.set()
+
+    server = Mock(serve=AsyncMock(side_effect=serve), stop=stopped.set)
+
+    async def run() -> None:
+        async with app.lifespan(server=server):
+            await ready.wait()
+
+    task = asyncio.create_task(run())
+    try:
+        done, _ = await asyncio.wait((task,), timeout=1)
+        assert task in done, "Shutdown blocked on an unconsumed message"
+        await task
+        assert finished.is_set()
+    finally:
+        # Release queued calls even if the regression returns, so the test can fail
+        # without leaving fixture teardown stuck as well.
+        while not app._call_queue.empty():
+            app._call_queue.get_nowait()[3].set()
+        await task
