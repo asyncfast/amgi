@@ -4360,6 +4360,26 @@ name = "test-utils"
 version = "0.0.0"
 source = { editable = "packages/test-utils" }
 
+[package.dev-dependencies]
+dev = [
+    { name = "amgi-common" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "amgi-common", editable = "packages/amgi-common" },
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest-timeout", specifier = ">=2.4.0" },
+]
+
 [[package]]
 name = "testcontainers"
 version = "4.14.2"
