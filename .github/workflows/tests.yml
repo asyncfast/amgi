@@ -36,6 +36,7 @@ jobs:
   tests:
     name: Run Tests (${{ matrix.os.name }}, ${{ matrix.label }})
     runs-on: ${{ matrix.os.name }}
+    timeout-minutes: 20
     needs: pre-commit
     strategy:
       fail-fast: false
@@ -64,6 +65,7 @@ jobs:
           - asyncfast-avro
           - asyncfast-cli
           - pytest-amgi
+          - test-utils
     steps:
       - uses: actions/checkout@v6
         with:

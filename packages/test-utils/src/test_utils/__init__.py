@@ -6,6 +6,7 @@ from asyncio import Event
 from asyncio import Queue
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from contextlib import suppress
 from functools import partial
 from threading import Thread
 from typing import Any
@@ -32,6 +33,8 @@ class MockApp:
         self._call_queue = Queue[
             tuple[Scope, AMGIReceiveCallable, AMGISendCallable, Event]
         ]()
+        self._message_return_events: set[Event] = set()
+        self._shutting_down = False
 
     @asynccontextmanager
     async def call(
@@ -50,33 +53,70 @@ class MockApp:
         loop = asyncio.get_running_loop()
         serve_task = loop.create_task(server.serve()) if server else None
 
-        async with self.call() as (scope, receive, send):
-            assert scope == {
-                "amgi": {"version": "2.0", "spec_version": "2.0"},
-                "type": "lifespan",
-                "state": {},
-            }
-            if state is not None:
-                scope["state"].update(state)
-            lifespan_startup = await receive()
-            assert lifespan_startup == {"type": "lifespan.startup"}
-            await send({"type": "lifespan.startup.complete"})
-            yield
-            if server:
-                server.stop()
+        try:
+            async with self.call() as (scope, receive, send):
+                assert scope == {
+                    "amgi": {"version": "2.0", "spec_version": "2.0"},
+                    "type": "lifespan",
+                    "state": {},
+                }
+                if state is not None:
+                    scope["state"].update(state)
+                lifespan_startup = await receive()
+                assert lifespan_startup == {"type": "lifespan.startup"}
+                await send({"type": "lifespan.startup.complete"})
+                try:
+                    yield
+                finally:
+                    self._shutting_down = True
+                    # Tests may leave redelivered messages unconsumed. Release
+                    # those calls so the server can finish before lifespan shutdown.
+                    for return_event in self._message_return_events:
+                        return_event.set()
+                    while not self._call_queue.empty():
+                        self._call_queue.get_nowait()[3].set()
+                    if server:
+                        server.stop()
 
-            lifespan_shutdown = await receive()
-            assert lifespan_shutdown == {"type": "lifespan.shutdown"}
-            await send({"type": "lifespan.shutdown.complete"})
-        if serve_task:
-            await serve_task
+                    shutdown_task = asyncio.ensure_future(receive())
+                    try:
+                        if serve_task:
+                            await asyncio.wait(
+                                (shutdown_task, serve_task),
+                                return_when=asyncio.FIRST_COMPLETED,
+                            )
+                            if not shutdown_task.done():
+                                await serve_task
+                                raise RuntimeError(
+                                    "Server exited without sending lifespan.shutdown"
+                                )
+                        lifespan_shutdown = await shutdown_task
+                        assert lifespan_shutdown == {"type": "lifespan.shutdown"}
+                        await send({"type": "lifespan.shutdown.complete"})
+                    finally:
+                        shutdown_task.cancel()
+                        with suppress(asyncio.CancelledError):
+                            await shutdown_task
+        finally:
+            try:
+                if serve_task:
+                    await serve_task
+            finally:
+                self._shutting_down = False
 
     async def __call__(
         self, scope: Scope, receive: AMGIReceiveCallable, send: AMGISendCallable
     ) -> None:
+        if scope["type"] == "message" and self._shutting_down:
+            return
         return_event = Event()
+        if scope["type"] == "message":
+            self._message_return_events.add(return_event)
         self._call_queue.put_nowait((scope, receive, send, return_event))
-        await return_event.wait()
+        try:
+            await return_event.wait()
+        finally:
+            self._message_return_events.discard(return_event)
 
 
 async def _app(

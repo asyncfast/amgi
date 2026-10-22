@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from contextlib import AsyncExitStack
 from typing import Any
 from typing import cast
 from typing import Generator
@@ -383,6 +384,30 @@ async def test_lifespan(
                 "bindings": {"sqs": {}},
                 "state": {"item": state_item},
             }
+
+
+async def test_lifespan_finishes_redelivered_message(
+    queue_url: str, queue_name: str, moto_endpoint: str, sqs_client: Any
+) -> None:
+    app = MockApp()
+    server = Server(
+        app,
+        queue_name,
+        region_name="us-east-1",
+        endpoint_url=moto_endpoint,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+    )
+    async with AsyncExitStack() as calls:
+        async with app.lifespan(server=server):
+            await sqs_client.send_message(QueueUrl=queue_url, MessageBody="value")
+            async with app.call():
+                pass
+            # Hold the redelivery open until after server shutdown. Fixture cleanup
+            # must release it even though the test never completes the call itself.
+            scope, _, _ = await calls.enter_async_context(app.call())
+            assert scope["type"] == "message"
+            assert scope["payload"] == b"value"
 
 
 def test_run(queue_name: str, moto_endpoint: str) -> None:
