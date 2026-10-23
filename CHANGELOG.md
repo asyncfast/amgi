@@ -1,3 +1,9 @@
+## 0.51.0 (2026-10-23)
+
+### Feat
+
+- **amgi-stomp**: add STOMP support
+
 ## 0.50.0 (2026-10-21)
 
 ### Feat

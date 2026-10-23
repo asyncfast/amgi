@@ -11,7 +11,7 @@ consumers in other languages can be generated from it.
 ## Installation
 
 ```
-pip install asyncfast-avro==0.50.0
+pip install asyncfast-avro==0.51.0
 ```
 
 ## Example
