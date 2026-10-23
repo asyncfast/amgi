@@ -14,8 +14,10 @@ from amgi_types import AMGISendCallable
 from amgi_types import LifespanShutdownCompleteEvent
 from amgi_types import LifespanStartupCompleteEvent
 from amgi_types import Scope
+from asyncfast._asyncapi import ChannelDefinition
 from asyncfast._asyncapi import get_asyncapi
 from asyncfast._channel import ChannelRouter
+from asyncfast._channel import get_channel
 from asyncfast.middleware.errors import ServerErrorMiddleware
 
 P = ParamSpec("P")
@@ -73,7 +75,10 @@ class AsyncFast:
     def _add_channel(
         self, address: str, function: DecoratedCallable
     ) -> DecoratedCallable:
-        self._router.add_channel(address, function)
+        channel = get_channel(function, address)
+        # Validate the reply contract before the channel is routed
+        ChannelDefinition(channel).reply_definition
+        self._router.add_route(address, channel)
         return function
 
     async def __call__(

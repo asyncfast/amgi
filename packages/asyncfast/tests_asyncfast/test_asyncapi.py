@@ -11,6 +11,7 @@ from asyncfast import Header
 from asyncfast import Message
 from asyncfast import MessageSender
 from asyncfast import Payload
+from asyncfast import Reply
 from asyncfast.bindings import KafkaKey
 from pydantic import BaseModel
 
@@ -1218,4 +1219,196 @@ async def test_untyped() -> None:
                 "channel": {"$ref": "#/channels/TopicHandler"},
             }
         },
+    }
+
+
+def test_asyncapi_reply() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @app.channel("ping")
+    async def ping(payload: str) -> Annotated[Pong, Reply()]:
+        return Pong(payload="pong")  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "Ping": {
+                "address": "ping",
+                "messages": {
+                    "PingMessage": {"$ref": "#/components/messages/PingMessage"}
+                },
+            },
+            "Pong": {
+                "address": "pong",
+                "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "PingMessage": {"payload": {"type": "string"}},
+                "Pong": {"payload": {"type": "string"}},
+            }
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receivePing": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/Ping"},
+                "reply": {
+                    "channel": {"$ref": "#/channels/Pong"},
+                    "messages": [{"$ref": "#/channels/Pong/messages/Pong"}],
+                },
+            },
+            "sendPong": {"action": "send", "channel": {"$ref": "#/channels/Pong"}},
+        },
+    }
+
+
+def test_asyncapi_reply_header_address() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address=None):
+        payload: str
+
+    @app.channel("ping")
+    async def ping(
+        payload: str,
+    ) -> Annotated[Pong, Reply(address=Header(alias="replyTo"))]:
+        return Pong(payload="pong")  # pragma: no cover
+
+    assert app.asyncapi() == {
+        "asyncapi": "3.0.0",
+        "channels": {
+            "Ping": {
+                "address": "ping",
+                "messages": {
+                    "PingMessage": {"$ref": "#/components/messages/PingMessage"}
+                },
+            },
+            "Pong": {
+                "address": None,
+                "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+            },
+        },
+        "components": {
+            "messages": {
+                "PingMessage": {
+                    "headers": {"$ref": "#/components/schemas/PingMessageHeaders"},
+                    "payload": {"type": "string"},
+                },
+                "Pong": {"payload": {"type": "string"}},
+            },
+            "schemas": {
+                "PingMessageHeaders": {
+                    "properties": {"replyTo": {"title": "Replyto", "type": "string"}},
+                    "required": ["replyTo"],
+                    "title": "PingMessageHeaders",
+                    "type": "object",
+                }
+            },
+        },
+        "info": {"title": "AsyncFast", "version": "0.1.0"},
+        "operations": {
+            "receivePing": {
+                "action": "receive",
+                "channel": {"$ref": "#/channels/Ping"},
+                "reply": {
+                    "address": {"location": "$message.header#/replyTo"},
+                    "channel": {"$ref": "#/channels/Pong"},
+                    "messages": [{"$ref": "#/channels/Pong/messages/Pong"}],
+                },
+            },
+            "sendPong": {"action": "send", "channel": {"$ref": "#/channels/Pong"}},
+        },
+    }
+
+
+def test_asyncapi_reply_header_address_description() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address=None):
+        payload: str
+
+    @app.channel("ping")
+    async def ping() -> (
+        Annotated[
+            Pong, Reply(address=Header(alias="reply/to~", description="Consumer inbox"))
+        ]
+    ):
+        return Pong(payload="pong")  # pragma: no cover
+
+    assert app.asyncapi()["operations"]["receivePing"]["reply"]["address"] == {
+        "location": "$message.header#/reply~1to~0",
+        "description": "Consumer inbox",
+    }
+
+
+def test_asyncapi_reply_header_address_already_in_signature() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address=None):
+        payload: str
+
+    @app.channel("ping")
+    async def ping(
+        reply_to: Annotated[str, Header(alias="replyTo")],
+    ) -> Annotated[Pong, Reply(address=Header(alias="replyTo"))]:
+        return Pong(payload="pong")  # pragma: no cover
+
+    schema = app.asyncapi()
+    assert schema["components"]["schemas"]["PingMessageHeaders"]["properties"] == {
+        "replyTo": {"title": "Replyto", "type": "string"}
+    }
+
+
+def test_asyncapi_reply_same_channel() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="ping"):
+        payload: str
+
+    @app.channel("ping")
+    def ping(payload: str) -> Annotated[Pong, Reply()]:
+        return Pong(payload="pong")  # pragma: no cover
+
+    schema = app.asyncapi()
+    assert schema["channels"]["Pong"] == {
+        "address": "ping",
+        "messages": {"Pong": {"$ref": "#/components/messages/Pong"}},
+    }
+    assert schema["operations"]["receivePing"]["reply"] == {
+        "channel": {"$ref": "#/channels/Pong"},
+        "messages": [{"$ref": "#/channels/Pong/messages/Pong"}],
+    }
+
+
+def test_asyncapi_reply_with_message_sender() -> None:
+    app = AsyncFast()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    @dataclass
+    class Audit(Message, address="audit"):
+        payload: str
+
+    @app.channel("ping")
+    async def ping(
+        message_sender: MessageSender[Union[Audit, Pong]],
+    ) -> Annotated[Pong, Reply()]:
+        return Pong(payload="pong")  # pragma: no cover
+
+    schema = app.asyncapi()
+    assert set(schema["channels"]) == {"Ping", "Pong", "Audit"}
+    assert schema["operations"]["receivePing"]["reply"]["channel"] == {
+        "$ref": "#/channels/Pong"
     }

@@ -118,6 +118,59 @@ class Parameter(FieldInfo):  # type: ignore[misc]
 
 
 @dataclass(frozen=True)
+class Reply:
+    """
+    Marks the message returned by a channel handler as the reply of a request/reply interaction.
+
+    It annotates the return type of the handler. The returned message is sent, and the AsyncAPI Operation
+    Reply object is added to the receive operation of the channel:
+
+    .. code-block:: python
+
+       @dataclass
+       class Pong(Message, address="pong"):
+           value: str
+
+
+       @app.channel("ping")
+       async def ping(payload: Ping) -> Annotated[Pong, Reply()]:
+           return Pong(value=payload.value)
+
+    :var address:
+        An optional :py:class:`Header` of the request carrying the address the reply is sent to, for when
+        the address of the reply is only known at runtime. The header must have an alias, and the reply
+        message must be declared with ``address=None``.
+    """
+
+    _: KW_ONLY
+    address: Header | None = None
+
+    def __post_init__(self) -> None:
+        if self.address is not None and not self.address.alias:
+            raise InvalidChannelDefinitionError(
+                "Reply address header must have an alias"
+            )
+
+    @property
+    def header_name(self) -> str | None:
+        if self.address is None:
+            return None
+        return self.address.alias
+
+    async def send(
+        self,
+        send: AMGISendCallable,
+        message_receive: MessageReceive,
+        message: Mapping[str, Any],
+    ) -> None:
+        header_name = self.header_name
+        if header_name is not None:
+            address = message_receive.headers[header_name].decode()
+            message = {**message, "address": address}
+        await send_message(send, message)
+
+
+@dataclass(frozen=True)
 class Depends:
     func: Callable[..., Any]
     _: KW_ONLY
@@ -384,6 +437,7 @@ class DependencyCache:
 class Channel(CallableResolver, ABC):
     address: str
     parameters: set[str]
+    reply: Reply | None = None
 
     async def __call__(
         self,
@@ -397,6 +451,15 @@ class Channel(CallableResolver, ABC):
         async with AsyncExitStack() as async_exit_stack:
             await self.call(message_receive, send, dependency_cache, async_exit_stack)
 
+    async def send_reply(
+        self,
+        send: AMGISendCallable,
+        message_receive: MessageReceive,
+        result: Any,
+    ) -> None:
+        if self.reply is not None and result is not None:
+            await self.reply.send(send, message_receive, result)
+
 
 @dataclass(frozen=True)
 class SyncChannel(Channel):
@@ -407,12 +470,13 @@ class SyncChannel(Channel):
         dependency_cache: DependencyCache,
         async_exit_stack: AsyncExitStack,
     ) -> None:
-        await asyncio.to_thread(
+        result = await asyncio.to_thread(
             self.func,
             **await self.resolve(
                 message_receive, send, dependency_cache, async_exit_stack
             ),
         )
+        await self.send_reply(send, message_receive, result)
 
 
 @dataclass(frozen=True)
@@ -424,11 +488,12 @@ class AsyncChannel(Channel):
         dependency_cache: DependencyCache,
         async_exit_stack: AsyncExitStack,
     ) -> None:
-        await self.func(
+        result = await self.func(
             **await self.resolve(
                 message_receive, send, dependency_cache, async_exit_stack
             )
         )
+        await self.send_reply(send, message_receive, result)
 
 
 async def handle_async_generator(
@@ -567,6 +632,20 @@ def resolvers_dependencies(
     return tuple(resolvers), tuple(dependencies)
 
 
+def get_reply(func: Callable[..., Any]) -> Reply | None:
+    return_annotation = inspect.signature(func).return_annotation
+    if get_origin(return_annotation) is not Annotated:
+        return None
+    replies = [
+        annotation
+        for annotation in get_args(return_annotation)[1:]
+        if isinstance(annotation, Reply)
+    ]
+    if len(replies) > 1:
+        raise InvalidChannelDefinitionError("Channel must have no more than 1 reply")
+    return replies[0] if replies else None
+
+
 def get_channel(func: Callable[..., Any], address: str) -> Channel:
     address_parameters = get_address_parameters(address)
     resolvers, dependencies = resolvers_dependencies(func, address_parameters)
@@ -575,17 +654,29 @@ def get_channel(func: Callable[..., Any], address: str) -> Channel:
     if payloads > 1:
         raise InvalidChannelDefinitionError("Channel must have no more than 1 payload")
 
+    reply = get_reply(func)
+    if reply is not None and (
+        inspect.isasyncgenfunction(func) or inspect.isgeneratorfunction(func)
+    ):
+        raise InvalidChannelDefinitionError(
+            "Reply must annotate the return type of a non-generator channel"
+        )
+
     if inspect.iscoroutinefunction(func):
-        return AsyncChannel(func, resolvers, dependencies, address, address_parameters)
+        return AsyncChannel(
+            func, resolvers, dependencies, address, address_parameters, reply
+        )
     if inspect.isasyncgenfunction(func):
         return AsyncGeneratorChannel(
-            func, resolvers, dependencies, address, address_parameters
+            func, resolvers, dependencies, address, address_parameters, reply
         )
     if inspect.isgeneratorfunction(func):
         return SyncGeneratorChannel(
-            func, resolvers, dependencies, address, address_parameters
+            func, resolvers, dependencies, address, address_parameters, reply
         )
-    return SyncChannel(func, resolvers, dependencies, address, address_parameters)
+    return SyncChannel(
+        func, resolvers, dependencies, address, address_parameters, reply
+    )
 
 
 class ChannelRouter(Router[Channel]):
@@ -593,8 +684,10 @@ class ChannelRouter(Router[Channel]):
     def channels(self) -> Sequence[Channel]:
         return [channel for _, channel in self.routes]
 
-    def add_channel(self, address: str, func: Callable[..., Any]) -> None:
-        self.add_route(address, get_channel(func, address))
+    def add_channel(self, address: str, func: Callable[..., Any]) -> Channel:
+        channel = get_channel(func, address)
+        self.add_route(address, channel)
+        return channel
 
     async def __call__(
         self, scope: MessageScope, receive: AMGIReceiveCallable, send: AMGISendCallable
