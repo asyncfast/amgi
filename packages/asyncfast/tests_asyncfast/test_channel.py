@@ -13,6 +13,7 @@ from asyncfast._channel import Depends
 from asyncfast._channel import get_channel
 from asyncfast._channel import Header
 from asyncfast._channel import MessageSender
+from asyncfast._channel import Reply
 from asyncfast.bindings import KafkaKey
 from asyncfast.bindings import PulsarKey
 
@@ -540,3 +541,119 @@ async def test_sync_yielding_depends() -> None:
         call.func({"header1": 1, "header2": 2}),
         call.close(),
     ]
+
+
+async def test_reply_async() -> None:
+    send_mock = AsyncMock()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    async def func(payload: str) -> Annotated[Pong, Reply()]:
+        return Pong(payload=payload)
+
+    await get_channel(func, "ping")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "ping",
+            "headers": [],
+            "payload": b'"hello"',
+        },
+        Mock(),
+        send_mock,
+        {},
+    )
+
+    send_mock.assert_awaited_once_with(
+        {
+            "type": "message.send",
+            "address": "pong",
+            "headers": [],
+            "payload": b'"hello"',
+        }
+    )
+
+
+async def test_reply_sync_header_address() -> None:
+    send_mock = AsyncMock()
+
+    @dataclass
+    class Pong(Message, address=None):
+        payload: str
+
+    def func(payload: str) -> Annotated[Pong, Reply(address=Header(alias="replyTo"))]:
+        return Pong(payload=payload)
+
+    await get_channel(func, "ping")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "ping",
+            "headers": [(b"replyTo", b"inbox.1")],
+            "payload": b'"hello"',
+        },
+        Mock(),
+        send_mock,
+        {},
+    )
+
+    send_mock.assert_awaited_once_with(
+        {
+            "type": "message.send",
+            "address": "inbox.1",
+            "headers": [],
+            "payload": b'"hello"',
+        }
+    )
+
+
+async def test_reply_none() -> None:
+    send_mock = AsyncMock()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    async def func() -> Annotated[Pong, Reply()]:
+        return None  # type: ignore[return-value]
+
+    await get_channel(func, "ping")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "ping",
+            "headers": [],
+        },
+        Mock(),
+        send_mock,
+        {},
+    )
+
+    send_mock.assert_not_awaited()
+
+
+async def test_return_without_reply_not_sent() -> None:
+    send_mock = AsyncMock()
+
+    @dataclass
+    class Pong(Message, address="pong"):
+        payload: str
+
+    async def func() -> Pong:
+        return Pong(payload="pong")
+
+    await get_channel(func, "ping")(
+        {
+            "type": "message",
+            "amgi": {"version": "2.0", "spec_version": "2.0"},
+            "address": "ping",
+            "headers": [],
+        },
+        Mock(),
+        send_mock,
+        {},
+    )
+
+    send_mock.assert_not_awaited()

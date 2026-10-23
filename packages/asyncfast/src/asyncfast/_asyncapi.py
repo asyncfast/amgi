@@ -20,8 +20,10 @@ from asyncfast._channel import HeaderResolver
 from asyncfast._channel import MessageSenderResolver
 from asyncfast._channel import Payload
 from asyncfast._channel import PayloadResolver
+from asyncfast._channel import Reply
 from asyncfast._channel import Resolver
 from asyncfast._message import Message
+from asyncfast._utils import InvalidChannelDefinitionError
 from pydantic import BaseModel
 from pydantic import create_model
 from pydantic import TypeAdapter
@@ -175,7 +177,56 @@ class ChannelDefinition:
             return payloads[0]
         return None
 
+    @cached_property
+    def reply(self) -> Reply | None:
+        return self.channel.reply
+
+    @cached_property
+    def reply_message(self) -> type[Message] | None:
+        if self.reply is None:
+            return None
+
+        return_annotation = inspect.signature(self.channel.func).return_annotation
+        message: type[Message] = get_args(return_annotation)[0]
+        if not is_message(message):
+            raise InvalidChannelDefinitionError("Reply must annotate a Message type")
+
+        if self.reply.address is None and message.__address__ is None:
+            raise InvalidChannelDefinitionError(
+                "Reply message must have an address when the reply has no address"
+            )
+        if self.reply.address is not None and message.__address__ is not None:
+            raise InvalidChannelDefinitionError(
+                "Reply message must have address=None when the reply has an address"
+            )
+        return message
+
+    @cached_property
+    def reply_definition(self) -> dict[str, Any] | None:
+        message = self.reply_message
+        if self.reply is None or message is None:
+            return None
+
+        definition: dict[str, Any] = {}
+
+        if self.reply.address is not None:
+            header_name = self.reply.header_name
+            assert header_name is not None
+            pointer = header_name.replace("~", "~0").replace("/", "~1")
+            definition["address"] = {"location": f"$message.header#/{pointer}"}
+            if self.reply.address.description:
+                definition["address"]["description"] = self.reply.address.description
+
+        definition["channel"] = {"$ref": f"#/channels/{message.__name__}"}
+        definition["messages"] = [
+            {"$ref": f"#/channels/{message.__name__}/messages/{message.__name__}"}
+        ]
+        return definition
+
     def generate_send_messages(self) -> Generator[type[Message], None, None]:
+        if self.reply_message is not None:
+            yield self.reply_message
+
         signature = inspect.signature(self.channel.func)
 
         return_annotation = signature.return_annotation
@@ -203,7 +254,7 @@ class ChannelDefinition:
 
     @cached_property
     def send_messages(self) -> Sequence[type[Message]]:
-        return tuple(self.generate_send_messages())
+        return tuple(dict.fromkeys(self.generate_send_messages()))
 
     @cached_property
     def send_message_definitions(self) -> Sequence[MessageDefinition]:
@@ -236,20 +287,29 @@ class ChannelDefinition:
         )
 
     @cached_property
+    def headers(self) -> Sequence[tuple[str, type[Any], Any]]:
+        headers: dict[str, tuple[str, type[Any], Any]] = {
+            resolver.name: (
+                resolver.name,
+                resolver.type,
+                ... if resolver.required else resolver.default,
+            )
+            for resolver in self.resolvers
+            if isinstance(resolver, HeaderResolver)
+        }
+        if self.reply is not None:
+            header_name = self.reply.header_name
+            if header_name is not None and header_name not in headers:
+                headers[header_name] = (header_name, str, ...)
+        return tuple(headers.values())
+
+    @cached_property
     def message_definition(self) -> MessageDefinition:
         return MessageDefinition(
             f"{self.title}Message",
             self.channel.address,
             self.parameters,
-            [
-                (
-                    resolver.name,
-                    resolver.type,
-                    ... if resolver.required else resolver.default,
-                )
-                for resolver in self.resolvers
-                if isinstance(resolver, HeaderResolver)
-            ],
+            self.headers,
             [
                 (
                     binding_resolver.protocol,
@@ -323,10 +383,16 @@ def generate_operations(
     channel_definitions: Iterable[ChannelDefinition],
 ) -> Generator[tuple[str, dict[str, Any]], None, None]:
     for channel_definition in channel_definitions:
-        yield f"receive{channel_definition.title}", {
+        receive_operation: dict[str, Any] = {
             "action": "receive",
             "channel": {"$ref": f"#/channels/{channel_definition.title}"},
         }
+
+        reply_definition = channel_definition.reply_definition
+        if reply_definition is not None:
+            receive_operation["reply"] = reply_definition
+
+        yield f"receive{channel_definition.title}", receive_operation
 
         for message in channel_definition.send_messages:
             yield f"send{message.__name__}", {
